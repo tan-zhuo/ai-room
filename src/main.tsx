@@ -21,8 +21,8 @@ function BootScreen({ lines }: { lines: BootLine[] }) {
       </div>
       <p className="boot-sub">
         {zh
-          ? '正在你的浏览器中真实训练 8 个神经网络…'
-          : 'Training 8 neural networks live in your browser…'}
+          ? '正在你的浏览器中真实训练 9 个神经网络…'
+          : 'Training 9 neural networks live in your browser…'}
       </p>
       <div className="boot-lines">
         {lines.map((l) => (

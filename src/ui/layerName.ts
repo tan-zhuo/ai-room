@@ -55,6 +55,13 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'diff') {
     return t(['layer.xt', 'layer.denoiser', 'layer.x0hat', 'layer.ddpmStep'][layer + 1] ?? 'layer.ddpmStep')
   }
+  if (arch === 'gan') {
+    return t(
+      ['layer.zLatent', 'layer.generator', 'layer.fakeImg', 'layer.discriminator', 'layer.verdict', 'layer.realImg'][
+        layer + 1
+      ] ?? 'layer.verdict',
+    )
+  }
   if (arch === 'ae') {
     if (layer === -1) return t('layer.input')
     if (AE_VARIANT === 'vae') {
@@ -96,6 +103,11 @@ export function explainKeyOf(arch: Arch, layer: number): string {
   }
   if (arch === 'diff') {
     return ['xt', 'denoiserH', 'x0hat', 'ddpmStep'][layer + 1] ?? 'ddpmStep'
+  }
+  if (arch === 'gan') {
+    return (
+      ['zLatent', 'generator', 'fakeImg', 'discriminator', 'ganVerdict', 'realSample'][layer + 1] ?? 'ganVerdict'
+    )
   }
   if (arch === 'ae') {
     if (AE_VARIANT === 'vae') {

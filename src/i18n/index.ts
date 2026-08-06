@@ -223,6 +223,62 @@ const en: Dict = {
     'Text-to-image generation (Stable Diffusion / DALL\u00b7E)\nVideo generation (Sora-style)\nImage editing, inpainting & super-resolution\nAudio & music generation\nMolecule & protein design',
   'overview.diff.industries':
     'Design & advertising \u2014 concept art, product imagery\nFilm & games \u2014 assets, storyboards\nE-commerce \u2014 product photos\nPharma \u2014 molecular generation\nFashion & architecture \u2014 rapid visual drafts',
+  'arch.gan': 'GAN',
+  'arch.ganFull': 'Generative adversarial network',
+  'layer.zLatent': 'Latent z',
+  'layer.generator': 'Generator G',
+  'layer.fakeImg': 'Generated image',
+  'layer.realImg': 'Real sample',
+  'layer.discriminator': 'Discriminator D',
+  'layer.verdict': 'Real-or-fake verdict',
+  'gan.fooled': 'The generator fooled D',
+  'gan.caught': 'D caught the fake',
+  'gan.zNote':
+    'A random number drawn from N(0,1). These 8 numbers are the only input the generator gets — a different z becomes a different image.',
+  'gan.realNote':
+    'A pixel of a genuine training pattern. The discriminator reads real and generated images through the same weights and must tell them apart.',
+  'gan.fakeVerdictNote':
+    'D’s probability that the GENERATED image is real. Above 50% means the generator fooled the discriminator this time.',
+  'gan.realVerdictNote':
+    'D’s probability that the REAL sample is real. In a close match both scores drift toward the middle — at perfect equilibrium D outputs 0.5 for everything.',
+  'explain.zLatent.what':
+    'Eight random numbers drawn from a Gaussian. This is all the generator receives — no image, no label, just noise to be shaped.',
+  'explain.zLatent.why':
+    'Randomness is the raw material of generation: mapping a simple distribution onto the data distribution is exactly what the generator learns. Different z, different image.',
+  'explain.zLatent.simple': 'A handful of dice rolls that decide what picture gets painted.',
+  'explain.generator.what':
+    'A small MLP that maps z to a full 8×8 image (tanh, so pixels live in [-1,1]). It never sees a real image directly — only the discriminator’s gradient.',
+  'explain.generator.why':
+    'The generator improves purely by trying to fool D: its training signal is backpropagated THROUGH the discriminator. That adversarial pressure pushes its outputs toward the real data.',
+  'explain.generator.simple': 'A forger who never saw the originals — only the inspector’s reactions.',
+  'explain.fakeImg.what':
+    'The generator’s output G(z): a brand-new image that exists nowhere in the training set.',
+  'explain.fakeImg.why':
+    'This is the work being judged. In training it goes straight into the discriminator, and the “how to look more real” gradient flows back into every generator weight.',
+  'explain.fakeImg.simple': 'The forged painting placed on the inspector’s desk.',
+  'explain.discriminator.what':
+    'A binary classifier that reads an image (fake on top, real below — same weights for both) and squeezes it into one probability: is this real?',
+  'explain.discriminator.why':
+    'D provides the only learning signal in the room: it learns to say 1 on real and 0 on fake, while G learns to make it say 1 on fakes too. The two sharpening each other is the “adversarial” in GAN.',
+  'explain.discriminator.simple': 'An art inspector in a duel with a forger — both get sharper every round.',
+  'explain.ganVerdict.what':
+    'D’s sigmoid output for both branches: D(G(z)) for the generated image and D(x) for the real sample.',
+  'explain.ganVerdict.why':
+    'These two numbers ARE the game: D wants them far apart (0 vs 1), G wants D(G(z)) near 1. At perfect equilibrium both sit at 0.5 — the fake is indistinguishable.',
+  'explain.ganVerdict.simple': 'The inspector’s two scores: one for the forgery, one for the original.',
+  'explain.realSample.what':
+    'A genuine training pattern, shown for contrast. It feeds the SAME discriminator as the generated image.',
+  'explain.realSample.why':
+    'Without real anchors D cannot define “real”; the contrast between the two branches is what both networks learn from.',
+  'explain.realSample.simple': 'The authentic painting the inspector keeps for reference.',
+  'overview.gan.intro':
+    'The GAN (2014) sets two networks against each other: a generator forges images from random noise, a discriminator tells real from fake, and each one’s progress becomes the other’s training signal. This adversarial game invented modern image generation and led it for years — StyleGAN faces, image-to-image translation, super-resolution — before diffusion models took the crown.',
+  'overview.gan.problems':
+    'It made “generate realistic data from nothing” practical for the first time: photorealistic faces, style transfer, deepfakes (both the problem and its detectors), and data augmentation where real data is scarce.',
+  'overview.gan.domains':
+    'Image synthesis (StyleGAN)\nImage-to-image translation (pix2pix / CycleGAN)\nSuper-resolution & photo restoration\nData augmentation\nDeepfake generation & detection',
+  'overview.gan.industries':
+    'Games & film — asset & face generation\nPhotography — enhancement, restoration\nMedicine — synthetic training data\nSecurity — deepfake detection\nFashion — virtual try-on & design',
   'overview.title': 'Model overview',
   'overview.secIntro': 'What it is',
   'overview.secProblems': 'Problems it solves',
@@ -671,6 +727,46 @@ const zh: Dict = {
     '\u6587\u751f\u56fe\uff08Stable Diffusion / DALL\u00b7E\uff09\n\u89c6\u9891\u751f\u6210\uff08Sora \u7c7b\uff09\n\u56fe\u50cf\u7f16\u8f91\u3001\u4fee\u8865\u4e0e\u8d85\u5206\u8fa8\u7387\n\u97f3\u9891\u4e0e\u97f3\u4e50\u751f\u6210\n\u5206\u5b50\u4e0e\u86cb\u767d\u8d28\u8bbe\u8ba1',
   'overview.diff.industries':
     '\u8bbe\u8ba1\u4e0e\u5e7f\u544a\u2014\u2014\u6982\u5ff5\u56fe\u3001\u4ea7\u54c1\u56fe\n\u5f71\u89c6\u4e0e\u6e38\u620f\u2014\u2014\u7d20\u6750\u3001\u5206\u955c\n\u7535\u5546\u2014\u2014\u5546\u54c1\u56fe\n\u533b\u836f\u2014\u2014\u5206\u5b50\u751f\u6210\n\u65f6\u5c1a\u4e0e\u5efa\u7b51\u2014\u2014\u5feb\u901f\u89c6\u89c9\u8349\u6848',
+  'arch.gan': 'GAN',
+  'arch.ganFull': '生成对抗网络（GAN）',
+  'layer.zLatent': '潜向量 z',
+  'layer.generator': '生成器 G',
+  'layer.fakeImg': '生成图像（伪）',
+  'layer.realImg': '真实样本',
+  'layer.discriminator': '判别器 D',
+  'layer.verdict': '真伪判定',
+  'gan.fooled': '生成器骗过了判别器',
+  'gan.caught': '判别器识破了伪造',
+  'gan.zNote': '从标准正态分布 N(0,1) 采样的随机数。这 8 个数是生成器唯一的输入——换一组 z 就生成一张不同的图。',
+  'gan.realNote': '真实训练图案的一个像素。判别器用同一套权重同时审查真实图像与生成图像，并区分二者。',
+  'gan.fakeVerdictNote': '判别器认为「生成图像是真的」的概率。超过 50% 说明这一次生成器骗过了判别器。',
+  'gan.realVerdictNote': '判别器认为「真实样本是真的」的概率。势均力敌时两个分数都会靠向中间——完美均衡下 D 对一切都输出 0.5。',
+  'explain.zLatent.what': '从高斯分布采样的 8 个随机数。生成器得到的只有它——没有图像、没有标签，只有待塑形的噪声。',
+  'explain.zLatent.why': '随机性是生成的原材料：把简单分布映射成数据分布，正是生成器要学的全部。不同的 z 对应不同的图像。',
+  'explain.zLatent.simple': '一把骰子，掷出的点数决定画出什么画。',
+  'explain.generator.what': '一个小 MLP，把 z 映射成完整的 8×8 图像（tanh 输出，像素落在 [-1,1]）。它从未直接见过真实图像——只见过判别器传回的梯度。',
+  'explain.generator.why': '生成器完全靠「骗过 D」进步：它的训练信号要穿过判别器反向传播回来。这种对抗压力把它的输出逐步推向真实数据的分布。',
+  'explain.generator.simple': '一个从没见过原作的赝品画家，只靠鉴定师的反应改进。',
+  'explain.fakeImg.what': '生成器的输出 G(z)：一张训练集中不存在的全新图像。',
+  'explain.fakeImg.why': '这是被审判的作品。训练时它直接送入判别器，「怎样更像真的」的梯度会流回生成器的每一个权重。',
+  'explain.fakeImg.simple': '摆上鉴定师桌子的那幅赝品。',
+  'explain.discriminator.what': '一个二分类器：读入一张图（上方为伪、下方为真，共用同一套权重），压缩成一个概率——这是真的吗？',
+  'explain.discriminator.why': 'D 提供了全场唯一的学习信号：它学着对真样本输出 1、对伪样本输出 0；而 G 学着让它对伪样本也输出 1。两者互相较劲，就是 GAN 里的「对抗」。',
+  'explain.discriminator.simple': '鉴定师与赝品画家对决，每一轮双方都更精明。',
+  'explain.ganVerdict.what': '判别器对两条支路的 sigmoid 输出：对生成图像的 D(G(z)) 与对真实样本的 D(x)。',
+  'explain.ganVerdict.why': '这两个数就是整场博弈：D 想把它们拉开（0 与 1），G 想让 D(G(z)) 接近 1。完美均衡时两者都停在 0.5——赝品已无法分辨。',
+  'explain.ganVerdict.simple': '鉴定师打出的两个分数：一个给赝品，一个给真迹。',
+  'explain.realSample.what': '一张真实的训练图案，作为对照。它与生成图像送入同一个判别器。',
+  'explain.realSample.why': '没有真样本作锚点，D 无从定义「真」；两条支路的对比正是两个网络共同的学习来源。',
+  'explain.realSample.simple': '鉴定师手边留作参照的真迹。',
+  'overview.gan.intro':
+    '生成对抗网络（2014）让两个网络互相较量：生成器把随机噪声伪造成图像，判别器区分真伪，双方的进步互为对方的训练信号。这场对抗博弈开创了现代图像生成并主导多年——StyleGAN 人脸、图像翻译、超分辨率——直到扩散模型接棒。',
+  'overview.gan.problems':
+    '它首次让「凭空生成逼真数据」变得可行：照片级人脸、风格迁移、深度伪造（既是问题也是检测手段）、以及真实数据稀缺时的数据增强。',
+  'overview.gan.domains':
+    '图像合成（StyleGAN）\n图像到图像翻译（pix2pix / CycleGAN）\n超分辨率与老照片修复\n数据增强\n深度伪造生成与检测',
+  'overview.gan.industries':
+    '游戏与影视——素材与人脸生成\n摄影——画质增强、修复\n医疗——合成训练数据\n安全——深伪检测\n时尚——虚拟试穿与设计',
   'overview.title': '模型简介',
   'overview.secIntro': '这是什么',
   'overview.secProblems': '解决了什么问题',
@@ -1112,6 +1208,46 @@ const ja: Dict = {
     '\u30c6\u30ad\u30b9\u30c8\u304b\u3089\u753b\u50cf\u751f\u6210\uff08Stable Diffusion / DALL\u00b7E\uff09\n\u52d5\u753b\u751f\u6210\uff08Sora \u7cfb\uff09\n\u753b\u50cf\u7de8\u96c6\u30fb\u4fee\u5fa9\u30fb\u8d85\u89e3\u50cf\n\u97f3\u58f0\u30fb\u97f3\u697d\u751f\u6210\n\u5206\u5b50\u30fb\u30bf\u30f3\u30d1\u30af\u8cea\u8a2d\u8a08',
   'overview.diff.industries':
     '\u30c7\u30b6\u30a4\u30f3\u30fb\u5e83\u544a\u2014\u2014\u30b3\u30f3\u30bb\u30d7\u30c8\u30a2\u30fc\u30c8\n\u6620\u753b\u30fb\u30b2\u30fc\u30e0\u2014\u2014\u30a2\u30bb\u30c3\u30c8\u5236\u4f5c\nEC\u2014\u2014\u5546\u54c1\u753b\u50cf\n\u88fd\u85ac\u2014\u2014\u5206\u5b50\u751f\u6210\n\u30d5\u30a1\u30c3\u30b7\u30e7\u30f3\u30fb\u5efa\u7bc9\u2014\u2014\u8fc5\u901f\u306a\u30d3\u30b8\u30e5\u30a2\u30eb\u6848',
+  'arch.gan': 'GAN',
+  'arch.ganFull': '敵対的生成ネットワーク（GAN）',
+  'layer.zLatent': '潜在ベクトル z',
+  'layer.generator': '生成器 G',
+  'layer.fakeImg': '生成画像（偽）',
+  'layer.realImg': '本物のサンプル',
+  'layer.discriminator': '識別器 D',
+  'layer.verdict': '真偽判定',
+  'gan.fooled': '生成器が識別器を騙した',
+  'gan.caught': '識別器が偽物を見破った',
+  'gan.zNote': 'N(0,1) から引いた乱数。この 8 個の数が生成器の唯一の入力——z を変えれば別の画像が生まれる。',
+  'gan.realNote': '本物の訓練パターンの 1 ピクセル。識別器は同じ重みで本物と生成画像の両方を審査し、見分ける。',
+  'gan.fakeVerdictNote': '「生成画像が本物である」と識別器が考える確率。50% を超えれば今回は生成器が識別器を騙したことになる。',
+  'gan.realVerdictNote': '「本物のサンプルが本物である」と識別器が考える確率。互角の勝負では両方のスコアが中央に寄り、完全均衡では D はすべてに 0.5 を出す。',
+  'explain.zLatent.what': 'ガウス分布から引いた 8 個の乱数。生成器が受け取るのはこれだけ——画像もラベルもなく、形を与えるべきノイズのみ。',
+  'explain.zLatent.why': 'ランダム性は生成の原材料。単純な分布をデータ分布へ写像することこそ、生成器が学ぶすべて。z が違えば画像も違う。',
+  'explain.zLatent.simple': 'どんな絵を描くかを決めるサイコロの一振り。',
+  'explain.generator.what': '小さな MLP が z を 8×8 画像へ写像する（tanh 出力、ピクセルは [-1,1]）。本物の画像を直接見ることはなく、識別器から返る勾配だけが頼り。',
+  'explain.generator.why': '生成器は「D を騙す」ことだけで上達する。訓練信号は識別器を通って逆伝播してくる。この敵対的な圧力が出力を実データの分布へ押し出す。',
+  'explain.generator.simple': '本物を見たことのない贋作画家。鑑定士の反応だけで腕を磨く。',
+  'explain.fakeImg.what': '生成器の出力 G(z)。訓練データのどこにも存在しない新しい画像。',
+  'explain.fakeImg.why': 'これが審査される作品。訓練中はそのまま識別器に入り、「もっと本物らしく」という勾配が生成器の全重みへ流れ戻る。',
+  'explain.fakeImg.simple': '鑑定士の机に置かれた贋作。',
+  'explain.discriminator.what': '二値分類器。画像を読み（上が偽、下が本物、重みは共通）、「本物か？」という 1 つの確率に絞り込む。',
+  'explain.discriminator.why': 'D はこの場で唯一の学習信号。本物に 1、偽物に 0 を出すよう学び、G は偽物にも 1 を出させようと学ぶ。互いに磨き合うことが GAN の「敵対」。',
+  'explain.discriminator.simple': '鑑定士と贋作画家の勝負。毎回どちらも鋭くなる。',
+  'explain.ganVerdict.what': '両ブランチへの sigmoid 出力：生成画像への D(G(z)) と本物への D(x)。',
+  'explain.ganVerdict.why': 'この 2 つの数がゲームそのもの。D は引き離したい（0 と 1）、G は D(G(z)) を 1 に近づけたい。完全均衡では両方 0.5——偽物はもう見分けられない。',
+  'explain.ganVerdict.simple': '鑑定士がつけた 2 つの点数。贋作用と真作用。',
+  'explain.realSample.what': '比較のための本物の訓練パターン。生成画像と同じ識別器に入る。',
+  'explain.realSample.why': '本物という錨がなければ D は「本物らしさ」を定義できない。2 つのブランチの対比こそ両ネットワークの学びの源。',
+  'explain.realSample.simple': '鑑定士が参照用に手元へ置く真作。',
+  'overview.gan.intro':
+    '敵対的生成ネットワーク（2014）は 2 つのネットワークを競わせる。生成器は乱数から画像を偽造し、識別器は真偽を見分け、互いの進歩が相手の訓練信号になる。この敵対ゲームは現代の画像生成を切り拓き、StyleGAN の顔生成や画像変換、超解像で長く主役だった——拡散モデルが台頭するまで。',
+  'overview.gan.problems':
+    '「何もないところから本物らしいデータを作る」を初めて実用にした：写真品質の顔、スタイル変換、ディープフェイク（問題でもあり検出手段でもある）、実データが乏しい場面のデータ拡張。',
+  'overview.gan.domains':
+    '画像合成（StyleGAN）\n画像から画像への変換（pix2pix / CycleGAN）\n超解像・写真修復\nデータ拡張\nディープフェイク生成と検出',
+  'overview.gan.industries':
+    'ゲーム・映像——素材と顔の生成\n写真——高画質化・修復\n医療——合成訓練データ\nセキュリティ——ディープフェイク検出\nファッション——バーチャル試着とデザイン',
   'overview.title': 'モデル概要',
   'overview.secIntro': 'これは何か',
   'overview.secProblems': '解決する課題',

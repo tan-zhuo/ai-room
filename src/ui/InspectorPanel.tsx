@@ -9,6 +9,7 @@ import { NumGrid, cellStyle, fmt } from './valueCell'
 
 const ACT_LABEL: Record<ActivationKind, string> = {
   relu: 'ReLU',
+  leaky: 'LeakyReLU',
   tanh: 'tanh',
   sigmoid: 'sigmoid',
   softmax: 'softmax',
@@ -61,6 +62,8 @@ export function InspectorPanel() {
           <LLMDetail sel={sel} />
         ) : arch === 'diff' ? (
           <DiffDetail sel={sel} />
+        ) : arch === 'gan' ? (
+          <GanDetail sel={sel} />
         ) : arch === 'rnn' ? (
           <RNNDetail sel={sel} />
         ) : arch === 'lstm' ? (
@@ -915,6 +918,106 @@ function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
           <p className="explain-text">{t('diff.stepNote')}</p>
         </section>
       </>
+    )
+  }
+  return null
+}
+
+// ---------------------------------------------------------------- GAN
+
+function GanDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.ganTrace)
+  const t = useT()
+  const task = MODELS.gan
+  const model = task.model
+
+  if (sel.space === 'vector') {
+    if (sel.layer === -1) {
+      return (
+        <section>
+          <h4>z[{sel.index}]</h4>
+          <div className="big-value num">{fmt(trace.z[sel.index])}</div>
+          <p className="explain-text" style={{ marginTop: 8 }}>
+            {t('gan.zNote')}
+          </p>
+        </section>
+      )
+    }
+    if (sel.layer === 0) {
+      return (
+        <DenseComputation
+          prev={trace.z}
+          prevLabel={(m) => `z[${m}]`}
+          weights={model.g1.weights[sel.index]}
+          bias={model.g1.biases[sel.index]}
+          z={trace.g1.z[sel.index]}
+          a={trace.g1.a[sel.index]}
+          activation="relu"
+        />
+      )
+    }
+    if (sel.layer === 2) {
+      return (
+        <DenseComputation
+          prev={trace.img.a}
+          prevLabel={(m) => `G(z)[${m}]`}
+          weights={model.d1.weights[sel.index]}
+          bias={model.d1.biases[sel.index]}
+          z={trace.d1.z[sel.index]}
+          a={trace.d1.a[sel.index]}
+          activation="leaky"
+        />
+      )
+    }
+    if (sel.layer === 3) {
+      const isFake = sel.index === 0
+      const d1 = isFake ? trace.d1 : trace.realD1
+      const out = isFake ? trace.out : trace.realOut
+      return (
+        <>
+          <DenseComputation
+            prev={d1.a}
+            prevLabel={(m) => `h[${m}]`}
+            weights={model.d2.weights[0]}
+            bias={model.d2.biases[0]}
+            z={out.z[0]}
+            a={out.a[0]}
+            activation="sigmoid"
+          />
+          <section>
+            <h4>{isFake ? 'D(G(z))' : 'D(x)'}</h4>
+            <p className="explain-text">{t(isFake ? 'gan.fakeVerdictNote' : 'gan.realVerdictNote')}</p>
+          </section>
+        </>
+      )
+    }
+    return null
+  }
+  const idx = sel.row * task.n + sel.col
+  if (sel.layer === 1) {
+    return (
+      <DenseComputation
+        prev={trace.g1.a}
+        prevLabel={(m) => `h[${m}]`}
+        weights={model.g2.weights[idx]}
+        bias={model.g2.biases[idx]}
+        z={trace.img.z[idx]}
+        a={trace.img.a[idx]}
+        activation="tanh"
+      />
+    )
+  }
+  if (sel.layer === 4) {
+    return (
+      <section>
+        <h4>
+          x({sel.row}, {sel.col})
+        </h4>
+        <div className="big-value num">{fmt(trace.real[idx])}</div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('gan.realNote')}
+        </p>
+      </section>
     )
   }
   return null

@@ -48,6 +48,8 @@ export interface GridSlot {
   cell: number
   x: number
   chGap: number
+  /** vertical offset of the whole sheet (GAN stacks fake/real images) */
+  y?: number
 }
 
 export interface VecSlot {
@@ -56,6 +58,7 @@ export interface VecSlot {
   size: number
   x: number
   gapY: number
+  y?: number
 }
 
 export interface FlattenSlot {
@@ -316,6 +319,30 @@ function computeDiffSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ GAN slots
+// -1 latent z, 0 generator hidden, 1 generated (fake) image, 2 discriminator
+// hidden, 3 verdict D(fake)/D(real), 4 real sample (decorative, always on).
+// Fake image sits on top, the real sample below — both feed the same D.
+
+export const GAN_STEPS = 4
+export const GAN_IMG_Y = 2.8
+
+function computeGanSlots(): CNNSlot[] {
+  const t = MODELS.gan
+  const m = t.model
+  const gh = m.g1.biases.length
+  const dh = m.d1.biases.length
+  const xs = [-11, -6.6, -1.8, 3.4, 7.6]
+  return [
+    { kind: 'vector', layer: -1, size: m.zdim, x: xs[0], gapY: 1.0 },
+    { kind: 'vector', layer: 0, size: gh, x: xs[1], gapY: Math.min(0.72, 13 / gh) },
+    { kind: 'grid', layer: 1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[2], chGap: 0, y: GAN_IMG_Y },
+    { kind: 'vector', layer: 2, size: dh, x: xs[3], gapY: Math.min(0.62, 11 / dh) },
+    { kind: 'vector', layer: 3, size: 2, x: xs[4], gapY: 2 * GAN_IMG_Y },
+    { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[2], chGap: 0, y: -GAN_IMG_Y },
+  ]
+}
+
 // ------------------------------------------------------------------ cached slot tables
 
 let cnnSlots = computeCnnSlots()
@@ -324,6 +351,7 @@ let rnnSlots = computeRnnSlots()
 let lstmSlots = computeLstmSlots()
 let aeSlots = computeAeSlots()
 let diffSlots = computeDiffSlots()
+let ganSlots = computeGanSlots()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
 export function refreshLayout(): void {
@@ -333,6 +361,7 @@ export function refreshLayout(): void {
   lstmSlots = computeLstmSlots()
   aeSlots = computeAeSlots()
   diffSlots = computeDiffSlots()
+  ganSlots = computeGanSlots()
 }
 
 export function cnnSlot(layer: number): CNNSlot {
@@ -359,6 +388,10 @@ export function diffSlot(layer: number): CNNSlot {
   return diffSlots[layer + 1]
 }
 
+export function ganSlot(layer: number): CNNSlot {
+  return ganSlots[layer + 1]
+}
+
 /** Slot lookup for every grid-based architecture. */
 export function slotFor(arch: Arch, layer: number): CNNSlot {
   switch (arch) {
@@ -372,6 +405,8 @@ export function slotFor(arch: Arch, layer: number): CNNSlot {
       return lstmSlot(layer)
     case 'diff':
       return diffSlot(layer)
+    case 'gan':
+      return ganSlot(layer)
     default:
       return aeSlot(layer)
   }
@@ -382,7 +417,7 @@ export function slotFor(arch: Arch, layer: number): CNNSlot {
 export function gridPos(slot: GridSlot, ch: number, row: number, col: number): Vec3 {
   return [
     slot.x + (ch - (slot.channels - 1) / 2) * slot.chGap,
-    ((slot.rows - 1) / 2 - row) * slot.cell,
+    (slot.y ?? 0) + ((slot.rows - 1) / 2 - row) * slot.cell,
     (col - (slot.cols - 1) / 2) * slot.cell,
   ]
 }
@@ -395,7 +430,7 @@ export function flattenPos(slot: FlattenSlot, i: number): Vec3 {
 }
 
 export function vecPos(slot: VecSlot, i: number): Vec3 {
-  return [slot.x, ((slot.size - 1) / 2 - i) * slot.gapY, 0]
+  return [slot.x, (slot.y ?? 0) + ((slot.size - 1) / 2 - i) * slot.gapY, 0]
 }
 
 export function slotPos(slot: CNNSlot, opts: { index?: number; channel?: number; row?: number; col?: number }): Vec3 {
@@ -413,12 +448,13 @@ export function llmPos(layer: number, opts: { index?: number; channel?: number; 
 }
 
 export function slotLabelAnchor(slot: CNNSlot): Vec3 {
-  if (slot.kind === 'grid') return [slot.x, ((slot.rows - 1) / 2) * slot.cell + 1.6, 0]
+  if (slot.kind === 'grid')
+    return [slot.x, (slot.y ?? 0) + ((slot.rows - 1) / 2) * slot.cell + 1.6, 0]
   if (slot.kind === 'flatten') {
     const perCh = slot.srcShape[1] * slot.srcShape[2]
     return [slot.x, ((perCh - 1) / 2) * slot.gapY + 1.4, 0]
   }
-  return [slot.x, ((slot.size - 1) / 2) * slot.gapY + 1.5, 0]
+  return [slot.x, (slot.y ?? 0) + ((slot.size - 1) / 2) * slot.gapY + 1.5, 0]
 }
 
 export function cnnLabelAnchor(layer: number): Vec3 {
@@ -478,4 +514,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   lstm: { position: [12, 6.5, 20], target: [0, 0, 0] },
   ae: { position: [9, 5, 15], target: [0, 0, 0] },
   diff: { position: [12.5, 5.5, 19], target: [0, 0, 0] },
+  gan: { position: [13.5, 2.2, 19], target: [0, 0.4, 0] },
 }

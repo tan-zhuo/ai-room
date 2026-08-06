@@ -2,7 +2,7 @@
 
 import { Rng, gaussian, shuffleInPlace } from './rng'
 
-export type ActivationKind = 'relu' | 'tanh' | 'sigmoid' | 'softmax' | 'linear'
+export type ActivationKind = 'relu' | 'leaky' | 'tanh' | 'sigmoid' | 'softmax' | 'linear'
 
 export interface DenseLayer {
   /** weights[out][in] */
@@ -25,6 +25,8 @@ export function applyActivation(kind: ActivationKind, z: number[]): number[] {
   switch (kind) {
     case 'relu':
       return z.map((v) => Math.max(0, v))
+    case 'leaky':
+      return z.map((v) => (v > 0 ? v : 0.2 * v))
     case 'tanh':
       return z.map((v) => Math.tanh(v))
     case 'sigmoid':
@@ -44,6 +46,8 @@ function activationDeriv(kind: ActivationKind, z: number, a: number): number {
   switch (kind) {
     case 'relu':
       return z > 0 ? 1 : 0
+    case 'leaky':
+      return z > 0 ? 1 : 0.2
     case 'tanh':
       return 1 - a * a
     case 'sigmoid':

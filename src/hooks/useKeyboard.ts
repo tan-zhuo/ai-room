@@ -49,6 +49,9 @@ export function useKeyboard() {
           s.setArch('diff')
           break
         case 'Digit8':
+          s.setArch('gan')
+          break
+        case 'Digit9':
           s.setArch('text')
           break
         case 'KeyL':

@@ -12,6 +12,7 @@ import {
   cnnSlot,
   densePos,
   diffSlot,
+  ganSlot,
   gridPos,
   llmLayerOf,
   llmSlot,
@@ -376,6 +377,40 @@ function diffSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function ganSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  const task = MODELS.gan
+  const model = task.model
+  if (sel.space === 'vector') {
+    if (sel.layer === 0) {
+      const zS = ganSlot(-1) as VecSlot
+      model.g1.weights[sel.index].forEach((w, i) =>
+        segs.push({ a: v(vecPos(zS, i)), b: target, w, target: sel.index }),
+      )
+    } else if (sel.layer === 2) {
+      // discriminator hidden <- both images through the same weights
+      const fakeS = ganSlot(1) as GridSlot
+      const realS = ganSlot(4) as GridSlot
+      model.d1.weights[sel.index].forEach((w, i) => {
+        const r = Math.floor(i / task.n)
+        const c = i % task.n
+        segs.push({ a: v(gridPos(fakeS, 0, r, c)), b: target, w, target: sel.index })
+        segs.push({ a: v(gridPos(realS, 0, r, c)), b: target, w, target: sel.index })
+      })
+    } else if (sel.layer === 3) {
+      const dS = ganSlot(2) as VecSlot
+      model.d2.weights[0].forEach((w, i) => segs.push({ a: v(vecPos(dS, i)), b: target, w, target: 0 }))
+    }
+    return segs
+  }
+  if (sel.layer === 1) {
+    const gS = ganSlot(0) as VecSlot
+    const idx = sel.row * task.n + sel.col
+    model.g2.weights[idx].forEach((w, i) => segs.push({ a: v(vecPos(gS, i)), b: target, w, target: 0 }))
+  }
+  return segs
+}
+
 function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
   const pos = positionOf(arch, sel)
   const ring = useRef<THREE.Mesh>(null)
@@ -397,6 +432,7 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
     if (arch === 'rnn') return rnnSegments(sel, target)
     if (arch === 'lstm') return lstmSegments(sel, target)
     if (arch === 'diff') return diffSegments(sel, target)
+    if (arch === 'gan') return ganSegments(sel, target)
     return aeSegments(sel, target)
   }, [arch, sel, pos])
 

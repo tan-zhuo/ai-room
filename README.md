@@ -42,6 +42,10 @@ Toggle to **VAE**: the bottleneck becomes a distribution (μ, log σ²) with rep
 
 A real denoising diffusion model (T=20, linear β schedule) trained in-browser to predict x̂₀ from a noisy image and a sinusoidal timestep embedding. Playback **is** the reverse process: each step feeds x_t through the denoiser, shows its current guess of the clean image, and applies one DDPM posterior update x_{t-1} = c₀·x̂₀ + c_t·x_t + σ·z. Watch a ring or bar emerge from pure noise — and inspect any pixel to see the exact posterior coefficients.
 
+### GAN — Generative Adversarial Network · 生成对抗网络
+
+A vanilla GAN (Goodfellow 2014) trained adversarially in-browser: the generator maps z ~ N(0,1) to an 8×8 image, the discriminator (LeakyReLU + sigmoid) judges the generated image **and** a real sample through the same weights — both branches drawn in 3D. Alternating SGD with the non-saturating G loss reaches a believable equilibrium (D(real) ≈ 0.56, D(fake) ≈ 0.34) and the generator covers 3 of the 4 pattern classes. The verdict badge tells you each round: did G fool D, or did D catch the fake?
+
 ### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
@@ -92,8 +96,8 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `←` `→` | Previous / next step |
 | `R` | Reset |
 | `1` – `5` | Models: MLP / CNN / RNN / LSTM / Transformer |
-| `6` – `7` | Generative: Autoencoder / Diffusion |
-| `8` | AI apps: Lang ID |
+| `6` – `8` | Generative: Autoencoder / Diffusion / GAN |
+| `9` | AI apps: Lang ID |
 | `S / M / L` buttons | Network scale (retrains live) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
@@ -108,6 +112,7 @@ Honest list of what is deliberately simplified — the math shown is real, the s
 - CNN: single conv+pool stage, stride 1, no padding; datasets are procedurally generated patterns rather than photos.
 - Lang ID uses hand-crafted statistical features on purpose — it demonstrates the simplest form of text encoding, not modern embeddings.
 - Diffusion: the denoiser is a small MLP over 8×8 images with T=20 steps (production DDPMs: U-Net over high-res images, T≈1000, ε- or v-prediction); ours predicts x̂₀ directly, which is the same family of parameterization.
+- GAN: MLP generator/discriminator with one-sided label smoothing (production GANs: convolutional G/D, spectral norm, Adam with tuned β); on 4 simple pattern classes partial mode coverage is expected and visible.
 
 ## Development
 
@@ -137,6 +142,7 @@ src/
 - **RNN / LSTM**：字符级下一字符预测，手写 BPTT 训练；RNN 隐状态逐时间步计算并画出循环连线，LSTM 完整展示 f/i/g/o 四门、细胞状态传送带与 h = o⊙tanh(c)。
 - **自编码器**：8×8 图案压入 6 维潜向量再重建（MSE 自监督，无标签）；可手绘输入看重建效果，逐像素对比原值与重建值。
 - **扩散模型（DDPM）**：浏览器内训练的真实去噪扩散模型（T=20，线性 β 调度），网络以带噪图像 + 正弦时间步嵌入为输入预测 x̂₀。播放过程即反向扩散：每一步展示去噪网络对干净图像的当前猜测，并执行一次 DDPM 后验更新 x_{t-1} = c₀·x̂₀ + c_t·x_t + σ·z，圆环/条纹图案从纯噪声中逐步浮现；点开任意像素可看到真实的后验系数。
-- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Transformer）、生成模型（自编码器/扩散模型）与 AI 应用。
+- **生成对抗网络（GAN）**：标准 vanilla GAN 在浏览器内对抗训练——生成器把 z ~ N(0,1) 伪造成 8×8 图像，判别器（LeakyReLU + sigmoid）用同一套权重同时审查生成图像与真实样本（两条支路都画在 3D 里）。交替 SGD + 非饱和 G 损失收敛到接近均衡（D(真)≈0.56、D(伪)≈0.34）；每轮播放结束都会宣判：生成器骗过了判别器，还是被识破了。
+- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Transformer）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。可切换 **MoE** 变体：FFN 替换为训练好的路由器 + 4 个专家（top-2 门控），路由分数、每个 token 的专家分配与加权合并全部可视化。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。

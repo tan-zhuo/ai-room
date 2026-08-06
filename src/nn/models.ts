@@ -19,6 +19,7 @@ import { LLMTask, LLMVariant, buildLLMTask } from './transformer'
 import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
 import { VAETask, buildVAETask } from './vae'
 import { DiffusionTask, buildDiffusionTask } from './diffusion'
+import { GANTask, buildGANTask } from './gan'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -85,6 +86,7 @@ export interface Models {
   lstm: LSTMTask
   ae: AETask
   diff: DiffusionTask
+  gan: GANTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -405,6 +407,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       build: () => {
         partial.diff = buildDiffusionTask(cnnSampleOfSize)
         return `x̂₀ MSE ${partial.diff.finalLoss.toFixed(3)}`
+      },
+    },
+    {
+      label: 'GAN',
+      build: () => {
+        partial.gan = buildGANTask(cnnSampleOfSize)
+        return `D(real) ${partial.gan.dReal.toFixed(2)} · D(fake) ${partial.gan.dFake.toFixed(2)}`
       },
     },
     {

@@ -1116,6 +1116,18 @@ kbd {
   font-size: 15px;
 }
 
+.value-tag {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  white-space: nowrap;
+  color: var(--accent);
+  backdrop-filter: blur(8px);
+}
+
 .loop-label {
   font-size: 11px;
   color: var(--accent);

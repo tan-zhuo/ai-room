@@ -22,7 +22,7 @@ export function ExplainPanel() {
       <header className="inspector-head">
         <div>
           <div className="inspector-title">{layerNameOf(arch, explain, t)}</div>
-          <div className="inspector-sub">{t(arch === 'mlp' ? 'arch.mlpFull' : 'arch.cnnFull')}</div>
+          <div className="inspector-sub">{t(`arch.${arch}Full`)}</div>
         </div>
         <button className="icon-btn" onClick={() => setExplain(null)} title={t('panel.close')}>
           ×

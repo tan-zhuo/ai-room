@@ -68,6 +68,16 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (diff.finalLoss > 0.3) failures.push('diffusion did not learn')
 }
 
+// --- GAN
+{
+  const gan = MODELS.gan
+  console.log(
+    `GAN: D(real) ${gan.dReal.toFixed(3)}, D(fake) ${gan.dFake.toFixed(3)}, sample quality ${gan.quality.toFixed(4)}, modes ${gan.modes}/4`,
+  )
+  if (gan.quality > 0.08) failures.push('gan samples too far from real patterns')
+  if (gan.modes < 2) failures.push('gan mode-collapsed to a single pattern class')
+}
+
 // --- tiny transformer
 {
   const moe = (await import('../src/nn/transformer')).buildLLMTask('moe')

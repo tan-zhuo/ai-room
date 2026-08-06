@@ -42,9 +42,10 @@ const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
 const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'ae', kbd: '6' },
   { arch: 'diff', kbd: '7' },
+  { arch: 'gan', kbd: '8' },
 ]
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '8' }]
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '9' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -317,12 +318,13 @@ function BottomBar() {
     lstm: lstmClass,
     ae: aeClass,
     diff: -1,
+    gan: -1,
   }[arch]
   const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
   const chipArch = arch === 'ae' ? 'cnn' : arch
   const chips: string[] = seq
     ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
-    : arch === 'diff'
+    : arch === 'diff' || arch === 'gan'
       ? []
       : Array.from(
         { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae'].classCount },
@@ -661,7 +663,7 @@ function HelpOverlay() {
     ['Space', t('help.space')],
     ['← →', t('help.arrows')],
     ['R', t('help.r')],
-    ['1 – 7', t('help.digits')],
+    ['1 – 9', t('help.digits')],
     ['L', t('help.l')],
     ['F', t('help.f')],
     ['Esc', t('help.esc')],
