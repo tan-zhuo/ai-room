@@ -1,11 +1,12 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { MODELS } from '../nn/models'
 import { Tensor3 } from '../nn/cnn'
 import { useStore, useT } from '../store'
 import { GridSlot, VecSlot, gridPos, llmLabelAnchor, llmSlot, vecPos } from './layout'
-import { Segment } from './common'
+import { Segment, ease } from './common'
 import { GridNodes } from './GridNodes'
 import { VectorNodes } from './VectorNodes'
 import { FlowParticles } from './FlowParticles'
@@ -18,6 +19,104 @@ function tensorMax(t: Tensor3): number {
   let m = 0
   for (const ch of t) for (const row of ch) for (const val of row) m = Math.max(m, Math.abs(val))
   return m || 1
+}
+
+/**
+ * The autoregressive feedback loop, made visible: a return wire from the
+ * output column back to the token row. Each generated character flies along
+ * it before the next forward pass starts — output becomes input.
+ */
+function FeedbackLoop() {
+  const generating = useStore((s) => s.llmGenerating)
+  const generated = useStore((s) => s.llmGenerated)
+  const model = MODELS.llm.model
+  const tokSlot = llmSlot(-1) as GridSlot
+  const outSlot = llmSlot(5) as VecSlot
+  const flyer = useRef<THREE.Group>(null)
+  const anim = useRef<{ curve: THREE.CubicBezierCurve3; t: number } | null>(null)
+
+  const lastTokenPos = useMemo(
+    () => new THREE.Vector3(...gridPos(tokSlot, 0, 0, tokSlot.cols - 1)),
+    [tokSlot],
+  )
+
+  // the permanent return wire
+  const wire = useMemo(() => {
+    const from = new THREE.Vector3(outSlot.x, -((outSlot.size - 1) / 2) * outSlot.gapY - 1, 0)
+    const to = lastTokenPos.clone().add(new THREE.Vector3(0, -0.7, 0))
+    const curve = new THREE.CubicBezierCurve3(
+      from,
+      new THREE.Vector3(outSlot.x * 0.55, -7.5, 5.5),
+      new THREE.Vector3(tokSlot.x * 0.55, -7.5, 5.5),
+      to,
+    )
+    const geom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(72))
+    const mat = new THREE.LineBasicMaterial({ color: '#38d6ff', transparent: true, opacity: 0.15 })
+    mat.toneMapped = false
+    return new THREE.Line(geom, mat)
+  }, [outSlot, tokSlot, lastTokenPos])
+
+  // launch a flight whenever a character is committed
+  useEffect(() => {
+    if (!generated) {
+      anim.current = null
+      return
+    }
+    const ch = generated[generated.length - 1]
+    const idx = Math.max(0, model.vocab.indexOf(ch))
+    const from = new THREE.Vector3(...vecPos(outSlot, idx))
+    anim.current = {
+      curve: new THREE.CubicBezierCurve3(
+        from,
+        new THREE.Vector3(outSlot.x * 0.55, -7.5, 5.5),
+        new THREE.Vector3(tokSlot.x * 0.55, -7.5, 5.5),
+        lastTokenPos,
+      ),
+      t: 0,
+    }
+  }, [generated, model, outSlot, tokSlot, lastTokenPos])
+
+  useFrame((_, dt) => {
+    ;(wire.material as THREE.LineBasicMaterial).opacity = generating ? 0.45 : 0.15
+    const g = flyer.current
+    if (!g) return
+    const a = anim.current
+    if (!a) {
+      g.visible = false
+      return
+    }
+    a.t += dt / 0.55
+    if (a.t >= 1) {
+      anim.current = null
+      g.visible = false
+      return
+    }
+    g.visible = true
+    g.position.copy(a.curve.getPoint(ease(a.t)))
+  })
+
+  const lastChar = generated ? generated[generated.length - 1] : ''
+  return (
+    <group>
+      <primitive object={wire} />
+      <group ref={flyer} visible={false}>
+        <mesh>
+          <sphereGeometry args={[0.16, 12, 12]} />
+          <meshBasicMaterial
+            color="#9beaff"
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+        <Html center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="fly-char">{lastChar === ' ' ? '␣' : lastChar}</div>
+        </Html>
+      </group>
+    </group>
+  )
 }
 
 /** Tiny transformer scene: tokens → embeddings → Q/K/V → attention → A·V → FFN → next char. */
@@ -161,6 +260,7 @@ export function LLMScene() {
       <LayerLabel position={llmLabelAnchor(4)} title={t('layer.ffn')} sub={`${model.h} · ReLU`} layer={4} />
       <LayerLabel position={llmLabelAnchor(5)} title={t('layer.output')} sub={`${vocabN} · softmax`} layer={5} />
 
+      <FeedbackLoop />
       <SelectionMarker />
     </group>
   )

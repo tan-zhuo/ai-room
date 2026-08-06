@@ -630,6 +630,15 @@ kbd {
   font-size: 15px;
 }
 
+.fly-char {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: #bdefff;
+  text-shadow: 0 0 10px rgba(56, 214, 255, 0.9);
+  pointer-events: none;
+}
+
 .raw-text-label {
   font-size: 12px;
   color: var(--muted);
