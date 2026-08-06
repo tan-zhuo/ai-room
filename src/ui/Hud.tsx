@@ -27,12 +27,13 @@ export function Hud() {
 
 // ---------------------------------------------------------------- top bar
 
-const ARCH_KEYS: { arch: Arch; kbd: string }[] = [
+const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'mlp', kbd: '1' },
   { arch: 'cnn', kbd: '2' },
-  { arch: 'text', kbd: '3' },
-  { arch: 'llm', kbd: '4' },
+  { arch: 'llm', kbd: '3' },
 ]
+
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '4' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -48,6 +49,18 @@ function TopBar() {
 
   const scalable = arch === 'mlp' || arch === 'cnn'
 
+  const archBtn = ({ arch: a, kbd }: { arch: Arch; kbd: string }) => (
+    <button
+      key={a}
+      className={`tab${arch === a ? ' active' : ''}`}
+      onClick={() => setArch(a)}
+      title={t(`arch.${a}Full`)}
+    >
+      {t(`arch.${a}`)}
+      <kbd>{kbd}</kbd>
+    </button>
+  )
+
   return (
     <div className="topbar">
       <div className="brand">
@@ -57,17 +70,12 @@ function TopBar() {
       </div>
       <div className="top-controls">
         <div className="seg">
-          {ARCH_KEYS.map(({ arch: a, kbd }) => (
-            <button
-              key={a}
-              className={`tab${arch === a ? ' active' : ''}`}
-              onClick={() => setArch(a)}
-              title={t(`arch.${a}Full`)}
-            >
-              {t(`arch.${a}`)}
-              <kbd>{kbd}</kbd>
-            </button>
-          ))}
+          <span className="seg-label">{t('nav.models')}</span>
+          {MODEL_ARCHS.map(archBtn)}
+        </div>
+        <div className="seg">
+          <span className="seg-label">{t('nav.apps')}</span>
+          {APP_ARCHS.map(archBtn)}
         </div>
         {scalable && (
           <div className="seg" title={t('scale.tooltip')}>

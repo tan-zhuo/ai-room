@@ -34,10 +34,10 @@ export function useKeyboard() {
           s.setArch('cnn')
           break
         case 'Digit3':
-          s.setArch('text')
+          s.setArch('llm')
           break
         case 'Digit4':
-          s.setArch('llm')
+          s.setArch('text')
           break
         case 'KeyL':
           s.cycleLang()

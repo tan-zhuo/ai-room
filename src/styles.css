@@ -115,6 +115,7 @@ kbd {
   font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.22em;
+  white-space: nowrap;
 }
 
 .tagline {
@@ -125,16 +126,30 @@ kbd {
 .top-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .seg {
   display: flex;
+  align-items: center;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 3px;
   backdrop-filter: blur(10px);
+}
+
+.seg-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  opacity: 0.75;
+  padding: 0 7px 0 9px;
+  white-space: nowrap;
+  user-select: none;
 }
 
 .tab {
@@ -146,6 +161,7 @@ kbd {
   font-size: 12.5px;
   color: var(--muted);
   transition: all 0.15s;
+  white-space: nowrap;
 }
 
 .tab:hover {
@@ -1047,6 +1063,12 @@ kbd {
 }
 
 /* ---------------------------------------------------------------- small screens */
+
+@media (max-width: 1400px) {
+  .tagline {
+    display: none;
+  }
+}
 
 @media (max-width: 900px) {
   .tagline,

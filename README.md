@@ -6,7 +6,7 @@ by [tanzhuo](https://tanzhuo.xyz) · Blog: **[tanzhuo.xyz](https://tanzhuo.xyz)*
 
 > **Not an animation — real computation.** Every network is genuinely trained in your browser at load time (deterministic seeds). Every value you see — activations, attention weights, softmax probabilities — is the true result of the forward pass. Click any node and check the arithmetic yourself; type your own text and watch the numbers change.
 
-## The four architectures · 四种架构
+## Models · 模型架构
 
 ### MLP — Multi-Layer Perceptron · 多层感知机
 
@@ -20,13 +20,7 @@ Hand-crafted Sobel edge kernels + a trained dense head classify patterns (vertic
 
 ![CNN convolution](docs/cnn.gif)
 
-### TEXT — Language detector · 文本语言识别
-
-**Type anything.** The text becomes 8 interpretable statistics (Latin %, CJK %, kana %, …) and a trained MLP detects 中文 / English / 日本語 — proof the computation is real: your input, its numbers, its prediction.
-
-![Text language detector](docs/text.gif)
-
-### LLM — Tiny Transformer · 迷你 Transformer（字符级）
+### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
 
@@ -37,6 +31,14 @@ Both heads' 8×8 attention matrices light up row by row; residual skip connectio
 Hit **Generate · 连续生成** for true autoregressive decoding: the sampled character is appended to the context, the window slides, the whole pipeline re-runs — and the output streams onto the screen one character at a time, exactly how real LLMs write.
 
 ![Tiny transformer](docs/llm.gif)
+
+## AI Applications · AI 应用
+
+### Lang ID — Language detector · 语言识别（基于 MLP）
+
+**Type anything.** The text becomes 8 interpretable statistics (Latin %, CJK %, kana %, …) and a trained MLP detects 中文 / English / 日本語 — proof the computation is real: your input, its numbers, its prediction.
+
+![Text language detector](docs/text.gif)
 
 ## Inspect any node · 点开任意节点
 
@@ -61,7 +63,8 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `Space` | Play / pause |
 | `←` `→` | Previous / next step |
 | `R` | Reset |
-| `1` `2` `3` `4` | MLP / CNN / TEXT / LLM |
+| `1` `2` `3` | Models: MLP / CNN / Transformer |
+| `4` | AI apps: Lang ID |
 | `S / M / L` buttons | Network scale (retrains live) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
@@ -92,6 +95,6 @@ src/
 - **真实计算**：四个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
-- **TEXT**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。
+- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航中模型架构（MLP/CNN/Transformer）与 AI 应用（语言识别）分为两组。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。
