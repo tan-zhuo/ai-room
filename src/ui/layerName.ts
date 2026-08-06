@@ -3,13 +3,23 @@ import { Arch } from '../store'
 
 type T = (key: string, params?: Record<string, string | number>) => string
 
-const LLM_LAYER_KEYS = ['layer.embed', 'layer.qkv', 'layer.attn', 'layer.attnout', 'layer.ffn', 'layer.output']
+const LLM_LAYER_KEYS = [
+  'layer.embed',
+  'layer.posenc',
+  'layer.qkv',
+  'layer.attn',
+  'layer.attnout',
+  'layer.addnorm',
+  'layer.ffn',
+  'layer.addnorm',
+  'layer.output',
+]
 
 /** Localized display name for a layer (-1 = input). */
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'llm') {
     if (layer === -1) return t('layer.tokens')
-    return layer === 1 ? 'Q · K · V' : t(LLM_LAYER_KEYS[layer] ?? 'layer.output')
+    return layer === 2 ? 'Q · K · V' : t(LLM_LAYER_KEYS[layer] ?? 'layer.output')
   }
   if (layer === -1) return t('layer.input')
   if (arch === 'mlp' || arch === 'text') {
@@ -34,7 +44,7 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
 /** i18n key prefix (explain.<key>) for a layer's module explanation. */
 export function explainKeyOf(arch: Arch, layer: number): string {
   if (arch === 'llm') {
-    const keys = ['tokens', 'embed', 'qkv', 'attn', 'attnout', 'ffn', 'llmOutput']
+    const keys = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm', 'ffn', 'addnorm', 'llmOutput']
     return keys[layer + 1] ?? 'llmOutput'
   }
   if (arch === 'text') {

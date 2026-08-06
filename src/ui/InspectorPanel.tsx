@@ -29,7 +29,9 @@ export function InspectorPanel() {
   if (sel.space === 'vector') {
     subtitle = `${t('panel.neuron')} #${sel.index + 1}`
   } else if (arch === 'llm') {
-    const chName = sel.layer === 1 ? ['Q', 'K', 'V'][sel.channel] + ' · ' : ''
+    let chName = ''
+    if (sel.layer === 2) chName = ['Q', 'K', 'V'][sel.channel] + ' · '
+    else if (sel.layer === 3) chName = t('llm.head', { n: sel.channel + 1 }) + ' · '
     subtitle = `${chName}(${sel.row}, ${sel.col})`
   } else {
     subtitle = `${t('panel.channel')} ${sel.channel + 1} · (${sel.row}, ${sel.col})`
@@ -373,10 +375,70 @@ function CNNDetail({ sel }: { sel: NodeRef }): ReactNode {
 
 // ---------------------------------------------------------------- LLM
 
+function AddNormDetail({
+  which,
+  row,
+  col,
+}: {
+  which: 1 | 2
+  row: number
+  col: number
+}): ReactNode {
+  const trace = useStore((s) => s.llmTrace)
+  const t = useT()
+  const model = MODELS.llm.model
+  const a = which === 1 ? trace.X[row][col] : trace.R1[row][col]
+  const b = which === 1 ? trace.Z[row][col] : trace.F[row][col]
+  const res = which === 1 ? trace.res1[row][col] : trace.res2[row][col]
+  const mu = which === 1 ? trace.mu1[row] : trace.mu2[row]
+  const sig = which === 1 ? trace.sig1[row] : trace.sig2[row]
+  const g = which === 1 ? model.g1[col] : model.g2[col]
+  const be = which === 1 ? model.be1[col] : model.be2[col]
+  const out = which === 1 ? trace.R1[row][col] : trace.R2[row][col]
+  const inputName = which === 1 ? 'x' : 'r₁'
+  const subName = which === 1 ? 'attn' : 'ffn'
+  return (
+    <>
+      <section>
+        <h4>{t('panel.residual')}</h4>
+        <div className="calc-chain">
+          <span>
+            {inputName} = <b className="num">{fmt(a)}</b>
+          </span>
+          <span>
+            + {subName} = <b className="num">{fmt(b)}</b>
+          </span>
+          <span>
+            → <b className="num">{fmt(res)}</b>
+          </span>
+        </div>
+      </section>
+      <section>
+        <h4>LayerNorm</h4>
+        <div className="calc-chain">
+          <span>
+            {t('panel.mean')} = <b className="num">{fmt(mu)}</b>
+          </span>
+          <span>
+            {t('panel.std')} = <b className="num">{fmt(sig)}</b>
+          </span>
+        </div>
+        <div className="calc-chain" style={{ marginTop: 6 }}>
+          <span>
+            ({fmt(res)} − {fmt(mu)}) / {fmt(sig)} × γ<sub>{col}</sub>({fmt(g)}) + β<sub>{col}</sub>(
+            {fmt(be)}) = <b className="num accent">{fmt(out)}</b>
+          </span>
+        </div>
+      </section>
+    </>
+  )
+}
+
 function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   const trace = useStore((s) => s.llmTrace)
   const t = useT()
   const model = MODELS.llm.model
+  const dh = model.d / model.heads
   const show = (c: string) => (c === ' ' ? '␣' : c)
 
   // token tile
@@ -393,11 +455,23 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
-  // embedding cell: E[token][k] + P[pos][k]
+  // embedding lookup
   if (sel.space === 'grid' && sel.layer === 0) {
-    const id = trace.ids[sel.row]
-    const e = model.E[id][sel.col]
+    return (
+      <section>
+        <h4>
+          E[‘{show(trace.chars[sel.row])}’][{sel.col}]
+        </h4>
+        <div className="big-value num">{fmt(trace.E[sel.row][sel.col])}</div>
+      </section>
+    )
+  }
+
+  // + positional encoding
+  if (sel.space === 'grid' && sel.layer === 1) {
+    const e = trace.E[sel.row][sel.col]
     const p = model.P[sel.row][sel.col]
+    const fn = sel.col % 2 === 0 ? 'sin' : 'cos'
     return (
       <section>
         <h4>
@@ -408,7 +482,7 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
             E = <b className="num">{fmt(e)}</b>
           </span>
           <span>
-            P = <b className="num">{fmt(p)}</b>
+            P ({fn}) = <b className="num">{fmt(p)}</b>
           </span>
           <span>
             → x = <b className="num accent">{fmt(trace.X[sel.row][sel.col])}</b>
@@ -419,16 +493,18 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   }
 
   // Q/K/V cell: x_i · W column
-  if (sel.space === 'grid' && sel.layer === 1) {
+  if (sel.space === 'grid' && sel.layer === 2) {
     const W = [model.Wq, model.Wk, model.Wv][sel.channel]
     const name = ['Q', 'K', 'V'][sel.channel]
     const mats = [trace.Q, trace.K, trace.V][sel.channel]
-    const weights = model.E[0].map((_, m) => W[m][sel.col])
+    const weights = Array.from({ length: model.d }, (_, m) => W[m][sel.col])
+    const head = Math.floor(sel.col / dh)
     return (
       <>
         <section>
           <h4>
-            {name}[{sel.row}][{sel.col}] = x{sel.row} · W{name.toLowerCase()}[:, {sel.col}]
+            {name}[{sel.row}][{sel.col}] = x{sel.row} · W{name.toLowerCase()}[:, {sel.col}] ·{' '}
+            {t('llm.head', { n: head + 1 })}
           </h4>
           <ProductRows
             prev={trace.X[sel.row]}
@@ -448,8 +524,9 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
-  // attention cell (i, j)
-  if (sel.space === 'grid' && sel.layer === 2) {
+  // attention cell (head, i, j)
+  if (sel.space === 'grid' && sel.layer === 3) {
+    const h = sel.channel
     const i = sel.row
     const j = sel.col
     if (j > i) {
@@ -460,26 +537,21 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
         </section>
       )
     }
-    const products = trace.Q[i].map((q, m) => q * trace.K[j][m])
-    const rowScores = trace.S[i].slice(0, i + 1)
+    const off = h * dh
+    const qSlice = Array.from({ length: dh }, (_, m) => trace.Q[i][off + m])
+    const kSlice = Array.from({ length: dh }, (_, m) => trace.K[j][off + m])
+    const S = trace.S[h]
+    const A = trace.A[h]
     return (
       <>
         <section>
           <h4>
-            q{i} · k{j} / √{model.d}
+            {t('llm.head', { n: h + 1 })} · q{i} · k{j} / √{dh}
           </h4>
-          <ProductRows
-            prev={trace.Q[i]}
-            prevLabel={(m) => `dim ${m}`}
-            weights={trace.K[j]}
-            weightHeader="k"
-          />
+          <ProductRows prev={qSlice} prevLabel={(m) => `dim ${off + m}`} weights={kSlice} weightHeader="k" />
           <div className="calc-chain" style={{ marginTop: 8 }}>
             <span>
-              Σ = <b className="num">{fmt(products.reduce((s, v) => s + v, 0))}</b>
-            </span>
-            <span>
-              ÷ √{model.d} → {t('llm.score')} = <b className="num">{fmt(trace.S[i][j])}</b>
+              Σ ÷ √{dh} → {t('llm.score')} = <b className="num">{fmt(S[i][j])}</b>
             </span>
           </div>
         </section>
@@ -489,18 +561,18 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
           </h4>
           <div className="calc-chain">
             <span>
-              A[{i}][{j}] = e<sup>{fmt(trace.S[i][j], 2)}</sup> / Σ<sub>j≤{i}</sub> ={' '}
-              <b className="num accent">{fmt(trace.A[i][j])}</b>
+              A[{i}][{j}] = e<sup>{fmt(S[i][j], 2)}</sup> / Σ<sub>j≤{i}</sub> ={' '}
+              <b className="num accent">{fmt(A[i][j])}</b>
             </span>
           </div>
           <div className="prob-list" style={{ marginTop: 8 }}>
-            {rowScores.map((_, jj) => (
+            {Array.from({ length: i + 1 }, (_, jj) => (
               <div className="prob-row" key={jj}>
                 <span className="prob-name mono-char">‘{show(trace.chars[jj])}’</span>
                 <span className="prob-bar">
-                  <span style={{ width: `${Math.max(2, trace.A[i][jj] * 100)}%` }} />
+                  <span style={{ width: `${Math.max(2, A[i][jj] * 100)}%` }} />
                 </span>
-                <span className="num">{(trace.A[i][jj] * 100).toFixed(1)}%</span>
+                <span className="num">{(A[i][jj] * 100).toFixed(1)}%</span>
               </div>
             ))}
           </div>
@@ -509,24 +581,20 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
-  // z cell: Σ_j A[i][j] · V[j][k]
-  if (sel.space === 'grid' && sel.layer === 3) {
+  // concat z cell: Σ_j A_h[i][j] · V[j][k]
+  if (sel.space === 'grid' && sel.layer === 4) {
     const i = sel.row
     const k = sel.col
-    const aRow = trace.A[i].slice(0, i + 1)
+    const h = Math.floor(k / dh)
+    const aRow = trace.A[h][i].slice(0, i + 1)
     const vCol = aRow.map((_, j) => trace.V[j][k])
     return (
       <>
         <section>
           <h4>
-            z[{i}][{k}] = Σ<sub>j</sub> A[{i}][j] · V[j][{k}]
+            {t('llm.head', { n: h + 1 })} · z[{i}][{k}] = Σ<sub>j</sub> A[{i}][j] · V[j][{k}]
           </h4>
-          <ProductRows
-            prev={aRow}
-            prevLabel={(j) => `A[${i}][${j}]`}
-            weights={vCol}
-            weightHeader="V"
-          />
+          <ProductRows prev={aRow} prevLabel={(j) => `A[${i}][${j}]`} weights={vCol} weightHeader="V" />
         </section>
         <section>
           <h4>{t('panel.sum')}</h4>
@@ -540,15 +608,23 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
+  // Add & Norm stages
+  if (sel.space === 'grid' && sel.layer === 5) {
+    return <AddNormDetail which={1} row={sel.row} col={sel.col} />
+  }
+  if (sel.space === 'grid' && sel.layer === 7) {
+    return <AddNormDetail which={2} row={sel.row} col={sel.col} />
+  }
+
   // ffn cell
-  if (sel.space === 'grid' && sel.layer === 4) {
+  if (sel.space === 'grid' && sel.layer === 6) {
     const i = sel.row
     const k = sel.col
-    const weights = trace.Z[i].map((_, m) => model.W1[m][k])
+    const weights = trace.R1[i].map((_, m) => model.W1[m][k])
     return (
       <DenseComputation
-        prev={trace.Z[i]}
-        prevLabel={(m) => `z[${i}][${m}]`}
+        prev={trace.R1[i]}
+        prevLabel={(m) => `r₁[${i}][${m}]`}
         weights={weights}
         bias={model.b1[k]}
         z={trace.Hpre[i][k]}
@@ -559,10 +635,10 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   }
 
   // output logit / next-char probability
-  if (sel.space === 'vector' && sel.layer === 5) {
+  if (sel.space === 'vector' && sel.layer === 8) {
     const T = trace.ids.length
     const vIdx = sel.index
-    const weights = trace.H[T - 1].map((_, k) => model.W2[k][vIdx])
+    const weights = trace.R2[T - 1].map((_, k) => model.Wout[k][vIdx])
     const top = [...trace.probs.keys()].sort((a, b) => trace.probs[b] - trace.probs[a]).slice(0, 6)
     return (
       <>
@@ -572,10 +648,10 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
           </h4>
         </section>
         <DenseComputation
-          prev={trace.H[T - 1]}
-          prevLabel={(k) => `h[${k}]`}
+          prev={trace.R2[T - 1]}
+          prevLabel={(k) => `r₂[${k}]`}
           weights={weights}
-          bias={model.b2[vIdx]}
+          bias={model.bout[vIdx]}
           z={trace.U[T - 1][vIdx]}
           a={trace.probs[vIdx]}
           activation="softmax"

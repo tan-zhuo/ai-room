@@ -4,8 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { MODELS } from '../nn/models'
 import { Tensor3 } from '../nn/cnn'
-import { useStore, useT } from '../store'
-import { GridSlot, VecSlot, gridPos, llmLabelAnchor, llmSlot, vecPos } from './layout'
+import { totalSteps, useStore, useT } from '../store'
+import { GridSlot, LLM_STEPS, VecSlot, gridPos, llmLabelAnchor, llmSlot, vecPos } from './layout'
 import { Segment, ease } from './common'
 import { GridNodes } from './GridNodes'
 import { VectorNodes } from './VectorNodes'
@@ -31,7 +31,7 @@ function FeedbackLoop() {
   const generated = useStore((s) => s.llmGenerated)
   const model = MODELS.llm.model
   const tokSlot = llmSlot(-1) as GridSlot
-  const outSlot = llmSlot(5) as VecSlot
+  const outSlot = llmSlot(LLM_STEPS - 1) as VecSlot
   const flyer = useRef<THREE.Group>(null)
   const anim = useRef<{ curve: THREE.CubicBezierCurve3; t: number } | null>(null)
 
@@ -46,8 +46,8 @@ function FeedbackLoop() {
     const to = lastTokenPos.clone().add(new THREE.Vector3(0, -0.7, 0))
     const curve = new THREE.CubicBezierCurve3(
       from,
-      new THREE.Vector3(outSlot.x * 0.55, -7.5, 5.5),
-      new THREE.Vector3(tokSlot.x * 0.55, -7.5, 5.5),
+      new THREE.Vector3(outSlot.x * 0.55, -8.5, 6),
+      new THREE.Vector3(tokSlot.x * 0.55, -8.5, 6),
       to,
     )
     const geom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(72))
@@ -68,8 +68,8 @@ function FeedbackLoop() {
     anim.current = {
       curve: new THREE.CubicBezierCurve3(
         from,
-        new THREE.Vector3(outSlot.x * 0.55, -7.5, 5.5),
-        new THREE.Vector3(tokSlot.x * 0.55, -7.5, 5.5),
+        new THREE.Vector3(outSlot.x * 0.55, -8.5, 6),
+        new THREE.Vector3(tokSlot.x * 0.55, -8.5, 6),
         lastTokenPos,
       ),
       t: 0,
@@ -119,74 +119,133 @@ function FeedbackLoop() {
   )
 }
 
-/** Tiny transformer scene: tokens → embeddings → Q/K/V → attention → A·V → FFN → next char. */
+/** Map every cell of the target sheet to a source cell — decorative flow routes. */
+function sheetFlow(
+  src: GridSlot,
+  dst: GridSlot,
+  opts: { srcCh?: (dstCh: number) => number; srcCol?: (dstCol: number) => number; cap?: number } = {},
+): Segment[] {
+  const segs: Segment[] = []
+  const chOf = opts.srcCh ?? (() => 0)
+  const colOf = opts.srcCol ?? ((c: number) => Math.min(c, src.cols - 1))
+  for (let ch = 0; ch < dst.channels; ch++) {
+    for (let r = 0; r < dst.rows; r++) {
+      for (let c = 0; c < dst.cols; c++) {
+        const srcRow = src.rows === 1 ? 0 : Math.min(r, src.rows - 1)
+        const srcColIdx = src.rows === 1 ? Math.min(r, src.cols - 1) : colOf(c)
+        segs.push({
+          a: v(gridPos(src, chOf(ch), srcRow, srcColIdx)),
+          b: v(gridPos(dst, ch, r, c)),
+          w: 0.5,
+          target: 0,
+        })
+      }
+    }
+  }
+  const cap = opts.cap ?? 300
+  if (segs.length <= cap) return segs
+  const step = segs.length / cap
+  return Array.from({ length: cap }, (_, i) => segs[Math.floor(i * step)])
+}
+
+/** Faithful transformer scene:
+ *  tokenizer → embedding → +positional encoding → Q/K/V → multi-head attention
+ *  → concat A·V → Add&Norm → feed-forward → Add&Norm → next-char output. */
 export function LLMScene() {
   const trace = useStore((s) => s.llmTrace)
   const step = useStore((s) => s.step)
   const t = useT()
   const model = MODELS.llm.model
 
-  const tokSlot = llmSlot(-1) as GridSlot
-  const embSlot = llmSlot(0) as GridSlot
-  const qkvSlot = llmSlot(1) as GridSlot
-  const attSlot = llmSlot(2) as GridSlot
-  const zSlot = llmSlot(3) as GridSlot
-  const ffnSlot = llmSlot(4) as GridSlot
-  const outSlot = llmSlot(5) as VecSlot
+  const slots = useMemo(
+    () => Array.from({ length: LLM_STEPS + 1 }, (_, i) => llmSlot(i - 1)),
+    [],
+  )
+  const tokSlot = slots[0] as GridSlot
+  const outSlot = slots[LLM_STEPS] as VecSlot
+  const grid = (layer: number) => slots[layer + 1] as GridSlot
 
   const T = model.T
   const vocabN = model.vocab.length
 
-  // tensors for each sheet
   const tokVals = useMemo<Tensor3>(
     () => [[trace.ids.map((id) => 0.25 + (0.7 * id) / vocabN)]],
     [trace, vocabN],
   )
-  const embVals = useMemo<Tensor3>(() => [trace.X], [trace])
-  const qkvVals = useMemo<Tensor3>(() => [trace.Q, trace.K, trace.V], [trace])
-  const attVals = useMemo<Tensor3>(() => [trace.A], [trace])
-  const zVals = useMemo<Tensor3>(() => [trace.Z], [trace])
-  const ffnVals = useMemo<Tensor3>(() => [trace.H], [trace])
+  const sheets = useMemo(
+    () =>
+      [
+        { layer: 0, values: [trace.E] },
+        { layer: 1, values: [trace.X] },
+        { layer: 2, values: [trace.Q, trace.K, trace.V] },
+        { layer: 3, values: trace.A },
+        { layer: 4, values: [trace.Z] },
+        { layer: 5, values: [trace.R1] },
+        { layer: 6, values: [trace.H] },
+        { layer: 7, values: [trace.R2] },
+      ] as { layer: number; values: Tensor3 }[],
+    [trace],
+  )
 
   const outPositions = useMemo(
     () => Array.from({ length: vocabN }, (_, i) => vecPos(outSlot, i)),
     [outSlot, vocabN],
   )
 
-  // decorative particle routes between consecutive sheets
   const flows = useMemo(() => {
-    const mk = (segs: Segment[]) => segs
-    const embSegs: Segment[] = []
-    for (let i = 0; i < T; i++)
-      for (let k = 0; k < model.d; k++)
-        embSegs.push({ a: v(gridPos(tokSlot, 0, 0, i)), b: v(gridPos(embSlot, 0, i, k)), w: 0.5, target: 0 })
-    const qkvSegs: Segment[] = []
-    for (let ch = 0; ch < 3; ch++)
-      for (let i = 0; i < T; i++)
-        for (let k = 0; k < model.d; k += 2)
-          qkvSegs.push({ a: v(gridPos(embSlot, 0, i, k)), b: v(gridPos(qkvSlot, ch, i, k)), w: 0.5, target: 0 })
-    const attSegs: Segment[] = []
-    for (let i = 0; i < T; i++)
-      for (let j = 0; j <= i; j++) {
-        attSegs.push({ a: v(gridPos(qkvSlot, 0, i, model.d - 1)), b: v(gridPos(attSlot, 0, i, j)), w: 0.5, target: 0 })
-        attSegs.push({ a: v(gridPos(qkvSlot, 1, j, model.d - 1)), b: v(gridPos(attSlot, 0, i, j)), w: -0.5, target: 0 })
+    const dh = model.d / model.heads
+    const all: Segment[][] = []
+    all.push(sheetFlow(tokSlot, grid(0)))
+    all.push(sheetFlow(grid(0), grid(1)))
+    all.push(sheetFlow(grid(1), grid(2)))
+    // attention: from Q (ch 0) and K (ch 1) rows into each head's matrix
+    const attnSegs: Segment[] = []
+    for (let h = 0; h < model.heads; h++) {
+      const off = h * dh + Math.floor(dh / 2)
+      for (let i = 0; i < T; i++) {
+        for (let j = 0; j <= i; j++) {
+          attnSegs.push({ a: v(gridPos(grid(2), 0, i, off)), b: v(gridPos(grid(3), h, i, j)), w: 0.5, target: 0 })
+          attnSegs.push({ a: v(gridPos(grid(2), 1, j, off)), b: v(gridPos(grid(3), h, i, j)), w: -0.5, target: 0 })
+        }
       }
+    }
+    all.push(attnSegs)
+    // concat A·V: each z column is fed from its own head's attention row
     const zSegs: Segment[] = []
-    for (let i = 0; i < T; i++)
-      for (let k = 0; k < model.d; k++)
-        zSegs.push({ a: v(gridPos(attSlot, 0, i, Math.min(i, T - 1))), b: v(gridPos(zSlot, 0, i, k)), w: 0.5, target: 0 })
-    const ffnSegs: Segment[] = []
-    for (let i = 0; i < T; i++)
-      for (let k = 0; k < model.h; k++)
-        ffnSegs.push({ a: v(gridPos(zSlot, 0, i, k % model.d)), b: v(gridPos(ffnSlot, 0, i, k)), w: 0.5, target: 0 })
+    for (let r = 0; r < T; r++) {
+      for (let c = 0; c < model.d; c++) {
+        const head = Math.floor(c / dh)
+        zSegs.push({
+          a: v(gridPos(grid(3), head, r, Math.min(r, T - 1))),
+          b: v(gridPos(grid(4), 0, r, c)),
+          w: 0.5,
+          target: 0,
+        })
+      }
+    }
+    all.push(zSegs)
+    // Add&Norm 1: from Z plus the residual skip from X
+    all.push([
+      ...sheetFlow(grid(4), grid(5), { cap: 160 }),
+      ...sheetFlow(grid(1), grid(5), { cap: 140 }),
+    ])
+    all.push(sheetFlow(grid(5), grid(6), { srcCol: (c) => c % model.d }))
+    // Add&Norm 2: from FFN plus the residual skip from R1
+    all.push([
+      ...sheetFlow(grid(6), grid(7), { srcCol: (c) => Math.min(model.dff - 1, c * 2) , cap: 160 }),
+      ...sheetFlow(grid(5), grid(7), { cap: 140 }),
+    ])
+    // output: last row of R2 to every vocab node
     const outSegs: Segment[] = []
-    for (let k = 0; k < model.h; k++)
+    for (let k = 0; k < model.d; k++)
       for (let j = 0; j < vocabN; j += 2)
-        outSegs.push({ a: v(gridPos(ffnSlot, 0, T - 1, k)), b: v(outPositions[j]), w: 0.5, target: j })
-    return [mk(embSegs), mk(qkvSegs), mk(attSegs), mk(zSegs), mk(ffnSegs), mk(outSegs)]
-  }, [T, model, tokSlot, embSlot, qkvSlot, attSlot, zSlot, ffnSlot, outPositions, vocabN])
+        outSegs.push({ a: v(gridPos(grid(7), 0, T - 1, k)), b: v(outPositions[j]), w: 0.5, target: j })
+    all.push(outSegs)
+    return all
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, tokSlot, outPositions, T, vocabN])
 
-  const done = step >= 6
+  const done = step >= totalSteps('llm')
   const pred = trace.probs.indexOf(Math.max(...trace.probs))
   const topIdx = [...trace.probs.keys()].sort((a, b) => trace.probs[b] - trace.probs[a]).slice(0, 5)
   const showChar = (c: string) => (c === ' ' ? '␣' : c)
@@ -194,18 +253,16 @@ export function LLMScene() {
   return (
     <group>
       <GridNodes slot={tokSlot} values={tokVals} scale={1} />
-      <GridNodes slot={embSlot} values={embVals} scale={tensorMax(embVals)} />
-      <GridNodes slot={qkvSlot} values={qkvVals} scale={tensorMax(qkvVals)} />
-      <GridNodes slot={attSlot} values={attVals} scale={1} />
-      <GridNodes slot={zSlot} values={zVals} scale={tensorMax(zVals)} />
-      <GridNodes slot={ffnSlot} values={ffnVals} scale={tensorMax(ffnVals)} />
+      {sheets.map((sh) => (
+        <GridNodes key={sh.layer} slot={grid(sh.layer)} values={sh.values} scale={tensorMax(sh.values)} />
+      ))}
       <VectorNodes
         positions={outPositions}
         values={trace.probs}
         scale={Math.max(...trace.probs)}
-        layerIndex={5}
+        layerIndex={LLM_STEPS - 1}
         radius={Math.min(0.22, outSlot.gapY * 0.42)}
-        refFor={(i) => ({ space: 'vector', layer: 5, index: i })}
+        refFor={(i) => ({ space: 'vector', layer: LLM_STEPS - 1, index: i })}
       />
 
       {flows.map((segs, k) => (
@@ -254,11 +311,19 @@ export function LLMScene() {
 
       <LayerLabel position={llmLabelAnchor(-1)} title={t('layer.tokens')} sub={`${T}`} layer={-1} />
       <LayerLabel position={llmLabelAnchor(0)} title={t('layer.embed')} sub={`${T}×${model.d}`} layer={0} />
-      <LayerLabel position={llmLabelAnchor(1)} title="Q · K · V" sub={`3 × ${T}×${model.d}`} layer={1} />
-      <LayerLabel position={llmLabelAnchor(2)} title={t('layer.attn')} sub={`${T}×${T} · softmax`} layer={2} />
-      <LayerLabel position={llmLabelAnchor(3)} title={t('layer.attnout')} sub={`${T}×${model.d}`} layer={3} />
-      <LayerLabel position={llmLabelAnchor(4)} title={t('layer.ffn')} sub={`${model.h} · ReLU`} layer={4} />
-      <LayerLabel position={llmLabelAnchor(5)} title={t('layer.output')} sub={`${vocabN} · softmax`} layer={5} />
+      <LayerLabel position={llmLabelAnchor(1)} title={t('layer.posenc')} sub="X = E + P" layer={1} />
+      <LayerLabel position={llmLabelAnchor(2)} title="Q · K · V" sub={`3 × ${T}×${model.d}`} layer={2} />
+      <LayerLabel
+        position={llmLabelAnchor(3)}
+        title={t('layer.attn')}
+        sub={`${model.heads} × ${T}×${T} · softmax`}
+        layer={3}
+      />
+      <LayerLabel position={llmLabelAnchor(4)} title={t('layer.attnout')} sub={`${T}×${model.d}`} layer={4} />
+      <LayerLabel position={llmLabelAnchor(5)} title={t('layer.addnorm')} sub="LN(x + attn)" layer={5} />
+      <LayerLabel position={llmLabelAnchor(6)} title={t('layer.ffn')} sub={`${model.dff} · ReLU`} layer={6} />
+      <LayerLabel position={llmLabelAnchor(7)} title={t('layer.addnorm')} sub="LN(x + ffn)" layer={7} />
+      <LayerLabel position={llmLabelAnchor(8)} title={t('layer.output')} sub={`${vocabN} · softmax`} layer={8} />
 
       <FeedbackLoop />
       <SelectionMarker />

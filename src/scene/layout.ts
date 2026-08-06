@@ -141,23 +141,27 @@ function computeCnnSlots(): CNNSlot[] {
 }
 
 // ------------------------------------------------------------------ LLM slots
-// Layer indices: -1 tokens, 0 embeddings, 1 Q/K/V, 2 attention, 3 A·V, 4 FFN, 5 output.
+// Layer indices: -1 tokenizer, 0 embedding, 1 +positional encoding, 2 Q/K/V,
+// 3 multi-head attention, 4 concat A·V, 5 Add&Norm, 6 FFN, 7 Add&Norm, 8 output.
 
-export const LLM_STEPS = 6
+export const LLM_STEPS = 9
 
 function computeLlmSlots(): CNNSlot[] {
   const m = MODELS.llm.model
-  const { T, d, h } = m
+  const { T, d, dff, heads } = m
   const V = m.vocab.length
-  const xs = [-11, -7.4, -3.4, 0.4, 3.6, 6.6, 10]
+  const xs = [-14, -10.9, -7.9, -4.7, -1.2, 1.9, 4.6, 7.3, 9.9, 12.7]
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.8, x: xs[0], chGap: 0 },
-    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.42, x: xs[1], chGap: 0 },
-    { kind: 'grid', layer: 1, channels: 3, rows: T, cols: d, cell: 0.36, x: xs[2], chGap: 0.7 },
-    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: T, cell: 0.52, x: xs[3], chGap: 0 },
-    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: d, cell: 0.42, x: xs[4], chGap: 0 },
-    { kind: 'grid', layer: 4, channels: 1, rows: T, cols: h, cell: 0.34, x: xs[5], chGap: 0 },
-    { kind: 'vector', layer: 5, size: V, x: xs[6], gapY: Math.min(0.72, 12.5 / V) },
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[2], chGap: 0 },
+    { kind: 'grid', layer: 2, channels: 3, rows: T, cols: d, cell: 0.3, x: xs[3], chGap: 0.62 },
+    { kind: 'grid', layer: 3, channels: heads, rows: T, cols: T, cell: 0.44, x: xs[4], chGap: 0.85 },
+    { kind: 'grid', layer: 4, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[5], chGap: 0 },
+    { kind: 'grid', layer: 5, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[6], chGap: 0 },
+    { kind: 'grid', layer: 6, channels: 1, rows: T, cols: dff, cell: 0.27, x: xs[7], chGap: 0 },
+    { kind: 'grid', layer: 7, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[8], chGap: 0 },
+    { kind: 'vector', layer: 8, size: V, x: xs[9], gapY: Math.min(0.72, 12.5 / V) },
   ]
 }
 
@@ -276,5 +280,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   mlp: { position: [8, 4.5, 13], target: [0, 0, 0] },
   text: { position: [8, 4.5, 13], target: [0, 0, 0] },
   cnn: { position: [11, 6, 18], target: [0, 0, 0] },
-  llm: { position: [12.5, 6, 20], target: [0.5, 0, 0] },
+  llm: { position: [14, 7, 24], target: [0, 0, 0] },
 }

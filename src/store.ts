@@ -25,7 +25,7 @@ export const flow = { phase: 0, hold: 0 }
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const LLM_STEP_COUNT = 6
+const LLM_STEP_COUNT = 9
 
 export function totalSteps(arch: Arch): number {
   if (arch === 'llm') return LLM_STEP_COUNT
@@ -365,7 +365,7 @@ export function useT() {
 export function stepDuration(arch: Arch, step: number): number {
   if (arch === 'mlp' || arch === 'text') return 1.6
   if (arch === 'llm') {
-    const durations = [1.6, 1.8, 3.2, 1.8, 1.6, 1.6]
+    const durations = [1.3, 1.3, 1.8, 3.0, 1.8, 1.5, 1.6, 1.5, 1.5]
     return durations[step] ?? 1.4
   }
   const model = MODELS.cnn.model

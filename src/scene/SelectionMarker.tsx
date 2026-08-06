@@ -90,57 +90,72 @@ function llmSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   const segs: Segment[] = []
   const model = MODELS.llm.model
   const trace = useStore.getState().llmTrace
-  const { d, h } = model
+  const { d, dff, heads } = model
+  const dh = d / heads
+  const slot = (layer: number) => llmSlot(layer) as GridSlot
 
   if (sel.space === 'grid' && sel.layer === 0) {
     // embedding row <- its token tile
-    const tokSlot = llmSlot(-1) as GridSlot
-    segs.push({ a: v(gridPos(tokSlot, 0, 0, sel.row)), b: target, w: 0.6, target: 0 })
+    segs.push({ a: v(gridPos(slot(-1), 0, 0, sel.row)), b: target, w: 0.6, target: 0 })
     return segs
   }
   if (sel.space === 'grid' && sel.layer === 1) {
-    // q/k/v cell <- embedding row i weighted by projection column
-    const embSlot = llmSlot(0) as GridSlot
-    const W = [model.Wq, model.Wk, model.Wv][sel.channel]
-    for (let m = 0; m < d; m++)
-      segs.push({ a: v(gridPos(embSlot, 0, sel.row, m)), b: target, w: W[m][sel.col], target: 0 })
+    // X = E + P: from the embedding cell (P is a fixed pattern)
+    segs.push({ a: v(gridPos(slot(0), 0, sel.row, sel.col)), b: target, w: 0.6, target: 0 })
     return segs
   }
   if (sel.space === 'grid' && sel.layer === 2) {
-    // attention cell (i,j) <- Q row i and K row j
-    const qkv = llmSlot(1) as GridSlot
-    for (let m = 0; m < d; m++) {
-      segs.push({ a: v(gridPos(qkv, 0, sel.row, m)), b: target, w: trace.Q[sel.row][m], target: 0 })
-      segs.push({ a: v(gridPos(qkv, 1, sel.col, m)), b: target, w: trace.K[sel.col][m], target: 0 })
-    }
+    // q/k/v cell <- X row i weighted by projection column
+    const W = [model.Wq, model.Wk, model.Wv][sel.channel]
+    for (let m = 0; m < d; m++)
+      segs.push({ a: v(gridPos(slot(1), 0, sel.row, m)), b: target, w: W[m][sel.col], target: 0 })
     return segs
   }
   if (sel.space === 'grid' && sel.layer === 3) {
-    // z cell (i,k) <- attention row i (weights A) and V column k
-    const attSlot = llmSlot(2) as GridSlot
-    const qkv = llmSlot(1) as GridSlot
-    for (let j = 0; j <= sel.row; j++) {
-      segs.push({ a: v(gridPos(attSlot, 0, sel.row, j)), b: target, w: trace.A[sel.row][j], target: 0 })
-      segs.push({ a: v(gridPos(qkv, 2, j, sel.col)), b: target, w: trace.V[j][sel.col], target: 0 })
+    // attention cell (head h, i, j) <- that head's slice of Q row i and K row j
+    const off = sel.channel * dh
+    for (let m = 0; m < dh; m++) {
+      segs.push({ a: v(gridPos(slot(2), 0, sel.row, off + m)), b: target, w: trace.Q[sel.row][off + m], target: 0 })
+      segs.push({ a: v(gridPos(slot(2), 1, sel.col, off + m)), b: target, w: trace.K[sel.col][off + m], target: 0 })
     }
     return segs
   }
   if (sel.space === 'grid' && sel.layer === 4) {
-    // ffn cell <- z row i weighted by W1 column
-    const zSlot = llmSlot(3) as GridSlot
-    for (let m = 0; m < d; m++)
-      segs.push({ a: v(gridPos(zSlot, 0, sel.row, m)), b: target, w: model.W1[m][sel.col], target: 0 })
+    // concat z cell (i,k) <- its head's attention row + V column k
+    const head = Math.floor(sel.col / dh)
+    for (let j = 0; j <= sel.row; j++) {
+      segs.push({ a: v(gridPos(slot(3), head, sel.row, j)), b: target, w: trace.A[head][sel.row][j], target: 0 })
+      segs.push({ a: v(gridPos(slot(2), 2, j, sel.col)), b: target, w: trace.V[j][sel.col], target: 0 })
+    }
     return segs
   }
-  if (sel.space === 'vector' && sel.layer === 5) {
-    // output logit <- FFN last row weighted by W2 column
-    const ffnSlot = llmSlot(4) as GridSlot
+  if (sel.space === 'grid' && sel.layer === 5) {
+    // Add & Norm 1: residual from X plus the attention output
+    segs.push({ a: v(gridPos(slot(1), 0, sel.row, sel.col)), b: target, w: 0.7, target: 0 })
+    segs.push({ a: v(gridPos(slot(4), 0, sel.row, sel.col)), b: target, w: -0.7, target: 0 })
+    return segs
+  }
+  if (sel.space === 'grid' && sel.layer === 6) {
+    // ffn cell <- R1 row i weighted by W1 column
+    for (let m = 0; m < d; m++)
+      segs.push({ a: v(gridPos(slot(5), 0, sel.row, m)), b: target, w: model.W1[m][sel.col], target: 0 })
+    return segs
+  }
+  if (sel.space === 'grid' && sel.layer === 7) {
+    // Add & Norm 2: residual from R1 plus the FFN output via W2 column
+    segs.push({ a: v(gridPos(slot(5), 0, sel.row, sel.col)), b: target, w: 0.7, target: 0 })
+    for (let m = 0; m < dff; m++)
+      segs.push({ a: v(gridPos(slot(6), 0, sel.row, m)), b: target, w: model.W2[m][sel.col], target: 0 })
+    return segs
+  }
+  if (sel.space === 'vector' && sel.layer === 8) {
+    // output logit <- R2 last row weighted by Wout column
     const T = trace.ids.length
-    for (let k = 0; k < h; k++)
+    for (let k = 0; k < d; k++)
       segs.push({
-        a: v(gridPos(ffnSlot, 0, T - 1, k)),
+        a: v(gridPos(slot(7), 0, T - 1, k)),
         b: target,
-        w: model.W2[k][sel.index],
+        w: model.Wout[k][sel.index],
         target: sel.index,
       })
     return segs

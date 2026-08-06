@@ -26,7 +26,11 @@ Hand-crafted Sobel edge kernels + a trained dense head classify patterns (vertic
 
 ### LLM — Tiny Transformer · 迷你 Transformer（字符级）
 
-A 1-block, 1-head character-level transformer with **hand-written forward AND backward passes**, trained in-browser on a small corpus (~2s). Embeddings → Q/K/V → causal scaled-dot-product attention (the 8×8 matrix lights up row by row) → weighted sum → FFN → next-character prediction. Type a prompt, watch it predict: `"the ai r"` → `o` (room), `"hello wo"` → `r` (world).
+A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
+
+**Tokenizer → Embedding → Positional Encoding (sinusoidal) → Multi-Head Attention (2 heads, causal) → Residual + LayerNorm → Feed-Forward → Residual + LayerNorm → Output softmax**
+
+Both heads' 8×8 attention matrices light up row by row; residual skip connections are drawn when you inspect an Add & Norm cell — down to μ, σ, γ, β. Type a prompt, watch it predict: `"the ai r"` → `o` (room), `"attentio"` → `n` (58%).
 
 Hit **Generate · 连续生成** for true autoregressive decoding: the sampled character is appended to the context, the window slides, the whole pipeline re-runs — and the output streams onto the screen one character at a time, exactly how real LLMs write.
 
@@ -87,5 +91,5 @@ src/
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
 - **TEXT**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。
-- **LLM**：字符级单头 Transformer，前向与反向传播均为手写实现，浏览器内训练；注意力矩阵逐行点亮，可点开任意格子查看 q·k/√d 与 softmax 的完整算式；输入前缀实时预测下一个字符。点击「连续生成」进入自回归解码：采样的字符拼回上下文、窗口滑动、流水线重跑——文字像真正的 LLM 一样一个字一个字流出来。
+- **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。

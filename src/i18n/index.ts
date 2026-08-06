@@ -151,11 +151,17 @@ const en: Dict = {
   'textfeat.5': 'Spaces %',
   'textfeat.6': 'Word length',
   'textfeat.7': 'Vowel ratio',
-  'layer.tokens': 'Tokens',
+  'layer.tokens': 'Tokenizer',
   'layer.embed': 'Embedding',
-  'layer.attn': 'Attention',
+  'layer.posenc': 'Positional encoding',
+  'layer.attn': 'Multi-head attention',
   'layer.attnout': 'Weighted sum A·V',
+  'layer.addnorm': 'Add & Norm',
   'layer.ffn': 'Feed-forward',
+  'llm.head': 'Head {n}',
+  'panel.mean': 'Mean μ',
+  'panel.std': 'Std σ',
+  'panel.residual': 'Residual: x + sublayer',
   'llm.next': 'Next char',
   'llm.generate': 'Generate',
   'llm.stop': 'Stop',
@@ -189,14 +195,26 @@ const en: Dict = {
   'explain.qkv.why':
     "Splitting the roles lets each token both ask questions about the context and answer other tokens' questions — the core trick behind attention.",
   'explain.qkv.simple': 'Every token writes a search query, a business card, and a package to hand over.',
+  'explain.posenc.what':
+    'Each position i gets a fixed sine/cosine pattern added to its embedding: even dimensions use sin, odd ones cos, at geometrically spaced frequencies. The result X = E + P is what the block actually processes.',
+  'explain.posenc.why':
+    'Attention by itself has no sense of order — it sees a bag of tokens. The positional pattern stamps "where am I" into every vector, and sinusoids let the model reason about relative distances.',
+  'explain.posenc.simple':
+    "Like seat numbers sewn into each letter's jacket — in a wave pattern the model can read.",
+  'explain.addnorm.what':
+    "Two steps: the sublayer's output is added back onto its input (residual connection), then each position's vector is normalized to zero mean and unit variance and rescaled by learned γ and β (LayerNorm).",
+  'explain.addnorm.why':
+    'Residuals give gradients a highway so deep stacks can train, and let each block learn only a correction. LayerNorm keeps the numbers in a healthy range so training stays stable.',
+  'explain.addnorm.simple':
+    'Keep the original, add the edits on top — then tidy everything back to a standard volume level.',
   'explain.attn.what':
-    'Every query is dotted with every earlier key, scaled by 1/√d, and each row is turned into weights with softmax. Cell (i, j) shows how much token i attends to token j; future tokens are masked out.',
+    "Every query is dotted with every earlier key (scaled by 1/√dₕ) and each row becomes weights via softmax — independently in each of the 2 heads. Cell (i, j) of a head shows how much token i attends to token j under that head's learned criterion; future tokens are masked out.",
   'explain.attn.why':
     'This is how the model decides which earlier characters matter for predicting the next one — the pattern is learned, not hard-coded.',
   'explain.attn.simple':
     'A spotlight each letter shines back over the letters before it — brighter means more relevant.',
   'explain.attnout.what':
-    "Each token's new representation is the weighted average of all value vectors, using its attention row as the weights: zᵢ = Σ A[i][j]·vⱼ.",
+    "Each head averages its value vectors using its own attention row as weights; the heads' outputs are then concatenated back into one vector per token: zᵢ = concatₕ(Σⱼ Aₕ[i][j]·vⱼʰ).",
   'explain.attnout.why':
     'This actually moves information between positions — the only place in the block where tokens exchange content.',
   'explain.attnout.simple': 'Each letter blends the packages it collected, in proportion to its spotlight.',
@@ -352,11 +370,17 @@ const zh: Dict = {
   'textfeat.5': '空格占比',
   'textfeat.6': '平均词长',
   'textfeat.7': '元音比例',
-  'layer.tokens': 'Token 序列',
+  'layer.tokens': '分词器',
   'layer.embed': '嵌入层',
-  'layer.attn': '注意力',
+  'layer.posenc': '位置编码',
+  'layer.attn': '多头注意力',
   'layer.attnout': '加权求和 A·V',
+  'layer.addnorm': '残差 + LayerNorm',
   'layer.ffn': '前馈层',
+  'llm.head': '注意力头 {n}',
+  'panel.mean': '均值 μ',
+  'panel.std': '标准差 σ',
+  'panel.residual': '残差：x + 子层输出',
   'llm.next': '下一个字符',
   'llm.generate': '连续生成',
   'llm.stop': '停止',
@@ -387,13 +411,23 @@ const zh: Dict = {
   'explain.qkv.why':
     '角色分离让每个 token 既能对上下文提问，也能回答其他 token 的提问——这是注意力机制的核心技巧。',
   'explain.qkv.simple': '每个 token 写下一条搜索请求、一张名片和一个待转交的包裹。',
+  'explain.posenc.what':
+    '每个位置 i 都有一组固定的正弦/余弦波形加到它的嵌入上：偶数维用 sin、奇数维用 cos，频率按几何级数排布。相加结果 X = E + P 才是后续模块真正处理的输入。',
+  'explain.posenc.why':
+    '注意力本身没有顺序概念——它看到的只是一袋 token。位置编码把"我在第几个位置"印进每个向量，正弦波形还让模型能推理相对距离。',
+  'explain.posenc.simple': '像给每个字母的外套缝上座位号，而且是用模型读得懂的波纹绣出来的。',
+  'explain.addnorm.what':
+    '两步：先把子层的输出加回它的输入（残差连接），再把每个位置的向量归一化到均值 0、方差 1，并用学习到的 γ 和 β 重新缩放（LayerNorm）。',
+  'explain.addnorm.why':
+    '残差给梯度开了一条高速公路，深层堆叠才能训得动，每个模块也只需学"修正量"；LayerNorm 把数值拉回健康范围，让训练保持稳定。',
+  'explain.addnorm.simple': '保留原稿、把修改意见叠加上去——然后把整体音量调回标准值。',
   'explain.attn.what':
-    '每个查询与所有更早的键做点积，除以 √d 缩放，再对每行做 softmax 得到权重。格子 (i, j) 表示 token i 对 token j 的关注程度；未来的 token 被掩码遮住。',
+    '每个查询与所有更早的键做点积（除以 √dₕ 缩放），每行经 softmax 变成权重——两个注意力头各自独立进行。某个头的格子 (i, j) 表示在该头学到的标准下 token i 对 token j 的关注程度；未来的 token 被掩码遮住。',
   'explain.attn.why':
     '模型正是通过它来决定哪些更早的字符对预测下一个字符重要——这个模式是学出来的，不是写死的。',
   'explain.attn.simple': '每个字母向前面的字母打一束聚光灯——越亮表示越相关。',
   'explain.attnout.what':
-    '每个 token 的新表示是所有值向量的加权平均，权重就是它的注意力行：zᵢ = Σ A[i][j]·vⱼ。',
+    '每个头用自己的注意力行对值向量加权平均，两个头的结果再拼接回每个 token 一个向量：zᵢ = concatₕ(Σⱼ Aₕ[i][j]·vⱼʰ)。',
   'explain.attnout.why':
     '这一步真正在位置之间搬运信息——是整个模块中 token 之间唯一交换内容的地方。',
   'explain.attnout.simple': '每个字母按聚光灯的亮度比例，把收到的包裹混合在一起。',
@@ -552,11 +586,17 @@ const ja: Dict = {
   'textfeat.5': '空白率',
   'textfeat.6': '平均語長',
   'textfeat.7': '母音率',
-  'layer.tokens': 'トークン',
+  'layer.tokens': 'トークナイザ',
   'layer.embed': '埋め込み',
-  'layer.attn': 'アテンション',
+  'layer.posenc': '位置エンコーディング',
+  'layer.attn': 'マルチヘッドアテンション',
   'layer.attnout': '加重和 A·V',
+  'layer.addnorm': 'Add & Norm（残差+LN）',
   'layer.ffn': 'FFN',
+  'llm.head': 'ヘッド {n}',
+  'panel.mean': '平均 μ',
+  'panel.std': '標準偏差 σ',
+  'panel.residual': '残差：x + サブ層出力',
   'llm.next': '次の文字',
   'llm.generate': '連続生成',
   'llm.stop': '停止',
@@ -590,13 +630,25 @@ const ja: Dict = {
   'explain.qkv.why':
     '役割を分けることで、各トークンは文脈に質問することも、他のトークンの質問に答えることもできます——アテンションの核心です。',
   'explain.qkv.simple': '各トークンが検索クエリと名刺と手渡す荷物を書き上げます。',
+  'explain.posenc.what':
+    '各位置 i の埋め込みに固定の正弦/余弦パターンを加えます：偶数次元は sin、奇数次元は cos、周波数は幾何級数的に配置。その和 X = E + P が以降のブロックの入力になります。',
+  'explain.posenc.why':
+    'アテンション自体には順序の概念がなく、トークンの袋しか見えません。位置エンコーディングは「自分が何番目か」を各ベクトルに刻み、正弦波は相対距離の推論も可能にします。',
+  'explain.posenc.simple':
+    '各文字の上着に座席番号を縫い付けるようなもの。しかもモデルが読める波模様で。',
+  'explain.addnorm.what':
+    '2 段階です：サブ層の出力を入力に足し戻し（残差接続）、次に各位置のベクトルを平均 0・分散 1 に正規化して学習済みの γ と β で再スケールします（LayerNorm）。',
+  'explain.addnorm.why':
+    '残差は勾配のハイウェイとなり深い積み重ねを学習可能にし、各ブロックは「修正分」だけ学べばよくなります。LayerNorm は数値を健全な範囲に保ち学習を安定させます。',
+  'explain.addnorm.simple':
+    '原稿を残したまま修正を上に重ね、最後に全体の音量を標準に整えるイメージです。',
   'explain.attn.what':
-    '各クエリとそれ以前のすべてのキーの内積を 1/√d でスケールし、行ごとに softmax で重みにします。セル (i, j) はトークン i がトークン j にどれだけ注目しているか。未来のトークンはマスクされます。',
+    '各クエリとそれ以前のキーの内積（1/√dₕ でスケール）を行ごとに softmax で重みへ——これを 2 つのヘッドが独立に行います。あるヘッドのセル (i, j) は、そのヘッドが学んだ基準でトークン i が j にどれだけ注目するかを示します。未来のトークンはマスクされます。',
   'explain.attn.why':
     '次の文字を予測するのにどの過去の文字が重要かを、モデルはここで決めます——このパターンは学習で獲得されたものです。',
   'explain.attn.simple': '各文字が前の文字たちに向けるスポットライト——明るいほど関連が強い。',
   'explain.attnout.what':
-    '各トークンの新しい表現は、アテンション行を重みとした全バリューベクトルの加重平均です：zᵢ = Σ A[i][j]·vⱼ。',
+    '各ヘッドが自分のアテンション行を重みにバリューを加重平均し、その結果を連結して各トークン 1 本のベクトルに戻します：zᵢ = concatₕ(Σⱼ Aₕ[i][j]·vⱼʰ)。',
   'explain.attnout.why':
     '位置の間で実際に情報が動くのはここだけ——ブロック内でトークン同士が内容を交換する唯一の場所です。',
   'explain.attnout.simple': '各文字がスポットライトの明るさに応じて、集めた荷物をブレンドします。',
