@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '../store'
-import { positionOf } from '../scene/layout'
+import { layerBounds, positionOf } from '../scene/layout'
 
 export function useKeyboard() {
   useEffect(() => {
@@ -36,10 +36,20 @@ export function useKeyboard() {
           s.cycleLang()
           break
         case 'KeyF':
-          if (s.selected) s.requestFocus(positionOf(s.arch, s.selected))
+          if (s.selected) {
+            s.requestFocus(positionOf(s.arch, s.selected))
+          } else if (s.explain !== null) {
+            const { min, max } = layerBounds(s.arch, s.explain)
+            const span = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2])
+            s.requestFocus(
+              [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2],
+              span * 1.4 + 5,
+            )
+          }
           break
         case 'Escape':
           if (s.helpOpen) s.toggleHelp()
+          else if (s.explain !== null) s.setExplain(null)
           else s.select(null)
           break
       }

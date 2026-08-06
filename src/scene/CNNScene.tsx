@@ -139,12 +139,12 @@ export function CNNScene() {
       <SlideAnim mode="conv" />
       <SlideAnim mode="pool" />
 
-      <LayerLabel position={cnnLabelAnchor(-1)} title={t('layer.input')} sub="1×8×8" />
-      <LayerLabel position={cnnLabelAnchor(0)} title={t('layer.conv')} sub="3×3 · 3 ch · ReLU" />
-      <LayerLabel position={cnnLabelAnchor(1)} title={t('layer.pool')} sub="2×2" />
-      <LayerLabel position={cnnLabelAnchor(2)} title={t('layer.flatten')} sub="27" />
-      <LayerLabel position={cnnLabelAnchor(3)} title={t('layer.dense')} sub="10 · ReLU" />
-      <LayerLabel position={cnnLabelAnchor(4)} title={t('layer.output')} sub="softmax" />
+      <LayerLabel position={cnnLabelAnchor(-1)} title={t('layer.input')} sub="1×8×8" layer={-1} />
+      <LayerLabel position={cnnLabelAnchor(0)} title={t('layer.conv')} sub="3×3 · 3 ch · ReLU" layer={0} />
+      <LayerLabel position={cnnLabelAnchor(1)} title={t('layer.pool')} sub="2×2" layer={1} />
+      <LayerLabel position={cnnLabelAnchor(2)} title={t('layer.flatten')} sub="27" layer={2} />
+      <LayerLabel position={cnnLabelAnchor(3)} title={t('layer.dense')} sub="10 · ReLU" layer={3} />
+      <LayerLabel position={cnnLabelAnchor(4)} title={t('layer.output')} sub="softmax" layer={4} />
 
       <OutputLabels arch="cnn" />
       <SelectionMarker />

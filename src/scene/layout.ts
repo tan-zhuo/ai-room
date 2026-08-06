@@ -137,6 +137,35 @@ export function positionOf(arch: Arch, ref: NodeRef): Vec3 {
   return cnnPos(ref.layer, { channel: ref.channel, row: ref.row, col: ref.col })
 }
 
+/** Axis-aligned bounds of all node centers in a layer (-1 = input). */
+export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 } {
+  const pts: Vec3[] = []
+  if (arch === 'mlp') {
+    const n = MLP_SIZES[layer + 1]
+    for (let i = 0; i < n; i++) pts.push(mlpPos(layer, i))
+  } else {
+    const slot = cnnSlot(layer)
+    if (slot.kind === 'grid') {
+      for (let ch = 0; ch < slot.channels; ch++) {
+        pts.push(gridPos(slot, ch, 0, 0), gridPos(slot, ch, slot.rows - 1, slot.cols - 1))
+      }
+    } else if (slot.kind === 'flatten') {
+      for (let i = 0; i < slot.size; i++) pts.push(flattenPos(slot, i))
+    } else {
+      pts.push(vecPos(slot, 0), vecPos(slot, slot.size - 1))
+    }
+  }
+  const min: Vec3 = [Infinity, Infinity, Infinity]
+  const max: Vec3 = [-Infinity, -Infinity, -Infinity]
+  for (const p of pts) {
+    for (let a = 0; a < 3; a++) {
+      min[a] = Math.min(min[a], p[a])
+      max[a] = Math.max(max[a], p[a])
+    }
+  }
+  return { min, max }
+}
+
 export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   mlp: { position: [8, 4.5, 13], target: [0, 0, 0] },
   cnn: { position: [10, 5.5, 15.5], target: [0, 0, 0] },

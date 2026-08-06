@@ -4,28 +4,8 @@ import { ActivationKind } from '../nn/mlp'
 import { convAt, poolAt, unflattenIndex } from '../nn/cnn'
 import { NodeRef, useStore, useT } from '../store'
 import { FlattenSlot, cnnSlot } from '../scene/layout'
+import { layerNameOf } from './layerName'
 import { NumGrid, cellStyle, fmt } from './valueCell'
-
-function layerNameOf(arch: 'mlp' | 'cnn', layer: number, t: (k: string, p?: Record<string, string | number>) => string): string {
-  if (layer === -1) return t('layer.input')
-  if (arch === 'mlp') {
-    const last = MODELS.mlp.model.layers.length - 1
-    return layer === last ? t('layer.output') : t('layer.hidden', { n: layer + 1 })
-  }
-  const def = MODELS.cnn.model.layers[layer]
-  const last = MODELS.cnn.model.layers.length - 1
-  if (layer === last) return t('layer.output')
-  switch (def.type) {
-    case 'conv':
-      return t('layer.conv')
-    case 'pool':
-      return t('layer.pool')
-    case 'flatten':
-      return t('layer.flatten')
-    default:
-      return t('layer.dense')
-  }
-}
 
 const ACT_LABEL: Record<ActivationKind, string> = {
   relu: 'ReLU',

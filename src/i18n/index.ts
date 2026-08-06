@@ -77,7 +77,58 @@ const en: Dict = {
   'help.f': 'Focus selected node',
   'help.esc': 'Deselect / close panel',
   'help.mouse': 'Drag to orbit · scroll to zoom · right-drag to pan · click a node to inspect',
-  'hint.click': 'Click any node to inspect its computation',
+  'hint.click': 'Click any node to inspect its computation · click a layer title to learn what it does',
+  'explain.what': 'What it does',
+  'explain.why': 'Why the network needs it',
+  'explain.simple': 'In plain words',
+  'explain.tip': 'Tip: click any node in this layer to see its exact numbers.',
+  'explain.input.what':
+    'Holds the raw numbers the network receives — here a 4-dimensional feature vector. Each sphere is one feature value; no computation happens in this layer.',
+  'explain.input.why':
+    "A network needs a fixed, numeric entry point. Everything the model 'knows' about a sample must be encoded as these numbers before any layer can process them.",
+  'explain.input.simple':
+    "Think of it as the network's senses: four measurement dials whose readings are handed to the first layer.",
+  'explain.hidden.what':
+    'Each neuron multiplies every input by its own learned weight, adds them up together with a bias, then applies ReLU — positive values pass through, negative ones become zero.',
+  'explain.hidden.why':
+    'Stacking these layers lets the network bend and combine features into new ones. Without the nonlinear ReLU, any number of layers would collapse into a single linear formula and could never learn complex patterns.',
+  'explain.hidden.simple':
+    'A committee of little judges: each one weighs all the evidence differently, and only speaks up (fires) when its weighted sum comes out positive.',
+  'explain.output.what':
+    'A final dense layer produces one score (logit) per class, and softmax turns those scores into probabilities that add up to 1.',
+  'explain.output.why':
+    'Turning arbitrary scores into a probability distribution makes the answer easy to read and gives training a clear target to push toward.',
+  'explain.output.simple':
+    "The scoreboard: whichever class ends up with the highest probability is the network's prediction.",
+  'explain.cnnInput.what':
+    'An 8×8 grayscale image — each cube is one pixel, brightness is its value. This is the raw data the convolution will scan.',
+  'explain.cnnInput.why':
+    'Images are grids, and keeping them as grids (instead of flattening right away) lets the network exploit the fact that nearby pixels are related.',
+  'explain.cnnInput.simple': 'A tiny picture, laid out as a wall of tiles for the network to look at.',
+  'explain.conv.what':
+    'A small 3×3 kernel slides across the image; at each position it multiplies the overlapping pixels by its weights and sums them, producing one pixel of a feature map. Each of the 3 kernels detects a different pattern (vertical, horizontal and diagonal edges), and ReLU keeps only the positive responses.',
+  'explain.conv.why':
+    'Reusing the same small filter everywhere needs far fewer weights than a dense layer — and it can spot its pattern no matter where in the image it appears (translation invariance).',
+  'explain.conv.simple':
+    "A magnifying glass swept over the picture: wherever the pattern it's looking for shows through, the feature map lights up.",
+  'explain.pool.what':
+    'Each 2×2 window of a feature map is replaced by its maximum value, shrinking the 6×6 maps down to 3×3.',
+  'explain.pool.why':
+    'It keeps the strongest evidence while shrinking the data, making the network faster and less sensitive to tiny shifts of the pattern.',
+  'explain.pool.simple':
+    'Like summarizing a paragraph by keeping only its strongest sentence — smaller, but the message survives.',
+  'explain.flatten.what':
+    'Rearranges the 3×3×3 stack of pooled feature maps into a single list of 27 numbers. No math happens — only the shape changes.',
+  'explain.flatten.why':
+    'Dense layers expect a flat vector, so this step is the bridge from spatial feature maps to the classifier.',
+  'explain.flatten.simple':
+    'Unrolling a stack of grids into one long line, ready for the final decision layers.',
+  'explain.dense.what':
+    'A fully connected layer: each of its 10 neurons looks at all 27 flattened features, weighs them, adds a bias and applies ReLU.',
+  'explain.dense.why':
+    'It mixes evidence from every location and every kernel into higher-level combinations that separate the classes.',
+  'explain.dense.simple':
+    'The deliberation room: all the collected clues are weighed together before the verdict.',
 }
 
 const zh: Dict = {
@@ -153,7 +204,50 @@ const zh: Dict = {
   'help.f': '聚焦选中节点',
   'help.esc': '取消选择 / 关闭面板',
   'help.mouse': '拖拽旋转 · 滚轮缩放 · 右键平移 · 点击节点查看计算',
-  'hint.click': '点击任意节点查看其计算过程',
+  'hint.click': '点击任意节点查看其计算过程 · 点击层标题了解该模块的作用',
+  'explain.what': '它做什么',
+  'explain.why': '为什么需要它',
+  'explain.simple': '通俗理解',
+  'explain.tip': '提示：点击该层的任意节点可查看具体数值。',
+  'explain.input.what':
+    '输入层保存网络接收到的原始数字——这里是一个 4 维特征向量。每个球体代表一个特征值，这一层不做任何计算。',
+  'explain.input.why':
+    '网络需要一个固定的数字入口。模型对样本的全部“认知”都必须先编码成这些数字，后面的层才能处理。',
+  'explain.input.simple': '可以把它当作网络的感官：四个测量表盘，读数被交给第一层。',
+  'explain.hidden.what':
+    '每个神经元把所有输入分别乘以自己学到的权重，加总后再加上偏置，然后通过 ReLU 激活——正值保留，负值归零。',
+  'explain.hidden.why':
+    '层层堆叠让网络能把特征弯曲、组合成新的特征。如果没有非线性的 ReLU，再多的层也会塌缩成一个线性公式，学不会复杂模式。',
+  'explain.hidden.simple':
+    '像一群小评委：每人对证据的加权方式不同，只有加权和为正时才会“发言”（激活）。',
+  'explain.output.what':
+    '最后一个全连接层为每个类别产生一个得分（logit），softmax 把这些得分转换成总和为 1 的概率。',
+  'explain.output.why':
+    '把任意大小的得分变成概率分布，结果一目了然，也给训练提供了明确的优化目标。',
+  'explain.output.simple': '记分牌：概率最高的类别就是网络的预测。',
+  'explain.cnnInput.what':
+    '一张 8×8 的灰度图——每个方块是一个像素，亮度即数值。这是卷积将要扫描的原始数据。',
+  'explain.cnnInput.why':
+    '图像本来就是网格。保持网格形状（而不是立刻展平）让网络能利用“相邻像素相关”这一事实。',
+  'explain.cnnInput.simple': '一张小图片，铺成一面瓷砖墙，等着网络来观察。',
+  'explain.conv.what':
+    '一个 3×3 的卷积核在图像上滑动；每个位置把覆盖到的像素与核内权重相乘再求和，得到特征图上的一个像素。3 个核各自检测不同模式（竖直、水平、对角边缘），ReLU 只保留正响应。',
+  'explain.conv.why':
+    '同一个小滤波器在全图复用，参数远少于全连接层；而且无论模式出现在图像哪个位置都能被发现（平移不变性）。',
+  'explain.conv.simple': '像拿放大镜扫过图片：镜片要找的图案在哪儿透出来，特征图上哪儿就会亮起。',
+  'explain.pool.what': '特征图上每个 2×2 窗口被其中的最大值取代，把 6×6 的特征图缩小成 3×3。',
+  'explain.pool.why':
+    '在压缩数据的同时保留最强的证据，让网络更快，也对图案的微小位移更不敏感。',
+  'explain.pool.simple': '像给段落做摘要，只留下最有力的一句话——变小了，但信息还在。',
+  'explain.flatten.what':
+    '把 3×3×3 的池化特征图堆叠重新排成一条 27 个数字的列表。没有数学运算，只是形状变化。',
+  'explain.flatten.why': '全连接层需要一维向量输入，这一步是空间特征图通向分类器的桥梁。',
+  'explain.flatten.simple': '把一摞网格摊开拉成一条长线，交给最终的决策层。',
+  'explain.dense.what':
+    '全连接层：10 个神经元中的每一个都查看全部 27 个展平特征，加权求和、加偏置，再经过 ReLU。',
+  'explain.dense.why':
+    '它把来自每个位置、每个卷积核的证据混合起来，形成能区分类别的高层组合。',
+  'explain.dense.simple': '合议室：所有收集到的线索在这里一起权衡，然后给出结论。',
 }
 
 const ja: Dict = {
@@ -229,7 +323,56 @@ const ja: Dict = {
   'help.f': '選択ノードにフォーカス',
   'help.esc': '選択解除 / パネルを閉じる',
   'help.mouse': 'ドラッグで回転 · ホイールでズーム · 右ドラッグで移動 · ノードをクリックで詳細',
-  'hint.click': '任意のノードをクリックすると計算過程を確認できます',
+  'hint.click': 'ノードをクリックで計算過程を確認 · 層のタイトルをクリックでモジュール解説',
+  'explain.what': '何をするか',
+  'explain.why': 'なぜ必要か',
+  'explain.simple': 'やさしく言うと',
+  'explain.tip': 'ヒント：この層のノードをクリックすると実際の数値が見られます。',
+  'explain.input.what':
+    'ネットワークが受け取る生の数値を保持します——ここでは 4 次元の特徴ベクトルです。各球体が 1 つの特徴値で、この層では計算は行われません。',
+  'explain.input.why':
+    'ネットワークには固定された数値の入口が必要です。サンプルに関する情報はすべて、この数値として符号化されて初めて各層で処理できます。',
+  'explain.input.simple':
+    'ネットワークの感覚器官のようなもの：4 つの計器の読みが最初の層に手渡されます。',
+  'explain.hidden.what':
+    '各ニューロンはすべての入力に学習した重みを掛けて合計し、バイアスを加えた後、ReLU（正の値はそのまま、負の値はゼロ）を適用します。',
+  'explain.hidden.why':
+    '層を重ねることで特徴を曲げたり組み合わせたりして新しい特徴を作れます。非線形な ReLU がなければ、何層あっても 1 つの線形式に潰れてしまい、複雑なパターンを学べません。',
+  'explain.hidden.simple':
+    '小さな審査員の集まり：それぞれ証拠の重み付けが異なり、加重和が正のときだけ「発言」（発火）します。',
+  'explain.output.what':
+    '最後の全結合層がクラスごとのスコア（ロジット）を出し、softmax がそれを合計 1 の確率に変換します。',
+  'explain.output.why':
+    '任意のスコアを確率分布にすることで結果が読みやすくなり、学習の明確な目標にもなります。',
+  'explain.output.simple': 'スコアボード：最も確率が高いクラスがネットワークの予測です。',
+  'explain.cnnInput.what':
+    '8×8 のグレースケール画像——各キューブが 1 ピクセルで、明るさが値です。畳み込みが走査する生データです。',
+  'explain.cnnInput.why':
+    '画像はもともと格子です。すぐに平坦化せず格子のまま保つことで、「近くのピクセルは関係が深い」という性質を活かせます。',
+  'explain.cnnInput.simple': '小さな絵をタイルの壁として並べ、ネットワークに見せているところです。',
+  'explain.conv.what':
+    '3×3 のカーネルが画像上をスライドし、各位置で重なったピクセルと重みを掛けて合計し、特徴マップの 1 ピクセルを作ります。3 つのカーネルはそれぞれ別のパターン（縦・横・斜めのエッジ）を検出し、ReLU が正の応答だけを残します。',
+  'explain.conv.why':
+    '同じ小さなフィルタを画像全体で使い回すため、全結合層よりはるかに少ないパラメータで済み、パターンが画像のどこに現れても検出できます（平行移動不変性）。',
+  'explain.conv.simple':
+    '虫眼鏡で絵の上を掃くように：探しているパターンが透けて見える場所が光ります。',
+  'explain.pool.what':
+    '特徴マップの各 2×2 窓をその最大値で置き換え、6×6 のマップを 3×3 に縮小します。',
+  'explain.pool.why':
+    'データを圧縮しながら最も強い証拠を残すので、ネットワークが速くなり、パターンの小さなずれにも強くなります。',
+  'explain.pool.simple':
+    '段落を一番力強い一文だけ残して要約するようなもの——小さくなっても意味は残ります。',
+  'explain.flatten.what':
+    '3×3×3 のプーリング済み特徴マップを、27 個の数値が並ぶ 1 本のリストに並べ替えます。計算はなく、形が変わるだけです。',
+  'explain.flatten.why':
+    '全結合層は 1 次元ベクトルを入力とするため、空間的な特徴マップと分類器をつなぐ橋になります。',
+  'explain.flatten.simple':
+    '積み重なった格子をほどいて 1 本の長い列にし、最終判断の層へ渡します。',
+  'explain.dense.what':
+    '全結合層：10 個のニューロンそれぞれが 27 個の平坦化された特徴すべてを見て、重み付けして合計し、バイアスを加えて ReLU を通します。',
+  'explain.dense.why':
+    'あらゆる位置・あらゆるカーネルからの証拠を混ぜ合わせ、クラスを分ける高次の組み合わせを作ります。',
+  'explain.dense.simple': '評議室：集めた手がかりをまとめて検討し、結論を出す場所です。',
 }
 
 const dicts: Record<Lang, Dict> = { en, zh, ja }

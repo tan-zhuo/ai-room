@@ -4,13 +4,33 @@ import { MODELS } from '../nn/models'
 import { Arch, totalSteps, useStore, useT } from '../store'
 import { Vec3, mlpPos, cnnPos } from './layout'
 
-export function LayerLabel({ position, title, sub }: { position: Vec3; title: string; sub?: string }) {
+export function LayerLabel({
+  position,
+  title,
+  sub,
+  layer,
+}: {
+  position: Vec3
+  title: string
+  sub?: string
+  /** layer index (-1 = input); when provided, clicking opens the module explanation */
+  layer?: number
+}) {
+  const explain = useStore((s) => s.explain)
+  const setExplain = useStore((s) => s.setExplain)
+  const clickable = layer !== undefined
+  const active = clickable && explain === layer
   return (
     <Html position={position} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-      <div className="layer-label">
+      <button
+        className={`layer-label${clickable ? ' clickable' : ''}${active ? ' active' : ''}`}
+        style={{ pointerEvents: clickable ? 'auto' : 'none' }}
+        onClick={clickable ? () => setExplain(active ? null : layer) : undefined}
+        tabIndex={-1}
+      >
         <div className="layer-label-title">{title}</div>
         {sub && <div className="layer-label-sub">{sub}</div>}
-      </div>
+      </button>
     </Html>
   )
 }

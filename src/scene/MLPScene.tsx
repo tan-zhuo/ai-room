@@ -60,13 +60,14 @@ export function MLPScene() {
         <FlowParticles key={`p${k}`} segments={segs} layerIndex={k} />
       ))}
 
-      <LayerLabel position={mlpLabelAnchor(-1)} title={t('layer.input')} sub={`${MLP_SIZES[0]}`} />
+      <LayerLabel position={mlpLabelAnchor(-1)} title={t('layer.input')} sub={`${MLP_SIZES[0]}`} layer={-1} />
       {model.layers.map((layer, k) => (
         <LayerLabel
           key={`lb${k}`}
           position={mlpLabelAnchor(k)}
           title={k === lastLayer ? t('layer.output') : t('layer.hidden', { n: k + 1 })}
           sub={k === lastLayer ? 'softmax' : `${layer.biases.length} · ReLU`}
+          layer={k}
         />
       ))}
 

@@ -409,6 +409,32 @@ kbd {
   text-align: center;
   white-space: nowrap;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 3px 9px;
+  font: inherit;
+  color: inherit;
+}
+
+.layer-label.clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.layer-label.clickable:hover {
+  border-color: var(--border-strong);
+  background: rgba(9, 15, 27, 0.65);
+}
+
+.layer-label.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  box-shadow: 0 0 14px rgba(56, 214, 255, 0.35);
+}
+
+.layer-label.active .layer-label-title {
+  color: var(--accent);
 }
 
 .layer-label-title {
@@ -707,6 +733,41 @@ kbd {
 .prob-row .num {
   text-align: right;
   font-size: 11px;
+}
+
+/* ---------------------------------------------------------------- explain panel */
+
+.explain-section {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 12px;
+}
+
+.explain-section.what {
+  border-color: var(--accent);
+}
+
+.explain-section.why {
+  border-color: var(--neg);
+}
+
+.explain-section.simple {
+  border-color: #8f7bff;
+}
+
+.explain-text {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.explain-tip {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 /* ---------------------------------------------------------------- tooltip / toast / modal */

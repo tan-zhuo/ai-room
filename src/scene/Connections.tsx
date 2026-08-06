@@ -34,7 +34,7 @@ export function Connections({ segments, layerIndex, maxRadius = 0.03, highlight 
   useFrame(() => {
     const m = mesh.current
     if (!m) return
-    const { step, selected } = useStore.getState()
+    const { step, selected, explain } = useStore.getState()
     const active = highlight || step > layerIndex
     const selHere =
       !highlight && selected && selected.space === 'vector' && selected.layer === layerIndex
@@ -43,6 +43,7 @@ export function Connections({ segments, layerIndex, maxRadius = 0.03, highlight 
       if (selHere && selected.space === 'vector')
         b = selected.index === segments[i].target ? 2.6 : 0.1
       if (highlight) b = 1.8
+      else if (explain !== null) b *= explain === layerIndex ? 1.3 : 0.1
       weightColor(segments[i].w, maxW, b, color)
       m.setColorAt(i, color)
     }

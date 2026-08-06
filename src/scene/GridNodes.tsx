@@ -33,10 +33,11 @@ export function GridNodes({ slot, values, scale }: Props) {
   useFrame((state) => {
     const m = mesh.current
     if (!m) return
-    const { step, playing, transitioning } = useStore.getState()
+    const { step, playing, transitioning, explain } = useStore.getState()
     const t = state.clock.elapsedTime
     const computed = step > layer
     const inFlight = step === layer && (playing || transitioning)
+    const dim = explain !== null && explain !== layer
     const revealCount = computed ? perCh : inFlight ? Math.floor(flow.phase * perCh) : 0
     for (let ch = 0; ch < channels; ch++) {
       for (let k = 0; k < perCh; k++) {
@@ -54,6 +55,7 @@ export function GridNodes({ slot, values, scale }: Props) {
         if (shown) activationColor(values[ch][r][c], scale, color)
         else if (isCurrent) color.set('#ffffff').multiplyScalar(1.4 + 0.5 * Math.sin(t * 20))
         else color.copy(COLOR_IDLE)
+        if (dim) color.multiplyScalar(0.22)
         m.setColorAt(id, color)
       }
     }

@@ -24,13 +24,13 @@ export function CameraRig() {
   useEffect(() => {
     const c = controls.current
     if (!c) return
-    const { focusTarget, arch } = useStore.getState()
+    const { focusTarget, focusDistance, arch } = useStore.getState()
     let toTarget: THREE.Vector3
     let toPos: THREE.Vector3
     if (focusTarget) {
       toTarget = new THREE.Vector3(...focusTarget)
       const dir = camera.position.clone().sub(c.target).normalize()
-      toPos = toTarget.clone().add(dir.multiplyScalar(4.5))
+      toPos = toTarget.clone().add(dir.multiplyScalar(focusDistance))
     } else {
       if (focusNonce === 0) return
       const view = DEFAULT_VIEW[arch]

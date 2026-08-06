@@ -3,6 +3,8 @@ import { LANGS, LANG_LABEL } from '../i18n'
 import { MODELS } from '../nn/models'
 import { Arch, totalSteps, useStore, useT } from '../store'
 import { InspectorPanel } from './InspectorPanel'
+import { ExplainPanel } from './ExplainPanel'
+import { layerNameOf } from './layerName'
 import { IconNext, IconPause, IconPlay, IconPrev, IconReset, IconShuffle } from './icons'
 
 export function Hud() {
@@ -13,6 +15,7 @@ export function Hud() {
       <BottomBar />
       <Legend />
       <InspectorPanel />
+      <ExplainPanel />
       <Tooltip />
       <Toast />
       <HelpOverlay />
@@ -84,29 +87,10 @@ function BottomBar() {
   const total = totalSteps(arch)
   const running = playing || transitioning
 
-  const layerName = (k: number): string => {
-    if (arch === 'mlp') {
-      const last = MODELS.mlp.model.layers.length - 1
-      return k === last ? t('layer.output') : t('layer.hidden', { n: k + 1 })
-    }
-    const def = MODELS.cnn.model.layers[k]
-    if (k === MODELS.cnn.model.layers.length - 1) return t('layer.output')
-    switch (def.type) {
-      case 'conv':
-        return t('layer.conv')
-      case 'pool':
-        return t('layer.pool')
-      case 'flatten':
-        return t('layer.flatten')
-      default:
-        return t('layer.dense')
-    }
-  }
-
   let statusText: string
-  if (running && step < total) statusText = `${layerName(step)} · ${t('layer.computing')}`
+  if (running && step < total) statusText = `${layerNameOf(arch, step, t)} · ${t('layer.computing')}`
   else if (step === 0) statusText = t('step.inputLoaded')
-  else statusText = layerName(step - 1)
+  else statusText = layerNameOf(arch, step - 1, t)
 
   const classCount = arch === 'mlp' ? MODELS.mlp.classCount : MODELS.cnn.classCount
   const currentClass = arch === 'mlp' ? mlpClass : cnnClass
@@ -216,27 +200,7 @@ function Tooltip() {
 
   if (!hover) return null
 
-  const layerName = (() => {
-    const layer = hover.ref.layer
-    if (layer === -1) return t('layer.input')
-    if (arch === 'mlp') {
-      const last = MODELS.mlp.model.layers.length - 1
-      return layer === last ? t('layer.output') : t('layer.hidden', { n: layer + 1 })
-    }
-    const last = MODELS.cnn.model.layers.length - 1
-    if (layer === last) return t('layer.output')
-    const def = MODELS.cnn.model.layers[layer]
-    switch (def.type) {
-      case 'conv':
-        return t('layer.conv')
-      case 'pool':
-        return t('layer.pool')
-      case 'flatten':
-        return t('layer.flatten')
-      default:
-        return t('layer.dense')
-    }
-  })()
+  const layerName = layerNameOf(arch, hover.ref.layer, t)
 
   const where =
     hover.ref.space === 'vector'

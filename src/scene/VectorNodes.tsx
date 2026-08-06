@@ -25,10 +25,11 @@ export function VectorNodes({ positions, values, scale, layerIndex, radius, refF
   useFrame((state) => {
     const m = mesh.current
     if (!m) return
-    const { step, playing, transitioning } = useStore.getState()
+    const { step, playing, transitioning, explain } = useStore.getState()
     const t = state.clock.elapsedTime
     const computed = step > layerIndex
     const inFlight = step === layerIndex && (playing || transitioning)
+    const dim = explain !== null && explain !== layerIndex
     for (let i = 0; i < positions.length; i++) {
       const p = positions[i]
       const norm = computed ? Math.min(1, Math.abs(values[i]) / (scale || 1)) : 0
@@ -39,6 +40,7 @@ export function VectorNodes({ positions, values, scale, layerIndex, radius, refF
       m.setMatrixAt(i, dummy.matrix)
       if (computed) activationColor(values[i], scale, color)
       else color.copy(COLOR_IDLE).multiplyScalar(inFlight ? 1.7 + 0.6 * Math.sin(t * 6) : 1)
+      if (dim) color.multiplyScalar(0.22)
       m.setColorAt(i, color)
     }
     m.instanceMatrix.needsUpdate = true

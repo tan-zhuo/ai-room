@@ -47,8 +47,11 @@ interface AppState {
   cnnClass: number
   cnnTrace: CNNStep[]
   selected: NodeRef | null
+  /** layer index whose module explanation is open (-1 = input), for the current arch */
+  explain: number | null
   hoverInfo: HoverInfo | null
   focusTarget: [number, number, number] | null
+  focusDistance: number
   focusNonce: number
   helpOpen: boolean
   toast: string | null
@@ -61,11 +64,12 @@ interface AppState {
   cycleSpeed: () => void
   finishStep: () => void
   select: (ref: NodeRef | null) => void
+  setExplain: (layer: number | null) => void
   setHover: (h: HoverInfo | null) => void
   setLang: (l: Lang) => void
   cycleLang: () => void
   newSample: (cls?: number) => void
-  requestFocus: (pos: [number, number, number] | null) => void
+  requestFocus: (pos: [number, number, number] | null, distance?: number) => void
   toggleHelp: () => void
   showToast: (key: string) => void
 }
@@ -94,8 +98,10 @@ export const useStore = create<AppState>((set, get) => ({
   ...initialMLP,
   ...initialCNN,
   selected: null,
+  explain: null,
   hoverInfo: null,
   focusTarget: null,
+  focusDistance: 4.5,
   focusNonce: 0,
   helpOpen: false,
   toast: null,
@@ -110,6 +116,7 @@ export const useStore = create<AppState>((set, get) => ({
       playing: true,
       transitioning: false,
       selected: null,
+      explain: null,
       hoverInfo: null,
       focusTarget: null,
       focusNonce: s.focusNonce + 1,
@@ -157,7 +164,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ step: next, transitioning: false, playing: s.playing })
   },
 
-  select: (ref) => set({ selected: ref }),
+  select: (ref) => set({ selected: ref, ...(ref ? { explain: null } : {}) }),
+  setExplain: (layer) => set({ explain: layer, ...(layer !== null ? { selected: null } : {}) }),
   setHover: (h) => set({ hoverInfo: h }),
 
   setLang: (l) => set({ lang: l }),
@@ -175,7 +183,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ ...makeInputs(s.arch, chosen), step: 0, playing: true, transitioning: false })
   },
 
-  requestFocus: (pos) => set((s) => ({ focusTarget: pos, focusNonce: s.focusNonce + 1 })),
+  requestFocus: (pos, distance = 4.5) =>
+    set((s) => ({ focusTarget: pos, focusDistance: distance, focusNonce: s.focusNonce + 1 })),
 
   toggleHelp: () => set((s) => ({ helpOpen: !s.helpOpen })),
 

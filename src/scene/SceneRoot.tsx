@@ -5,6 +5,7 @@ import { MLPScene } from './MLPScene'
 import { CNNScene } from './CNNScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
+import { LayerHighlight } from './LayerHighlight'
 
 export function SceneRoot() {
   const arch = useStore((s) => s.arch)
@@ -27,6 +28,7 @@ export function SceneRoot() {
         infiniteGrid
       />
       {arch === 'mlp' ? <MLPScene /> : <CNNScene />}
+      <LayerHighlight />
       <Driver />
       <CameraRig />
       <EffectComposer>
