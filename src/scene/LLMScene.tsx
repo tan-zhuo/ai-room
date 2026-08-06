@@ -67,7 +67,7 @@ function FeedbackLoop() {
       curve: c,
       arrowPos: c.getPoint(0.985),
       arrowQuat: quat,
-      labelPos: c.getPoint(0.5).add(new THREE.Vector3(0, 1.4, 0)),
+      labelPos: c.getPoint(0.9).add(new THREE.Vector3(0, -1.2, 0)),
     }
   }, [outSlot, tokSlot, lastTokenPos])
 
