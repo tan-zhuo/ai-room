@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { MODELS } from '../nn/models'
+import { MODELS, getVAETask } from '../nn/models'
 import { unflattenIndex } from '../nn/cnn'
 import { Arch, NodeRef, useStore } from '../store'
 import {
@@ -270,7 +270,56 @@ function lstmSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function vaeSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  const task = getVAETask()
+  const model = task.model
+  if (sel.space === 'vector' && sel.layer === 0) {
+    const inS = aeSlot(-1) as GridSlot
+    model.enc.weights[sel.index].forEach((w, i) =>
+      segs.push({
+        a: v(gridPos(inS, 0, Math.floor(i / task.n), i % task.n)),
+        b: target,
+        w,
+        target: sel.index,
+      }),
+    )
+    return segs
+  }
+  if (sel.space === 'grid' && sel.layer === 1) {
+    const encS = aeSlot(0) as VecSlot
+    const head = sel.col === 0 ? model.muHead : model.lvHead
+    head.weights[sel.row].forEach((w, i) =>
+      segs.push({ a: v(vecPos(encS, i)), b: target, w, target: 0 }),
+    )
+    return segs
+  }
+  if (sel.space === 'vector' && sel.layer === 2) {
+    const msS = aeSlot(1) as GridSlot
+    segs.push({ a: v(gridPos(msS, 0, sel.index, 0)), b: target, w: 0.8, target: sel.index })
+    segs.push({ a: v(gridPos(msS, 0, sel.index, 1)), b: target, w: -0.8, target: sel.index })
+    return segs
+  }
+  if (sel.space === 'vector' && sel.layer === 3) {
+    const zS = aeSlot(2) as VecSlot
+    model.dec.weights[sel.index].forEach((w, i) =>
+      segs.push({ a: v(vecPos(zS, i)), b: target, w, target: sel.index }),
+    )
+    return segs
+  }
+  if (sel.space === 'grid' && sel.layer === 4) {
+    const decS = aeSlot(3) as VecSlot
+    const idx = sel.row * task.n + sel.col
+    model.out.weights[idx].forEach((w, i) =>
+      segs.push({ a: v(vecPos(decS, i)), b: target, w, target: 0 }),
+    )
+    return segs
+  }
+  return segs
+}
+
 function aeSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  if (useStore.getState().aeVariant === 'vae') return vaeSegments(sel, target)
   const segs: Segment[] = []
   const task = MODELS.ae
   const model = task.model

@@ -1,5 +1,16 @@
 import { create } from 'zustand'
-import { KernelMode, MODELS, Scale, extractTextFeatures, rebuildArch, rebuildLLM } from './nn/models'
+import {
+  AEVariant,
+  KernelMode,
+  MODELS,
+  Scale,
+  extractTextFeatures,
+  getVAETask,
+  rebuildArch,
+  rebuildLLM,
+  setAEVariantFlag,
+} from './nn/models'
+import { VAETrace, forwardVAE, generateVAE } from './nn/vae'
 import { LLMVariant } from './nn/transformer'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
@@ -55,6 +66,7 @@ const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4 }
 
 export function totalSteps(arch: Arch): number {
   if (arch === 'llm') return MODELS.llm.model.moe ? 11 : 9
+  if (arch === 'ae') return useStore.getState().aeVariant === 'vae' ? 5 : 4
   const fixed = FIXED_STEPS[arch]
   if (fixed !== undefined) return fixed
   return (MODELS[arch as 'mlp' | 'cnn' | 'text'].model as { layers: unknown[] }).layers.length
@@ -116,6 +128,8 @@ interface AppState {
   aeInput: Tensor3
   aeClass: number
   aeTrace: DenseTrace[]
+  aeVariant: AEVariant
+  vaeTrace: VAETrace | null
   selected: NodeRef | null
   /** layer index whose module explanation is open (-1 = input), for the current arch */
   explain: number | null
@@ -130,6 +144,9 @@ interface AppState {
   setScale: (size: Scale) => void
   setKernelMode: (mode: KernelMode) => void
   setLLMVariant: (variant: LLMVariant) => void
+  setAEVariant: (variant: AEVariant) => void
+  resampleVAE: () => void
+  generateFromPrior: () => void
   toggleMenu: () => void
   toggleOverview: () => void
   toggleDraw: () => void
@@ -234,6 +251,8 @@ export const useStore = create<AppState>((set, get) => ({
   ...(makeInputs('rnn', 0) as { rnnText: string; rnnClass: number; rnnTrace: RNNTrace }),
   ...(makeInputs('lstm', 0) as { lstmText: string; lstmClass: number; lstmTrace: LSTMTrace }),
   ...(makeInputs('ae', 0) as { aeInput: Tensor3; aeClass: number; aeTrace: DenseTrace[] }),
+  aeVariant: 'ae',
+  vaeTrace: null,
   selected: null,
   explain: null,
   hoverInfo: null,
@@ -339,6 +358,58 @@ export const useStore = create<AppState>((set, get) => ({
     }, 60)
   },
 
+  setAEVariant: (variant) => {
+    const s = get()
+    if (s.arch !== 'ae' || s.aeVariant === variant) return
+    if (variant === 'vae') get().showToast('toast.training')
+    setTimeout(() => {
+      setAEVariantFlag(variant) // trains the VAE lazily on first use
+      refreshLayout()
+      flow.phase = 0
+      flow.hold = 0
+      set((st) => ({
+        aeVariant: variant,
+        modelsVersion: st.modelsVersion + 1,
+        vaeTrace:
+          variant === 'vae'
+            ? forwardVAE(getVAETask().model, get().aeInput[0].flat(), undefined, sampleRng)
+            : null,
+        ...restart,
+        selected: null,
+        explain: null,
+        hoverInfo: null,
+      }))
+    }, 60)
+  },
+
+  /** VAE: draw a fresh ε through the same input — shows the stochastic bottleneck. */
+  resampleVAE: () => {
+    const s = get()
+    if (s.arch !== 'ae' || s.aeVariant !== 'vae') return
+    flow.phase = 0
+    set({
+      vaeTrace: forwardVAE(getVAETask().model, s.aeInput[0].flat(), undefined, sampleRng),
+      step: totalSteps('ae'),
+      playing: false,
+      transitioning: false,
+    })
+  },
+
+  /** VAE: sample z straight from the prior and decode — pure generation. */
+  generateFromPrior: () => {
+    const s = get()
+    if (s.arch !== 'ae' || s.aeVariant !== 'vae') return
+    flow.phase = 0
+    set({
+      vaeTrace: generateVAE(getVAETask().model, sampleRng),
+      aeClass: -1,
+      step: totalSteps('ae'),
+      playing: false,
+      transitioning: false,
+      selected: null,
+    })
+  },
+
   toggleMenu: () => set((s) => ({ menuOpen: !s.menuOpen })),
 
   toggleOverview: () =>
@@ -383,6 +454,10 @@ export const useStore = create<AppState>((set, get) => ({
         aeInput: img,
         aeClass: -1,
         aeTrace: forwardMLP(MODELS.ae.model, img[0].flat()),
+        vaeTrace:
+          s.aeVariant === 'vae'
+            ? forwardVAE(getVAETask().model, img[0].flat(), get().vaeTrace?.eps, sampleRng)
+            : null,
         step: totalSteps('ae'),
         playing: false,
         transitioning: false,
@@ -412,6 +487,10 @@ export const useStore = create<AppState>((set, get) => ({
         aeInput: img,
         aeClass: -1,
         aeTrace: forwardMLP(MODELS.ae.model, img[0].flat()),
+        vaeTrace:
+          s.aeVariant === 'vae'
+            ? forwardVAE(getVAETask().model, img[0].flat(), undefined, sampleRng)
+            : null,
         step: totalSteps('ae'),
         playing: false,
         transitioning: false,
@@ -481,7 +560,12 @@ export const useStore = create<AppState>((set, get) => ({
     const chosen = cls ?? Math.floor(sampleRng() * classCountOf(s.arch))
     flow.phase = 0
     flow.hold = 0
-    set({ ...makeInputs(s.arch, chosen), ...restart, llmGenerated: '', llmGenerating: false })
+    const inputs = makeInputs(s.arch, chosen)
+    set({ ...inputs, ...restart, llmGenerated: '', llmGenerating: false })
+    if (s.arch === 'ae' && s.aeVariant === 'vae') {
+      const img = (inputs as { aeInput: Tensor3 }).aeInput
+      set({ vaeTrace: forwardVAE(getVAETask().model, img[0].flat(), undefined, sampleRng) })
+    }
   },
 
   setTextInput: (raw) => {

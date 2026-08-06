@@ -36,6 +36,8 @@ The classic gated recurrent cell, fully visualized: four gate sheets (forget / i
 
 Self-supervised: the 8×8 input is squeezed through a 6-number latent bottleneck and reconstructed, trained by MSE with no labels. Draw your own pattern and watch it survive (or not) the round trip; inspect any output pixel to compare original vs reconstructed values.
 
+Toggle to **VAE**: the bottleneck becomes a distribution (μ, log σ²) with reparameterized sampling z = μ + ε·σ and a KL loss — resample ε to see the stochastic bottleneck, or hit **Generate** to decode z drawn straight from N(0,1): brand-new images from the latent prior.
+
 ### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):

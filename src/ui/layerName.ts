@@ -1,4 +1,4 @@
-import { MODELS } from '../nn/models'
+import { AE_VARIANT, MODELS } from '../nn/models'
 import { Arch } from '../store'
 import { LLMStageKind, llmStageKind } from '../scene/layout'
 
@@ -39,6 +39,7 @@ const LLM_KIND_EXPLAIN: Record<LLMStageKind, string> = {
 const RNN_LAYER_KEYS = ['layer.embed', 'layer.rnnHidden', 'layer.output']
 const LSTM_LAYER_KEYS = ['layer.embed', 'layer.gates', 'layer.cell', 'layer.rnnHidden', 'layer.output']
 const AE_LAYER_KEYS = ['layer.encoder', 'layer.latent', 'layer.decoder', 'layer.recon']
+const VAE_LAYER_KEYS = ['layer.encoder', '', 'layer.sampleZ', 'layer.decoder', 'layer.recon']
 
 /** Localized display name for a layer (-1 = input). */
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
@@ -53,6 +54,10 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
   }
   if (arch === 'ae') {
     if (layer === -1) return t('layer.input')
+    if (AE_VARIANT === 'vae') {
+      const key = VAE_LAYER_KEYS[layer]
+      return key === '' ? 'μ · log σ²' : t(key ?? 'layer.recon')
+    }
     return t(AE_LAYER_KEYS[layer] ?? 'layer.recon')
   }
   if (layer === -1) return t('layer.input')
@@ -87,6 +92,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
     return ['tokens', 'embed', 'gates', 'cellstate', 'lstmHidden', 'llmOutput'][layer + 1] ?? 'llmOutput'
   }
   if (arch === 'ae') {
+    if (AE_VARIANT === 'vae') {
+      return ['aeInput', 'encoder', 'muSigma', 'sampleZ', 'decoder', 'recon'][layer + 1] ?? 'recon'
+    }
     return ['aeInput', 'encoder', 'latent', 'decoder', 'recon'][layer + 1] ?? 'recon'
   }
   if (arch === 'text') {

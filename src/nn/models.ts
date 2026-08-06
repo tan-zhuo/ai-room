@@ -17,7 +17,26 @@ import {
 } from './cnn'
 import { LLMTask, LLMVariant, buildLLMTask } from './transformer'
 import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
+import { VAETask, buildVAETask } from './vae'
 import { trainMLPMSE } from './mlp'
+
+export type AEVariant = 'ae' | 'vae'
+
+/** Which flavour the Autoencoder arch is currently showing (layout reads this). */
+export let AE_VARIANT: AEVariant = 'ae'
+
+let vaeTask: VAETask | null = null
+
+/** Lazily build + train the VAE the first time it is requested. */
+export function getVAETask(): VAETask {
+  if (!vaeTask) vaeTask = buildVAETask(cnnSampleOfSize)
+  return vaeTask
+}
+
+export function setAEVariantFlag(v: AEVariant): void {
+  AE_VARIANT = v
+  if (v === 'vae') getVAETask()
+}
 
 export type KernelMode = 'hand' | 'learned'
 

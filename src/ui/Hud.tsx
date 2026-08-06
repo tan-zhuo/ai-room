@@ -413,6 +413,37 @@ function CNNControls() {
       {arch !== 'cnn' ? null : (
         <KernelChips cnnKernels={cnnKernels} setKernelMode={setKernelMode} />
       )}
+      {arch === 'ae' && <AEVariantChips />}
+    </>
+  )
+}
+
+/** Plain AE vs VAE toggle, plus VAE sampling controls. */
+function AEVariantChips() {
+  const t = useT()
+  const variant = useStore((s) => s.aeVariant)
+  const setAEVariant = useStore((s) => s.setAEVariant)
+  const resampleVAE = useStore((s) => s.resampleVAE)
+  const generateFromPrior = useStore((s) => s.generateFromPrior)
+  return (
+    <>
+      <span className="chip-divider" />
+      <button className={`chip${variant === 'ae' ? ' active' : ''}`} onClick={() => setAEVariant('ae')}>
+        {t('ae.plainChip')}
+      </button>
+      <button className={`chip${variant === 'vae' ? ' active' : ''}`} onClick={() => setAEVariant('vae')}>
+        VAE
+      </button>
+      {variant === 'vae' && (
+        <>
+          <button className="chip" onClick={resampleVAE} title={t('vae.resampleTip')}>
+            🎲 {t('vae.resample')}
+          </button>
+          <button className="chip gen" onClick={generateFromPrior} title={t('vae.generateTip')}>
+            ✨ {t('vae.generate')}
+          </button>
+        </>
+      )}
     </>
   )
 }

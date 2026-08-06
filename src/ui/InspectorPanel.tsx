@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { MODELS } from '../nn/models'
+import { MODELS, getVAETask } from '../nn/models'
 import { ActivationKind } from '../nn/mlp'
 import { convAt, poolAt, unflattenIndex } from '../nn/cnn'
 import { NodeRef, useStore, useT } from '../store'
@@ -620,12 +620,147 @@ function LSTMDetail({ sel }: { sel: NodeRef }): ReactNode {
   return null
 }
 
+function VAEDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const input = useStore((s) => s.aeInput)
+  const trace = useStore((s) => s.vaeTrace)
+  const t = useT()
+  const task = getVAETask()
+  const model = task.model
+  if (!trace) return null
+
+  if (sel.space === 'grid' && sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          {t('panel.pixel')} ({sel.row}, {sel.col})
+        </h4>
+        <div className="big-value num">{fmt(input[0][sel.row][sel.col])}</div>
+      </section>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer === 0 && trace.h.a.length) {
+    return (
+      <DenseComputation
+        prev={input[0].flat()}
+        prevLabel={(i) => `px(${Math.floor(i / task.n)},${i % task.n})`}
+        weights={model.enc.weights[sel.index]}
+        bias={model.enc.biases[sel.index]}
+        z={trace.h.z[sel.index]}
+        a={trace.h.a[sel.index]}
+        activation="relu"
+      />
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 1 && trace.h.a.length) {
+    const head = sel.col === 0 ? model.muHead : model.lvHead
+    const val = sel.col === 0 ? trace.mu[sel.row] : trace.logvar[sel.row]
+    return (
+      <>
+        <section>
+          <h4>
+            {sel.col === 0 ? 'μ' : 'log σ²'}[{sel.row}]
+          </h4>
+          <ProductRows prev={trace.h.a} prevLabel={(i) => `#${i + 1}`} weights={head.weights[sel.row]} />
+        </section>
+        <section>
+          <h4>{t('panel.sum')}</h4>
+          <div className="calc-chain">
+            <span>
+              Σ + b = <b className="num accent">{fmt(val)}</b>
+            </span>
+            {sel.col === 1 && (
+              <span>
+                σ = e^(z/2) = <b className="num">{fmt(trace.sigma[sel.row])}</b>
+              </span>
+            )}
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer === 2) {
+    const i = sel.index
+    return (
+      <>
+        <section>
+          <h4>z = μ + ε · σ</h4>
+          <div className="calc-chain">
+            <span>
+              μ = <b className="num">{fmt(trace.mu[i])}</b>
+            </span>
+            <span>
+              σ = <b className="num">{fmt(trace.sigma[i])}</b>
+            </span>
+            <span>
+              ε = <b className="num">{fmt(trace.eps[i])}</b>
+            </span>
+            <span>
+              → z = <b className="num accent">{fmt(trace.z[i])}</b>
+            </span>
+          </div>
+        </section>
+        <section>
+          <h4>{t('panel.activation')}</h4>
+          <p className="explain-text">{t('vae.reparamNote')}</p>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer === 3) {
+    return (
+      <DenseComputation
+        prev={trace.z}
+        prevLabel={(i) => `z[${i}]`}
+        weights={model.dec.weights[sel.index]}
+        bias={model.dec.biases[sel.index]}
+        z={trace.d.z[sel.index]}
+        a={trace.d.a[sel.index]}
+        activation="relu"
+      />
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 4) {
+    const idx = sel.row * task.n + sel.col
+    const original = input[0][sel.row][sel.col]
+    const recon = trace.o.a[idx]
+    return (
+      <>
+        <DenseComputation
+          prev={trace.d.a}
+          prevLabel={(i) => `#${i + 1}`}
+          weights={model.out.weights[idx]}
+          bias={model.out.biases[idx]}
+          z={trace.o.z[idx]}
+          a={recon}
+          activation="sigmoid"
+        />
+        {!trace.generated && (
+          <section>
+            <h4>{t('ae.compare')}</h4>
+            <div className="calc-chain">
+              <span>
+                {t('ae.original')}: <b className="num">{fmt(original)}</b>
+              </span>
+              <span>
+                {t('ae.recon')}: <b className="num accent">{fmt(recon)}</b>
+              </span>
+            </div>
+          </section>
+        )}
+      </>
+    )
+  }
+  return null
+}
+
 function AEDetail({ sel }: { sel: NodeRef }): ReactNode {
   const input = useStore((s) => s.aeInput)
   const trace = useStore((s) => s.aeTrace)
+  const variant = useStore((s) => s.aeVariant)
   const t = useT()
   const task = MODELS.ae
   const model = task.model
+  if (variant === 'vae') return <VAEDetail sel={sel} />
 
   if (sel.space === 'grid' && sel.layer === -1) {
     return (

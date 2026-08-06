@@ -357,6 +357,26 @@ const en: Dict = {
   'ae.compare': 'Original vs reconstruction',
   'ae.original': 'original',
   'ae.recon': 'reconstructed',
+  'ae.plainChip': 'Plain AE',
+  'layer.sampleZ': 'Sample z',
+  'vae.resample': 'Resample ε',
+  'vae.resampleTip': 'Draw a fresh ε through the same input — the bottleneck is stochastic',
+  'vae.generate': 'Generate',
+  'vae.generateTip': 'Sample z straight from N(0,1) and decode — pure generation, no input',
+  'vae.generatedBadge': 'Sampled from the latent prior — a brand-new image',
+  'vae.reparamNote':
+    'The reparameterization trick: randomness lives only in ε, so gradients can flow through μ and σ during training.',
+  'explain.muSigma.what':
+    'Instead of one code, the encoder outputs a distribution per latent dimension: a mean μ and a log-variance log σ². The input is now a fuzzy region of latent space, not a single point.',
+  'explain.muSigma.why':
+    'Making the code a distribution (pulled toward N(0,1) by the KL loss) organizes the latent space so that every region decodes to something sensible — the property that makes generation possible.',
+  'explain.muSigma.simple':
+    'The summary is no longer an exact address but a neighborhood: "somewhere around here".',
+  'explain.sampleZ.what':
+    'A concrete code is drawn from the distribution: z = μ + ε·σ with ε ~ N(0,1). The reparameterization trick keeps the randomness in ε so gradients can still flow through μ and σ.',
+  'explain.sampleZ.why':
+    'Sampling during training forces the decoder to tolerate noise around μ, smoothing the latent space. At generation time, sampling z from N(0,1) yields entirely new images.',
+  'explain.sampleZ.simple': 'Roll the dice inside the neighborhood, then hand the resulting spot to the decoder.',
   'explain.rnnHidden.what':
     'The sheet is read row by row: at each timestep the hidden state is recomputed as h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) — the same two weight matrices reused at every step.',
   'explain.rnnHidden.why':
@@ -737,6 +757,24 @@ const zh: Dict = {
   'ae.compare': '原图 vs 重建',
   'ae.original': '原始值',
   'ae.recon': '重建值',
+  'ae.plainChip': '标准 AE',
+  'layer.sampleZ': '采样 z',
+  'vae.resample': '重采样 ε',
+  'vae.resampleTip': '同一输入换一个 ε——瓶颈是随机的',
+  'vae.generate': '随机生成',
+  'vae.generateTip': '直接从 N(0,1) 采样 z 并解码——不需要任何输入的纯生成',
+  'vae.generatedBadge': '从潜空间先验采样——一张全新的图',
+  'vae.reparamNote': '重参数化技巧：随机性只存在于 ε 中，因此训练时梯度能够穿过 μ 和 σ。',
+  'explain.muSigma.what':
+    '编码器不再输出一个确定的编码，而是每个潜维度输出一个分布：均值 μ 和对数方差 log σ²。输入对应的不再是潜空间中的一个点，而是一片模糊的区域。',
+  'explain.muSigma.why':
+    '把编码变成分布（并用 KL 损失把它拉向 N(0,1)）会把潜空间整理得处处有意义——任何区域解码出来都是合理的图像，这正是"能生成"的前提。',
+  'explain.muSigma.simple': '摘要不再是精确地址，而是一个街区："大概在这一带"。',
+  'explain.sampleZ.what':
+    '从分布中抽出一个具体编码：z = μ + ε·σ，其中 ε ~ N(0,1)。重参数化技巧把随机性留在 ε 里，梯度因此仍能穿过 μ 和 σ。',
+  'explain.sampleZ.why':
+    '训练时的采样迫使解码器容忍 μ 附近的噪声，从而平滑整个潜空间；生成时直接从 N(0,1) 采样 z，就能得到全新的图像。',
+  'explain.sampleZ.simple': '在街区里掷一次骰子选定落点，再把这个落点交给解码器。',
   'explain.rnnHidden.what':
     '这张表逐行计算：每个时间步的隐状态由 h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) 重新算出——每一步复用同样的两个权重矩阵。',
   'explain.rnnHidden.why':
@@ -1130,6 +1168,25 @@ const ja: Dict = {
   'ae.compare': '元画像 vs 再構成',
   'ae.original': '元の値',
   'ae.recon': '再構成値',
+  'ae.plainChip': '標準AE',
+  'layer.sampleZ': 'z をサンプル',
+  'vae.resample': 'ε を再サンプル',
+  'vae.resampleTip': '同じ入力で別の ε を引く——ボトルネックは確率的です',
+  'vae.generate': '生成',
+  'vae.generateTip': 'N(0,1) から z を直接サンプリングして復号——入力なしの純粋な生成',
+  'vae.generatedBadge': '潜在事前分布からサンプリング——全く新しい画像',
+  'vae.reparamNote':
+    '再パラメータ化トリック：ランダム性は ε だけに存在するため、学習時に勾配が μ と σ を通過できます。',
+  'explain.muSigma.what':
+    'エンコーダは 1 つのコードではなく、潜在次元ごとに分布を出力します：平均 μ と対数分散 log σ²。入力は潜在空間の一点ではなく、ぼんやりした領域に対応します。',
+  'explain.muSigma.why':
+    'コードを分布にし（KL 損失で N(0,1) に引き寄せ）ることで、潜在空間のどこを復号しても意味のある画像になるよう整えられます——これが「生成できる」ための条件です。',
+  'explain.muSigma.simple': '要約は正確な住所ではなく「だいたいこの辺り」という街区になります。',
+  'explain.sampleZ.what':
+    '分布から具体的なコードを 1 つ引きます：z = μ + ε·σ、ε ~ N(0,1)。再パラメータ化によりランダム性は ε に留まり、勾配は μ と σ を通過できます。',
+  'explain.sampleZ.why':
+    '学習中のサンプリングはデコーダに μ 周辺のノイズへの耐性を強い、潜在空間を滑らかにします。生成時は N(0,1) から z を引くだけで新しい画像が得られます。',
+  'explain.sampleZ.simple': '街区の中でサイコロを振って落下点を決め、それをデコーダに渡します。',
   'explain.rnnHidden.what':
     'このシートは行ごとに計算されます：各時刻の隠れ状態は h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) で更新され、どの時刻でも同じ 2 つの重み行列を使い回します。',
   'explain.rnnHidden.why':

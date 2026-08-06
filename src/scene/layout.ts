@@ -2,7 +2,7 @@
 // Layouts are derived from the CURRENT models (which can be rebuilt at a new
 // scale), so cached slot tables are refreshed via refreshLayout().
 
-import { MODELS } from '../nn/models'
+import { AE_VARIANT, MODELS, getVAETask } from '../nn/models'
 import { CNNLayerDef, unflattenIndex } from '../nn/cnn'
 import type { Arch, NodeRef } from '../store'
 
@@ -268,8 +268,23 @@ function computeLstmSlots(): CNNSlot[] {
 // -1 input image, 0 encoder, 1 latent bottleneck, 2 decoder, 3 reconstruction.
 
 export const AE_STEPS = 4
+export const VAE_STEPS = 5
 
 function computeAeSlots(): CNNSlot[] {
+  if (AE_VARIANT === 'vae') {
+    const t = getVAETask()
+    const enc = t.model.enc.biases.length
+    const dec = t.model.dec.biases.length
+    const xs = [-9.4, -5.4, -1.9, 1.2, 4.6, 8.6]
+    return [
+      { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[0], chGap: 0 },
+      { kind: 'vector', layer: 0, size: enc, x: xs[1], gapY: Math.min(0.72, 13 / enc) },
+      { kind: 'grid', layer: 1, channels: 1, rows: t.latent, cols: 2, cell: 0.7, x: xs[2], chGap: 0 },
+      { kind: 'vector', layer: 2, size: t.latent, x: xs[3], gapY: 1.1 },
+      { kind: 'vector', layer: 3, size: dec, x: xs[4], gapY: Math.min(0.72, 13 / dec) },
+      { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[5], chGap: 0 },
+    ]
+  }
   const t = MODELS.ae
   const enc = t.model.layers[0].biases.length
   const dec = t.model.layers[2].biases.length
