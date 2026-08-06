@@ -68,6 +68,9 @@ interface AppState {
   llmText: string
   llmClass: number
   llmTrace: LLMTrace
+  /** characters produced so far in autoregressive generation mode */
+  llmGenerated: string
+  llmGenerating: boolean
   selected: NodeRef | null
   /** layer index whose module explanation is open (-1 = input), for the current arch */
   explain: number | null
@@ -94,6 +97,8 @@ interface AppState {
   newSample: (cls?: number) => void
   setTextInput: (raw: string) => void
   setLLMInput: (raw: string) => void
+  toggleGenerate: () => void
+  commitGeneratedChar: () => void
   requestFocus: (pos: [number, number, number] | null, distance?: number) => void
   toggleHelp: () => void
   showToast: (key: string) => void
@@ -149,6 +154,8 @@ export const useStore = create<AppState>((set, get) => ({
     textTrace: DenseTrace[]
   }),
   ...(makeInputs('llm', 0) as { llmText: string; llmClass: number; llmTrace: LLMTrace }),
+  llmGenerated: '',
+  llmGenerating: false,
   selected: null,
   explain: null,
   hoverInfo: null,
@@ -170,6 +177,8 @@ export const useStore = create<AppState>((set, get) => ({
       hoverInfo: null,
       focusTarget: null,
       focusNonce: s.focusNonce + 1,
+      llmGenerated: '',
+      llmGenerating: false,
     }))
   },
 
@@ -226,7 +235,7 @@ export const useStore = create<AppState>((set, get) => ({
   reset: () => {
     flow.phase = 0
     flow.hold = 0
-    set({ step: 0, playing: false, transitioning: false })
+    set({ step: 0, playing: false, transitioning: false, llmGenerating: false })
   },
 
   cycleSpeed: () => {
@@ -256,7 +265,7 @@ export const useStore = create<AppState>((set, get) => ({
     const chosen = cls ?? Math.floor(sampleRng() * classCountOf(s.arch))
     flow.phase = 0
     flow.hold = 0
-    set({ ...makeInputs(s.arch, chosen), ...restart })
+    set({ ...makeInputs(s.arch, chosen), ...restart, llmGenerated: '', llmGenerating: false })
   },
 
   setTextInput: (raw) => {
@@ -281,6 +290,56 @@ export const useStore = create<AppState>((set, get) => ({
       llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(raw)),
       ...restart,
       selected: null,
+      llmGenerated: '',
+      llmGenerating: false,
+    })
+  },
+
+  toggleGenerate: () => {
+    const s = get()
+    if (s.llmGenerating) {
+      set({ llmGenerating: false })
+      return
+    }
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      llmGenerated: '',
+      llmGenerating: true,
+      llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(s.llmText)),
+      ...restart,
+      selected: null,
+    })
+  },
+
+  /** Sample the next character from the current distribution, append it to the
+   *  context and start the next forward pass — one autoregressive step. */
+  commitGeneratedChar: () => {
+    const s = get()
+    const model = MODELS.llm.model
+    // temperature sampling keeps the text lively without going random
+    const temp = 0.7
+    const logits = s.llmTrace.probs.map((p) => Math.log(Math.max(p, 1e-9)) / temp)
+    const m = Math.max(...logits)
+    const exps = logits.map((v) => Math.exp(v - m))
+    const sum = exps.reduce((acc, v) => acc + v, 0)
+    let r = sampleRng() * sum
+    let idx = 0
+    for (; idx < exps.length - 1; idx++) {
+      r -= exps[idx]
+      if (r <= 0) break
+    }
+    const generated = s.llmGenerated + model.vocab[idx]
+    const keepGoing = s.llmGenerating && generated.length < 30
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      llmGenerated: generated,
+      llmGenerating: keepGoing,
+      llmTrace: forwardLLM(model, llmIdsFor(s.llmText + generated)),
+      step: 0,
+      playing: keepGoing,
+      transitioning: false,
     })
   },
 

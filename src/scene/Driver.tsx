@@ -6,9 +6,18 @@ export function Driver() {
   useFrame((_, dt) => {
     const s = useStore.getState()
     const total = totalSteps(s.arch)
+    const generating = s.arch === 'llm' && s.llmGenerating
     if (s.playing && s.step >= total) {
-      // hold on the finished network, then loop
       flow.hold += dt
+      if (generating) {
+        // brief pause on the prediction, then commit the char and run again
+        if (flow.hold > 0.45) {
+          flow.hold = 0
+          useStore.getState().commitGeneratedChar()
+        }
+        return
+      }
+      // hold on the finished network, then loop
       if (flow.hold > 1.6) {
         flow.hold = 0
         flow.phase = 0
@@ -21,7 +30,8 @@ export function Driver() {
       useStore.setState({ transitioning: false })
       return
     }
-    const dur = stepDuration(s.arch, s.step)
+    // generation mode runs the pipeline much faster so characters stream out
+    const dur = stepDuration(s.arch, s.step) * (generating ? 0.22 : 1)
     flow.phase += (dt / dur) * s.speed * (s.transitioning ? 1.7 : 1)
     if (flow.phase >= 1) {
       flow.phase = 0

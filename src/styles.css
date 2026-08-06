@@ -384,6 +384,57 @@ kbd {
   font-size: 11px;
 }
 
+.chip.gen {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chip.gen.stop {
+  border-color: var(--neg);
+  background: rgba(255, 138, 60, 0.12);
+  color: var(--neg);
+}
+
+.gen-banner {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(720px, 80vw);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-family: var(--mono);
+  font-size: 16px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.gen-prompt {
+  color: var(--muted);
+}
+
+.gen-out {
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(56, 214, 255, 0.5);
+}
+
+.gen-caret {
+  color: var(--accent);
+  animation: caretBlink 0.8s steps(1) infinite;
+}
+
+@keyframes caretBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
 /* ---------------------------------------------------------------- legend */
 
 .legend {

@@ -12,6 +12,7 @@ export function Hud() {
     <div className="hud">
       <TopBar />
       <Hint />
+      <GenBanner />
       <BottomBar />
       <Legend />
       <InspectorPanel />
@@ -134,6 +135,34 @@ function TextEntry() {
       <button className="chip run" onClick={submit}>
         {t('controls.run')}
       </button>
+      {arch === 'llm' && <GenerateButton />}
+    </div>
+  )
+}
+
+function GenerateButton() {
+  const t = useT()
+  const generating = useStore((s) => s.llmGenerating)
+  const toggleGenerate = useStore((s) => s.toggleGenerate)
+  return (
+    <button className={`chip gen${generating ? ' stop' : ''}`} onClick={toggleGenerate}>
+      {generating ? t('llm.stop') : t('llm.generate')}
+    </button>
+  )
+}
+
+/** Streaming output: prompt + characters generated so far, with a caret. */
+function GenBanner() {
+  const arch = useStore((s) => s.arch)
+  const prompt = useStore((s) => s.llmText)
+  const generated = useStore((s) => s.llmGenerated)
+  const generating = useStore((s) => s.llmGenerating)
+  if (arch !== 'llm' || (!generated && !generating)) return null
+  return (
+    <div className="gen-banner">
+      <span className="gen-prompt">{prompt}</span>
+      <span className="gen-out">{generated}</span>
+      {generating && <span className="gen-caret">▊</span>}
     </div>
   )
 }

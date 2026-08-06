@@ -157,6 +157,8 @@ const en: Dict = {
   'layer.attnout': 'Weighted sum A·V',
   'layer.ffn': 'Feed-forward',
   'llm.next': 'Next char',
+  'llm.generate': 'Generate',
+  'llm.stop': 'Stop',
   'llm.masked': 'Masked (future token)',
   'llm.maskedNote':
     'Token i may only attend to tokens ≤ i — the model must not peek at the future it is trying to predict.',
@@ -356,6 +358,8 @@ const zh: Dict = {
   'layer.attnout': '加权求和 A·V',
   'layer.ffn': '前馈层',
   'llm.next': '下一个字符',
+  'llm.generate': '连续生成',
+  'llm.stop': '停止',
   'llm.masked': '已掩码（未来 token）',
   'llm.maskedNote': 'token i 只能关注 ≤ i 的 token——模型不能偷看它正要预测的未来。',
   'llm.score': '得分',
@@ -554,6 +558,8 @@ const ja: Dict = {
   'layer.attnout': '加重和 A·V',
   'layer.ffn': 'FFN',
   'llm.next': '次の文字',
+  'llm.generate': '連続生成',
+  'llm.stop': '停止',
   'llm.masked': 'マスク済み（未来トークン）',
   'llm.maskedNote':
     'トークン i は i 以前のトークンにしか注目できません——予測しようとしている未来を覗いてはいけないからです。',

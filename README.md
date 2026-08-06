@@ -28,6 +28,8 @@ Hand-crafted Sobel edge kernels + a trained dense head classify patterns (vertic
 
 A 1-block, 1-head character-level transformer with **hand-written forward AND backward passes**, trained in-browser on a small corpus (~2s). Embeddings → Q/K/V → causal scaled-dot-product attention (the 8×8 matrix lights up row by row) → weighted sum → FFN → next-character prediction. Type a prompt, watch it predict: `"the ai r"` → `o` (room), `"hello wo"` → `r` (world).
 
+Hit **Generate · 连续生成** for true autoregressive decoding: the sampled character is appended to the context, the window slides, the whole pipeline re-runs — and the output streams onto the screen one character at a time, exactly how real LLMs write.
+
 ![Tiny transformer](docs/llm.gif)
 
 ## Inspect any node · 点开任意节点
@@ -85,5 +87,5 @@ src/
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
 - **TEXT**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。
-- **LLM**：字符级单头 Transformer，前向与反向传播均为手写实现，浏览器内训练；注意力矩阵逐行点亮，可点开任意格子查看 q·k/√d 与 softmax 的完整算式；输入前缀实时预测下一个字符。
+- **LLM**：字符级单头 Transformer，前向与反向传播均为手写实现，浏览器内训练；注意力矩阵逐行点亮，可点开任意格子查看 q·k/√d 与 softmax 的完整算式；输入前缀实时预测下一个字符。点击「连续生成」进入自回归解码：采样的字符拼回上下文、窗口滑动、流水线重跑——文字像真正的 LLM 一样一个字一个字流出来。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。
