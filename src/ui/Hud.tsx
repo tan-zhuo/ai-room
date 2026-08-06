@@ -36,11 +36,15 @@ const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'cnn', kbd: '2' },
   { arch: 'rnn', kbd: '3' },
   { arch: 'lstm', kbd: '4' },
-  { arch: 'ae', kbd: '5' },
-  { arch: 'llm', kbd: '6' },
+  { arch: 'llm', kbd: '5' },
 ]
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '7' }]
+const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
+  { arch: 'ae', kbd: '6' },
+  { arch: 'diff', kbd: '7' },
+]
+
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '8' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -181,6 +185,8 @@ function Drawer() {
         </header>
         <div className="drawer-section">{t('nav.models')}</div>
         {MODEL_ARCHS.map(item)}
+        <div className="drawer-section">{t('nav.gen')}</div>
+        {GEN_ARCHS.map(item)}
         <div className="drawer-section">{t('nav.apps')}</div>
         {APP_ARCHS.map(item)}
         <div className="drawer-section">{t('nav.language')}</div>
@@ -310,12 +316,15 @@ function BottomBar() {
     rnn: rnnClass,
     lstm: lstmClass,
     ae: aeClass,
+    diff: -1,
   }[arch]
   const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
   const chipArch = arch === 'ae' ? 'cnn' : arch
   const chips: string[] = seq
     ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
-    : Array.from(
+    : arch === 'diff'
+      ? []
+      : Array.from(
         { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae'].classCount },
         (_, i) => t(`class.${chipArch}.${i}`),
       )

@@ -61,6 +61,13 @@ if (MODELS.lstm.finalLoss > 2.0) failures.push('lstm did not learn')
 console.log(`Autoencoder training MSE: ${MODELS.ae.finalMSE.toFixed(4)}`)
 if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poor')
 
+// --- diffusion
+{
+  const diff = MODELS.diff
+  console.log(`Diffusion x0-pred MSE: ${diff.finalLoss.toFixed(4)}`)
+  if (diff.finalLoss > 0.3) failures.push('diffusion did not learn')
+}
+
 // --- tiny transformer
 {
   const moe = (await import('../src/nn/transformer')).buildLLMTask('moe')

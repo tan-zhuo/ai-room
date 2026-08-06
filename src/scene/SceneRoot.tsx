@@ -7,6 +7,7 @@ import { LLMScene } from './LLMScene'
 import { RNNScene } from './RNNScene'
 import { LSTMScene } from './LSTMScene'
 import { AEScene } from './AEScene'
+import { DiffusionScene } from './DiffusionScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -39,6 +40,7 @@ export function SceneRoot() {
       {arch === 'rnn' && <RNNScene key="rnn" />}
       {arch === 'lstm' && <LSTMScene key="lstm" />}
       {arch === 'ae' && <AEScene key="ae" />}
+      {arch === 'diff' && <DiffusionScene key="diff" />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

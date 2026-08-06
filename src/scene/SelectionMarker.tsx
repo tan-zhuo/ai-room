@@ -11,6 +11,7 @@ import {
   cnnPos,
   cnnSlot,
   densePos,
+  diffSlot,
   gridPos,
   llmLayerOf,
   llmSlot,
@@ -352,6 +353,29 @@ function aeSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function diffSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  if (sel.space !== 'grid') return segs
+  const task = MODELS.diff
+  const model = task.model
+  if (sel.layer === 1) {
+    // x̂₀ pixel <- denoiser hidden sheet, weighted by the output layer
+    const hS = diffSlot(0) as GridSlot
+    const idx = sel.row * task.n + sel.col
+    model.out.weights[idx].forEach((w, m) =>
+      segs.push({ a: v(gridPos(hS, 0, Math.floor(m / 8), m % 8)), b: target, w, target: 0 }),
+    )
+    return segs
+  }
+  if (sel.layer === 2) {
+    // x_{t-1} pixel <- its x̂₀ and x_t counterparts
+    segs.push({ a: v(gridPos(diffSlot(1) as GridSlot, 0, sel.row, sel.col)), b: target, w: 0.8, target: 0 })
+    segs.push({ a: v(gridPos(diffSlot(-1) as GridSlot, 0, sel.row, sel.col)), b: target, w: -0.8, target: 0 })
+    return segs
+  }
+  return segs
+}
+
 function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
   const pos = positionOf(arch, sel)
   const ring = useRef<THREE.Mesh>(null)
@@ -372,6 +396,7 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
     if (arch === 'llm') return llmSegments(sel, target)
     if (arch === 'rnn') return rnnSegments(sel, target)
     if (arch === 'lstm') return lstmSegments(sel, target)
+    if (arch === 'diff') return diffSegments(sel, target)
     return aeSegments(sel, target)
   }, [arch, sel, pos])
 

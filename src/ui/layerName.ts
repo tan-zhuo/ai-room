@@ -52,6 +52,9 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
     const keys = arch === 'rnn' ? RNN_LAYER_KEYS : LSTM_LAYER_KEYS
     return t(keys[layer] ?? 'layer.output')
   }
+  if (arch === 'diff') {
+    return t(['layer.xt', 'layer.denoiser', 'layer.x0hat', 'layer.ddpmStep'][layer + 1] ?? 'layer.ddpmStep')
+  }
   if (arch === 'ae') {
     if (layer === -1) return t('layer.input')
     if (AE_VARIANT === 'vae') {
@@ -90,6 +93,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
   }
   if (arch === 'lstm') {
     return ['tokens', 'embed', 'gates', 'cellstate', 'lstmHidden', 'llmOutput'][layer + 1] ?? 'llmOutput'
+  }
+  if (arch === 'diff') {
+    return ['xt', 'denoiserH', 'x0hat', 'ddpmStep'][layer + 1] ?? 'ddpmStep'
   }
   if (arch === 'ae') {
     if (AE_VARIANT === 'vae') {

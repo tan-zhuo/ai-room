@@ -59,6 +59,8 @@ export function InspectorPanel() {
           <CNNDetail sel={sel} />
         ) : arch === 'llm' ? (
           <LLMDetail sel={sel} />
+        ) : arch === 'diff' ? (
+          <DiffDetail sel={sel} />
         ) : arch === 'rnn' ? (
           <RNNDetail sel={sel} />
         ) : arch === 'lstm' ? (
@@ -818,6 +820,99 @@ function AEDetail({ sel }: { sel: NodeRef }): ReactNode {
               Δ = <b className="num">{fmt(Math.abs(original - reconstructed))}</b>
             </span>
           </div>
+        </section>
+      </>
+    )
+  }
+  return null
+}
+
+// ---------------------------------------------------------------- Diffusion
+
+function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.diffTrace)
+  const step = useStore((s) => s.step)
+  const t = useT()
+  const task = MODELS.diff
+  const model = task.model
+  if (sel.space !== 'grid') return null
+
+  const total = model.T
+  const si = Math.min(step, total - 1)
+  const cur = trace.steps[si]
+  const idx = sel.row * task.n + sel.col
+
+  if (sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          x_t({sel.row}, {sel.col}) · t = {cur.t}
+        </h4>
+        <div className="big-value num">{fmt(trace.xs[Math.min(step, total)][idx])}</div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('diff.xtNote')}
+        </p>
+      </section>
+    )
+  }
+  if (sel.layer === 0) {
+    const hIdx = sel.row * 8 + sel.col
+    const weights = cur.h1.a.map((_, m) => model.l2.weights[hIdx][m])
+    return (
+      <DenseComputation
+        prev={cur.h1.a}
+        prevLabel={(m) => `h₁[${m}]`}
+        weights={weights}
+        bias={model.l2.biases[hIdx]}
+        z={cur.h2.z[hIdx]}
+        a={cur.h2.a[hIdx]}
+        activation="relu"
+      />
+    )
+  }
+  if (sel.layer === 1) {
+    return (
+      <DenseComputation
+        prev={cur.h2.a}
+        prevLabel={(m) => `h₂[${m}]`}
+        weights={model.out.weights[idx]}
+        bias={model.out.biases[idx]}
+        z={cur.pred.z[idx]}
+        a={cur.pred.a[idx]}
+        activation="tanh"
+      />
+    )
+  }
+  if (sel.layer === 2) {
+    const beta = model.betas[cur.t - 1]
+    const alpha = model.alphas[cur.t - 1]
+    const aBar = model.alphaBars[cur.t - 1]
+    const aBarPrev = cur.t > 1 ? model.alphaBars[cur.t - 2] : 1
+    const c0 = (Math.sqrt(aBarPrev) * beta) / (1 - aBar)
+    const ct = (Math.sqrt(alpha) * (1 - aBarPrev)) / (1 - aBar)
+    const sigma = cur.t > 1 ? Math.sqrt(((1 - aBarPrev) / (1 - aBar)) * beta) : 0
+    return (
+      <>
+        <section>
+          <h4>x_(t−1) = c₀·x̂₀ + cₜ·x_t + σ·z</h4>
+          <div className="calc-chain">
+            <span>
+              c₀({fmt(c0)}) × x̂₀({fmt(cur.pred.a[idx])}) = <b className="num">{fmt(c0 * cur.pred.a[idx])}</b>
+            </span>
+            <span>
+              cₜ({fmt(ct)}) × x_t({fmt(cur.x[idx])}) = <b className="num">{fmt(ct * cur.x[idx])}</b>
+            </span>
+            <span>
+              σ({fmt(sigma)}) × z({fmt(cur.z[idx])}) = <b className="num">{fmt(sigma * cur.z[idx])}</b>
+            </span>
+            <span>
+              → <b className="num accent">{fmt(cur.xNext[idx])}</b>
+            </span>
+          </div>
+        </section>
+        <section>
+          <h4>t = {cur.t}</h4>
+          <p className="explain-text">{t('diff.stepNote')}</p>
         </section>
       </>
     )

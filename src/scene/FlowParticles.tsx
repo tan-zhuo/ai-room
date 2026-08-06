@@ -8,10 +8,12 @@ interface Props {
   segments: Segment[]
   layerIndex: number
   size?: number
+  /** fire whenever playback is running, regardless of the current step */
+  continuous?: boolean
 }
 
 /** Glowing particles that travel along connections while a layer is being computed. */
-export function FlowParticles({ segments, layerIndex, size = 0.1 }: Props) {
+export function FlowParticles({ segments, layerIndex, size = 0.1, continuous = false }: Props) {
   const mesh = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const color = useMemo(() => new THREE.Color(), [])
@@ -20,7 +22,7 @@ export function FlowParticles({ segments, layerIndex, size = 0.1 }: Props) {
     const m = mesh.current
     if (!m) return
     const { step, playing, transitioning } = useStore.getState()
-    const active = step === layerIndex && (playing || transitioning)
+    const active = (continuous || step === layerIndex) && (playing || transitioning)
     m.visible = active
     if (!active) return
     for (let i = 0; i < segments.length; i++) {

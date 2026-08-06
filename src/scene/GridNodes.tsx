@@ -12,10 +12,12 @@ interface Props {
   scale: number
   /** allow painting cells with the mouse while draw mode is on */
   paintable?: boolean
+  /** treat the sheet as always computed (diffusion: contents evolve per step) */
+  alwaysOn?: boolean
 }
 
 /** A stack of feature-map sheets (or the input image) rendered as instanced cells. */
-export function GridNodes({ slot, values, scale, paintable = false }: Props) {
+export function GridNodes({ slot, values, scale, paintable = false, alwaysOn = false }: Props) {
   const mesh = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const color = useMemo(() => new THREE.Color(), [])
@@ -40,7 +42,7 @@ export function GridNodes({ slot, values, scale, paintable = false }: Props) {
     if (!m) return
     const { step, playing, transitioning, explain } = useStore.getState()
     const t = state.clock.elapsedTime
-    const computed = step > layer
+    const computed = alwaysOn || step > layer
     const inFlight = step === layer && (playing || transitioning)
     const dim = explain !== null && explain !== layer
     const revealCount = computed ? perCh : inFlight ? Math.floor(flow.phase * perCh) : 0

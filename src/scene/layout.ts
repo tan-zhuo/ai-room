@@ -298,6 +298,24 @@ function computeAeSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ Diffusion slots
+// -1 noisy image x_t, 0 denoiser hidden (as an 8×8 sheet), 1 predicted x̂₀,
+// 2 next image x_{t-1}. Playback steps are denoising iterations, so every
+// slot stays visible and its contents evolve.
+
+export const DIFF_STEPS = 20
+
+function computeDiffSlots(): CNNSlot[] {
+  const n = MODELS.diff.n
+  const xs = [-7.8, -2.6, 2.6, 7.8]
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: n, cols: n, cell: 0.55, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: 8, cols: 8, cell: 0.42, x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: n, cols: n, cell: 0.5, x: xs[2], chGap: 0 },
+    { kind: 'grid', layer: 2, channels: 1, rows: n, cols: n, cell: 0.55, x: xs[3], chGap: 0 },
+  ]
+}
+
 // ------------------------------------------------------------------ cached slot tables
 
 let cnnSlots = computeCnnSlots()
@@ -305,6 +323,7 @@ let llmSlots = computeLlmSlots()
 let rnnSlots = computeRnnSlots()
 let lstmSlots = computeLstmSlots()
 let aeSlots = computeAeSlots()
+let diffSlots = computeDiffSlots()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
 export function refreshLayout(): void {
@@ -313,6 +332,7 @@ export function refreshLayout(): void {
   rnnSlots = computeRnnSlots()
   lstmSlots = computeLstmSlots()
   aeSlots = computeAeSlots()
+  diffSlots = computeDiffSlots()
 }
 
 export function cnnSlot(layer: number): CNNSlot {
@@ -335,6 +355,10 @@ export function aeSlot(layer: number): CNNSlot {
   return aeSlots[layer + 1]
 }
 
+export function diffSlot(layer: number): CNNSlot {
+  return diffSlots[layer + 1]
+}
+
 /** Slot lookup for every grid-based architecture. */
 export function slotFor(arch: Arch, layer: number): CNNSlot {
   switch (arch) {
@@ -346,6 +370,8 @@ export function slotFor(arch: Arch, layer: number): CNNSlot {
       return rnnSlot(layer)
     case 'lstm':
       return lstmSlot(layer)
+    case 'diff':
+      return diffSlot(layer)
     default:
       return aeSlot(layer)
   }
@@ -451,4 +477,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   rnn: { position: [8.5, 5, 14], target: [0, 0, 0] },
   lstm: { position: [12, 6.5, 20], target: [0, 0, 0] },
   ae: { position: [9, 5, 15], target: [0, 0, 0] },
+  diff: { position: [12.5, 5.5, 19], target: [0, 0, 0] },
 }

@@ -18,6 +18,7 @@ import {
 import { LLMTask, LLMVariant, buildLLMTask } from './transformer'
 import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
 import { VAETask, buildVAETask } from './vae'
+import { DiffusionTask, buildDiffusionTask } from './diffusion'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -83,6 +84,7 @@ export interface Models {
   rnn: RNNTask
   lstm: LSTMTask
   ae: AETask
+  diff: DiffusionTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -396,6 +398,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       build: () => {
         partial.ae = buildAETask()
         return `MSE ${partial.ae.finalMSE.toFixed(4)}`
+      },
+    },
+    {
+      label: 'Diffusion',
+      build: () => {
+        partial.diff = buildDiffusionTask(cnnSampleOfSize)
+        return `x̂₀ MSE ${partial.diff.finalLoss.toFixed(3)}`
       },
     },
     {

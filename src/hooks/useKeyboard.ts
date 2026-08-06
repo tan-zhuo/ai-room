@@ -40,12 +40,15 @@ export function useKeyboard() {
           s.setArch('lstm')
           break
         case 'Digit5':
-          s.setArch('ae')
-          break
-        case 'Digit6':
           s.setArch('llm')
           break
+        case 'Digit6':
+          s.setArch('ae')
+          break
         case 'Digit7':
+          s.setArch('diff')
+          break
+        case 'Digit8':
           s.setArch('text')
           break
         case 'KeyL':
