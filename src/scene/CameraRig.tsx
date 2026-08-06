@@ -20,7 +20,7 @@ export function CameraRig() {
   const anim = useRef<CamAnim | null>(null)
   const focusNonce = useStore((s) => s.focusNonce)
   const drawMode = useStore((s) => s.drawMode)
-  const { camera } = useThree()
+  const { camera, size } = useThree()
 
   useEffect(() => {
     const c = controls.current
@@ -36,7 +36,10 @@ export function CameraRig() {
       if (focusNonce === 0) return
       const view = DEFAULT_VIEW[arch]
       toTarget = new THREE.Vector3(...view.target)
-      toPos = new THREE.Vector3(...view.position)
+      // narrow (portrait) screens need more distance to fit the network
+      const aspect = size.width / size.height
+      const f = Math.min(2.8, Math.max(1, 1.15 / aspect))
+      toPos = new THREE.Vector3(...view.position).multiplyScalar(f)
     }
     anim.current = {
       t: 0,
@@ -76,7 +79,7 @@ export function CameraRig() {
       enableDamping
       dampingFactor={0.08}
       minDistance={2}
-      maxDistance={45}
+      maxDistance={70}
       rotateSpeed={0.7}
     />
   )

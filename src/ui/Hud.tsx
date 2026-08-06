@@ -138,6 +138,7 @@ function Drawer() {
         <div className="drawer-section">{t('nav.apps')}</div>
         {APP_ARCHS.map(item)}
         <p className="drawer-note">{t('nav.more')}</p>
+        <ExternalLinks />
       </aside>
     </>
   )
@@ -399,28 +400,39 @@ function Legend() {
   )
 }
 
-function FooterLinks() {
+const BlogIcon = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.02a15.7 15.7 0 0 0-1.4-6.14A8.02 8.02 0 0 1 19.93 11zM12 4.06c.94 1.24 1.84 3.6 2.08 6.94H9.92c.24-3.34 1.14-5.7 2.08-6.94zM8.49 4.86A15.7 15.7 0 0 0 7.09 11H4.07a8.02 8.02 0 0 1 4.42-6.14zM4.07 13h3.02c.14 2.35.63 4.48 1.4 6.14A8.02 8.02 0 0 1 4.07 13zM12 19.94c-.94-1.24-1.84-3.6-2.08-6.94h4.16c-.24 3.34-1.14 5.7-2.08 6.94zm3.51-.8a15.7 15.7 0 0 0 1.4-6.14h3.02a8.02 8.02 0 0 1-4.42 6.14z" />
+  </svg>
+)
+
+const GitHubIcon = () => (
+  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.63.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.36 9.36 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.05 10.05 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" />
+  </svg>
+)
+
+/** Labeled external links: what they are, then where they go. */
+function ExternalLinks({ compact = false }: { compact?: boolean }) {
+  const t = useT()
   return (
-    <div className="footer-links">
-      <a href="https://tanzhuo.xyz" target="_blank" rel="noopener noreferrer" title="Blog">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm7.93 9h-3.02a15.7 15.7 0 0 0-1.4-6.14A8.02 8.02 0 0 1 19.93 11zM12 4.06c.94 1.24 1.84 3.6 2.08 6.94H9.92c.24-3.34 1.14-5.7 2.08-6.94zM8.49 4.86A15.7 15.7 0 0 0 7.09 11H4.07a8.02 8.02 0 0 1 4.42-6.14zM4.07 13h3.02c.14 2.35.63 4.48 1.4 6.14A8.02 8.02 0 0 1 4.07 13zM12 19.94c-.94-1.24-1.84-3.6-2.08-6.94h4.16c-.24 3.34-1.14 5.7-2.08 6.94zm3.51-.8a15.7 15.7 0 0 0 1.4-6.14h3.02a8.02 8.02 0 0 1-4.42 6.14z" />
-        </svg>
-        tanzhuo.xyz
+    <div className={compact ? 'footer-links' : 'drawer-links'}>
+      <a href="https://tanzhuo.xyz" target="_blank" rel="noopener noreferrer">
+        <BlogIcon />
+        <span className="link-label">{t('footer.blog')}</span>
+        <span className="link-addr">tanzhuo.xyz</span>
       </a>
-      <a
-        href="https://github.com/tan-zhuo/ai-room"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="GitHub"
-      >
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.63.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.89 1.57 2.34 1.12 2.91.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.7 0 0 .84-.28 2.75 1.05a9.36 9.36 0 0 1 5 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.4.2 2.44.1 2.7.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.05 10.05 0 0 0 22 12.25C22 6.58 17.52 2 12 2z" />
-        </svg>
-        tan-zhuo/ai-room
+      <a href="https://github.com/tan-zhuo/ai-room" target="_blank" rel="noopener noreferrer">
+        <GitHubIcon />
+        <span className="link-label">{t('footer.source')}</span>
+        <span className="link-addr">tan-zhuo/ai-room</span>
       </a>
     </div>
   )
+}
+
+function FooterLinks() {
+  return <ExternalLinks compact />
 }
 
 function Tooltip() {

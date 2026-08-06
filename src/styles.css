@@ -37,11 +37,13 @@ body {
 .app {
   position: relative;
   height: 100%;
+  height: 100dvh;
 }
 
-.app > canvas {
+.app canvas {
   position: absolute;
   inset: 0;
+  touch-action: none;
 }
 
 .num {
@@ -740,6 +742,42 @@ kbd {
   border-color: var(--border-strong);
 }
 
+.link-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.footer-links .link-addr,
+.drawer-links .link-addr {
+  font-family: var(--mono);
+  opacity: 0.85;
+}
+
+.drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 4px 2px;
+  border-top: 1px solid var(--border);
+}
+
+.drawer-links a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 11.5px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.drawer-links a:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent);
+}
+
 /* ---------------------------------------------------------------- 3D labels */
 
 .layer-label {
@@ -1273,5 +1311,186 @@ kbd {
   .inspector {
     width: min(86vw, 330px);
     top: 60px;
+  }
+}
+
+/* ---------------------------------------------------------------- phones */
+
+@media (max-width: 700px) {
+  body {
+    font-size: 13px;
+  }
+
+  .topbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .brand {
+    gap: 7px;
+  }
+
+  .brand h1 {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+  }
+
+  .menu-btn {
+    width: 30px;
+    height: 30px;
+    margin-right: 0;
+  }
+
+  .current-arch {
+    padding: 4px 9px;
+    font-size: 11px;
+  }
+
+  .top-controls {
+    gap: 5px;
+  }
+
+  .tab {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .tab kbd {
+    display: none;
+  }
+
+  .tab.round {
+    width: 28px;
+    height: 28px;
+  }
+
+  .bottombar {
+    padding: 8px 10px 10px;
+    gap: 7px;
+  }
+
+  .transport {
+    padding: 4px;
+    gap: 3px;
+  }
+
+  .icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .icon-btn.primary {
+    width: 34px;
+  }
+
+  .progress {
+    min-width: 0;
+    flex: 1 1 150px;
+    padding: 7px 10px;
+  }
+
+  .progress-label {
+    font-size: 10.5px;
+  }
+
+  .samples {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .samples::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    padding: 5px 8px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .samples-label {
+    flex-shrink: 0;
+  }
+
+  /* prevent iOS zoom-on-focus */
+  .text-input {
+    font-size: 16px;
+    width: 150px;
+  }
+
+  /* inspector & explanations become a bottom sheet */
+  .inspector {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 58vh;
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  .footer-links {
+    display: none;
+  }
+
+  .hint {
+    display: none;
+  }
+
+  .gen-banner {
+    top: 56px;
+    font-size: 13px;
+    padding: 7px 12px;
+  }
+
+  .toast {
+    top: 56px;
+    font-size: 12px;
+    max-width: 86vw;
+    text-align: center;
+  }
+
+  .modal {
+    width: min(340px, 92vw);
+  }
+
+  .drawer {
+    width: min(292px, 85vw);
+  }
+
+  .layer-label-title {
+    font-size: 11px;
+  }
+
+  .layer-label-sub {
+    font-size: 9px;
+  }
+
+  .in-label,
+  .out-label {
+    font-size: 9.5px;
+  }
+
+  .out-bar {
+    width: 36px;
+  }
+
+  .token-char {
+    font-size: 12px;
+  }
+
+  .next-char-banner {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .temp-ctl input[type='range'] {
+    width: 64px;
   }
 }

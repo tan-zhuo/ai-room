@@ -15,7 +15,7 @@ export function SceneRoot() {
   return (
     <>
       <color attach="background" args={['#04060c']} />
-      <fog attach="fog" args={['#04060c', 22, 60]} />
+      <fog attach="fog" args={['#04060c', 26, 90]} />
       <ambientLight intensity={0.7} />
       <directionalLight position={[6, 10, 8]} intensity={0.6} />
       <Stars radius={70} depth={30} count={2400} factor={3.2} saturation={0} fade speed={0.5} />
