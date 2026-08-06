@@ -148,6 +148,9 @@ const en: Dict = {
   'cnn.learnedFull': 'Kernels start as random noise and are learned end-to-end via conv backprop',
   'llm.temp': 'Temp',
   'llm.tempTip': 'Sampling temperature — lower is safer, higher is wilder',
+  'llm.embedMap': 'Embedding map',
+  'llm.embedMapNote':
+    'PCA projection of the 28 learned character embeddings — characters the model treats similarly end up close together (vowels cyan, space/period orange).',
   'footer.blog': 'Author blog',
   'footer.source': 'Source code',
   'scale.s': 'S',
@@ -449,6 +452,9 @@ const zh: Dict = {
   'cnn.learnedFull': '卷积核从随机噪声开始，通过卷积反向传播端到端学习',
   'llm.temp': '温度',
   'llm.tempTip': '采样温度——越低越保守，越高越放飞',
+  'llm.embedMap': '嵌入地图',
+  'llm.embedMapNote':
+    '28 个学习到的字符嵌入的 PCA 投影——模型认为相似的字符会聚在一起（元音为青色，空格/句号为橙色）。',
   'footer.blog': '作者博客',
   'footer.source': '开源代码',
   'scale.s': '小',
@@ -740,6 +746,9 @@ const ja: Dict = {
   'cnn.learnedFull': 'カーネルはランダムノイズから畳み込み逆伝播でエンドツーエンドに学習',
   'llm.temp': '温度',
   'llm.tempTip': 'サンプリング温度——低いほど堅実、高いほど大胆',
+  'llm.embedMap': '埋め込みマップ',
+  'llm.embedMapNote':
+    '学習済み 28 文字埋め込みの PCA 射影——モデルが似ていると判断した文字は近くに集まります（母音は水色、空白/句点は橙色）。',
   'footer.blog': '作者ブログ',
   'footer.source': 'ソースコード',
   'scale.s': '小',

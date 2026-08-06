@@ -730,6 +730,117 @@ kbd {
   background: linear-gradient(to right, #101a28, var(--accent));
 }
 
+/* ---------------------------------------------------------------- boot screen */
+
+.boot {
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--bg);
+}
+
+.boot-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.boot-brand h1 {
+  font-size: 22px;
+  letter-spacing: 0.3em;
+  font-weight: 700;
+}
+
+.boot-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.boot-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 300px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.boot-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.boot-line.done {
+  color: var(--text);
+}
+
+.boot-line.running {
+  color: var(--accent);
+}
+
+.boot-mark {
+  width: 16px;
+  text-align: center;
+  font-family: var(--mono);
+}
+
+.boot-line.done .boot-mark {
+  color: var(--accent);
+}
+
+.boot-line.running .boot-mark {
+  animation: bootSpin 0.9s linear infinite;
+  display: inline-block;
+}
+
+@keyframes bootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.boot-label {
+  min-width: 110px;
+  font-weight: 600;
+}
+
+.boot-detail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.boot-note {
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0.7;
+  letter-spacing: 0.06em;
+}
+
+/* ---------------------------------------------------------------- embedding map */
+
+.embed-modal {
+  width: min(380px, 92vw);
+}
+
+.embed-svg {
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
 /* ---------------------------------------------------------------- footer links */
 
 .footer-links {

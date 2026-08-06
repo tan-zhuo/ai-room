@@ -25,6 +25,28 @@ export function sameRef(a: NodeRef | null, b: NodeRef | null): boolean {
 /** Mutable per-frame playback state, read inside useFrame without re-rendering React. */
 export const flow = { phase: 0, hold: 0 }
 
+const ARCH_KEYS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'ae', 'llm', 'text']
+
+function urlParam(name: string): string | null {
+  if (typeof location === 'undefined') return null
+  return new URLSearchParams(location.search).get(name)
+}
+
+function syncUrl(arch: Arch, lang: Lang): void {
+  if (typeof history === 'undefined') return
+  const url = new URL(location.href)
+  url.searchParams.set('arch', arch)
+  url.searchParams.set('lang', lang)
+  history.replaceState(null, '', url)
+}
+
+const initialArch: Arch = ARCH_KEYS.includes(urlParam('arch') as Arch)
+  ? (urlParam('arch') as Arch)
+  : 'mlp'
+const initialLang: Lang = LANGS.includes(urlParam('lang') as Lang)
+  ? (urlParam('lang') as Lang)
+  : detectLang()
+
 const sampleRng = mulberry32(0xc0ffee)
 
 const FIXED_STEPS: Partial<Record<Arch, number>> = { llm: 9, rnn: 3, lstm: 5, ae: 4 }
@@ -176,8 +198,8 @@ const restart = { step: 0, playing: true, transitioning: false }
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useStore = create<AppState>((set, get) => ({
-  arch: 'mlp',
-  lang: detectLang(),
+  arch: initialArch,
+  lang: initialLang,
   scale: { mlp: 's', cnn: 's' },
   cnnKernels: 'hand',
   modelsVersion: 0,
@@ -228,6 +250,7 @@ export const useStore = create<AppState>((set, get) => ({
       drawMode: false,
       menuOpen: false,
     }))
+    syncUrl(a, get().lang)
   },
 
   setScale: (size) => {
@@ -401,10 +424,14 @@ export const useStore = create<AppState>((set, get) => ({
   setExplain: (layer) => set({ explain: layer, ...(layer !== null ? { selected: null } : {}) }),
   setHover: (h) => set({ hoverInfo: h }),
 
-  setLang: (l) => set({ lang: l }),
+  setLang: (l) => {
+    set({ lang: l })
+    syncUrl(get().arch, l)
+  },
   cycleLang: () => {
-    const cur = LANGS.indexOf(get().lang)
-    set({ lang: LANGS[(cur + 1) % LANGS.length] })
+    const next = LANGS[(LANGS.indexOf(get().lang) + 1) % LANGS.length]
+    set({ lang: next })
+    syncUrl(get().arch, next)
   },
 
   newSample: (cls) => {

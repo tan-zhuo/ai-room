@@ -4,6 +4,7 @@ import { MODELS, Scale } from '../nn/models'
 import { Arch, totalSteps, useStore, useT } from '../store'
 import { InspectorPanel } from './InspectorPanel'
 import { ExplainPanel } from './ExplainPanel'
+import { EmbeddingMap } from './EmbeddingMap'
 import { layerNameOf } from './layerName'
 import { IconNext, IconPause, IconPlay, IconPrev, IconReset, IconShuffle } from './icons'
 
@@ -375,6 +376,7 @@ function BottomBar() {
         )}
         {(arch === 'cnn' || arch === 'ae') && <CNNControls />}
         {arch === 'llm' && <TempSlider />}
+        {arch === 'llm' && <EmbedMapButton />}
       </div>
     </div>
   )
@@ -432,6 +434,20 @@ function KernelChips({
       >
         {t('cnn.learned')}
       </button>
+    </>
+  )
+}
+
+/** PCA map of the learned character embeddings (Transformer only). */
+function EmbedMapButton() {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button className="chip" onClick={() => setOpen(true)}>
+        ⊹ {t('llm.embedMap')}
+      </button>
+      {open && <EmbeddingMap onClose={() => setOpen(false)} />}
     </>
   )
 }

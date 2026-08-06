@@ -1,5 +1,7 @@
 // Engine sanity check: run `npm run sanity`.
-import { MODELS, buildCNNTask, buildMLPTask, evalTextAccuracy } from '../src/nn/models'
+import { MODELS, buildCNNTask, buildMLPTask, evalTextAccuracy, initModels } from '../src/nn/models'
+
+await initModels(() => {})
 import { forwardMLP, argmax } from '../src/nn/mlp'
 import { forwardCNN } from '../src/nn/cnn'
 import { evalLLMAccuracy, forwardLLM, encodeLLM } from '../src/nn/transformer'

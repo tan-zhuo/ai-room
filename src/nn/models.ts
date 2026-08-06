@@ -328,14 +328,87 @@ export function buildAETask(): AETask {
 
 // ---------------------------------------------------------------- registry
 
-export let MODELS: Models = {
-  mlp: buildMLPTask('s'),
-  cnn: buildCNNTask('s'),
-  text: buildTextTask(),
-  llm: buildLLMTask(),
-  rnn: buildRNNTask(),
-  lstm: buildLSTMTask(),
-  ae: buildAETask(),
+export let MODELS: Models = undefined as unknown as Models
+
+export interface BootLine {
+  label: string
+  status: 'pending' | 'running' | 'done'
+  detail?: string
+}
+
+/**
+ * Train all seven networks, one at a time, yielding to the browser between
+ * each so a boot screen can paint real progress. MODELS is assigned when
+ * everything is ready.
+ */
+export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise<void> {
+  const partial: Partial<Models> = {}
+  const steps: { label: string; build: () => string }[] = [
+    {
+      label: 'MLP',
+      build: () => {
+        partial.mlp = buildMLPTask('s')
+        return '4 → 6 → 5 → 3'
+      },
+    },
+    {
+      label: 'CNN',
+      build: () => {
+        partial.cnn = buildCNNTask('s')
+        return 'conv 3×3 · pool · dense'
+      },
+    },
+    {
+      label: 'RNN',
+      build: () => {
+        partial.rnn = buildRNNTask()
+        return `loss ${partial.rnn.finalLoss.toFixed(2)}`
+      },
+    },
+    {
+      label: 'LSTM',
+      build: () => {
+        partial.lstm = buildLSTMTask()
+        return `loss ${partial.lstm.finalLoss.toFixed(2)}`
+      },
+    },
+    {
+      label: 'Autoencoder',
+      build: () => {
+        partial.ae = buildAETask()
+        return `MSE ${partial.ae.finalMSE.toFixed(4)}`
+      },
+    },
+    {
+      label: 'Transformer',
+      build: () => {
+        partial.llm = buildLLMTask()
+        return `loss ${partial.llm.finalLoss.toFixed(2)}`
+      },
+    },
+    {
+      label: 'Lang ID',
+      build: () => {
+        partial.text = buildTextTask()
+        return '8 features → 3 langs'
+      },
+    },
+  ]
+
+  const lines: BootLine[] = steps.map((s) => ({ label: s.label, status: 'pending' }))
+  const paint = () => onUpdate(lines.map((l) => ({ ...l })))
+  paint()
+  for (let i = 0; i < steps.length; i++) {
+    lines[i].status = 'running'
+    paint()
+    await new Promise((r) => setTimeout(r, 30))
+    const t0 = performance.now()
+    const detail = steps[i].build()
+    lines[i].status = 'done'
+    lines[i].detail = `${detail} · ${Math.round(performance.now() - t0)}ms`
+    paint()
+  }
+  MODELS = partial as Models
 }
 
 /** Rebuild + retrain one architecture at a new scale / kernel mode. */

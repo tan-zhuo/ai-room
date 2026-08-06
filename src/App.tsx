@@ -8,7 +8,9 @@ import { useStore } from './store'
 const aspect = typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 1.6
 const camFactor = Math.min(2.8, Math.max(1, 1.15 / aspect))
 
-const initialCamera = DEFAULT_VIEW.mlp.position.map((v) => v * camFactor) as [number, number, number]
+const initialCamera = DEFAULT_VIEW[useStore.getState().arch].position.map(
+  (v) => v * camFactor,
+) as [number, number, number]
 
 export default function App() {
   useKeyboard()

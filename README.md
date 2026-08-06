@@ -2,7 +2,9 @@
 
 Interactive 3D environment for exploring **real** neural network computation node-by-node, running entirely in the browser. / 走进一个**正在真实运算**的神经网络的 3D 空间，全部在浏览器本地运行。
 
-by [tanzhuo](https://tanzhuo.xyz) · Blog: **[tanzhuo.xyz](https://tanzhuo.xyz)** · Source: **[github.com/tan-zhuo/ai-room](https://github.com/tan-zhuo/ai-room)**
+**🔗 Live demo: [ai-room-phi.vercel.app](https://ai-room-phi.vercel.app/)**
+
+by [tanzhuo](https://tanzhuo.xyz) · Blog: **[tanzhuo.xyz](https://tanzhuo.xyz)** · Source: **[github.com/tan-zhuo/ai-room](https://github.com/tan-zhuo/ai-room)** · License: MIT
 
 > **Not an animation — real computation.** Every network is genuinely trained in your browser at load time (deterministic seeds). Every value you see — activations, attention weights, softmax probabilities — is the true result of the forward pass. Click any node and check the arithmetic yourself; type your own text and watch the numbers change.
 
