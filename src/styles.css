@@ -77,6 +77,10 @@ kbd {
   border: none;
 }
 
+.hud button:focus {
+  outline: none;
+}
+
 /* ---------------------------------------------------------------- top bar */
 
 .topbar {
@@ -342,6 +346,44 @@ kbd {
   color: var(--accent);
 }
 
+.text-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.text-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 10px;
+  width: 190px;
+  outline: none;
+  pointer-events: auto;
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(56, 214, 255, 0.25);
+}
+
+.text-input::placeholder {
+  color: var(--muted);
+}
+
+.chip.run {
+  border-color: var(--border-strong);
+  color: var(--accent);
+}
+
+.chip.mono {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
 /* ---------------------------------------------------------------- legend */
 
 .legend {
@@ -505,6 +547,50 @@ kbd {
 .in-val {
   font-family: var(--mono);
   color: var(--text);
+}
+
+.token-char {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: #0a1220;
+  text-shadow: none;
+  pointer-events: none;
+}
+
+.mono-char {
+  font-family: var(--mono);
+}
+
+.next-char-banner {
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--text);
+  backdrop-filter: blur(8px);
+}
+
+.next-char-banner b {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 15px;
+}
+
+.raw-text-label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+
+.raw-text-quote {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+  word-break: break-all;
 }
 
 /* ---------------------------------------------------------------- inspector */

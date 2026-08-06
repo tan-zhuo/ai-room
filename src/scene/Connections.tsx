@@ -31,6 +31,9 @@ export function Connections({ segments, layerIndex, maxRadius = 0.03, highlight 
     m.instanceMatrix.needsUpdate = true
   }, [segments, maxW, maxRadius, highlight, dummy])
 
+  // dense scales produce thousands of lines — attenuate so additive blending doesn't blow out
+  const crowd = Math.min(1, 700 / Math.max(1, segments.length))
+
   useFrame(() => {
     const m = mesh.current
     if (!m) return
@@ -44,6 +47,7 @@ export function Connections({ segments, layerIndex, maxRadius = 0.03, highlight 
         b = selected.index === segments[i].target ? 2.6 : 0.1
       if (highlight) b = 1.8
       else if (explain !== null) b *= explain === layerIndex ? 1.3 : 0.1
+      if (!highlight) b *= crowd
       weightColor(segments[i].w, maxW, b, color)
       m.setColorAt(i, color)
     }

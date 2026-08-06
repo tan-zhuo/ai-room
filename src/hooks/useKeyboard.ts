@@ -6,6 +6,10 @@ export function useKeyboard() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return
+      }
       const s = useStore.getState()
       switch (e.code) {
         case 'Space':
@@ -30,7 +34,10 @@ export function useKeyboard() {
           s.setArch('cnn')
           break
         case 'Digit3':
-          s.showToast('toast.comingSoon')
+          s.setArch('text')
+          break
+        case 'Digit4':
+          s.setArch('llm')
           break
         case 'KeyL':
           s.cycleLang()

@@ -1,14 +1,17 @@
 import { Grid, Stars } from '@react-three/drei'
 import { Bloom, EffectComposer } from '@react-three/postprocessing'
 import { useStore } from '../store'
-import { MLPScene } from './MLPScene'
+import { DenseScene } from './DenseScene'
 import { CNNScene } from './CNNScene'
+import { LLMScene } from './LLMScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
 
 export function SceneRoot() {
   const arch = useStore((s) => s.arch)
+  const version = useStore((s) => s.modelsVersion)
+  const llmText = useStore((s) => s.llmText)
   return (
     <>
       <color attach="background" args={['#04060c']} />
@@ -27,7 +30,9 @@ export function SceneRoot() {
         fadeStrength={2.5}
         infiniteGrid
       />
-      {arch === 'mlp' ? <MLPScene /> : <CNNScene />}
+      {(arch === 'mlp' || arch === 'text') && <DenseScene key={`${arch}${version}`} arch={arch} />}
+      {arch === 'cnn' && <CNNScene key={`cnn${version}`} />}
+      {arch === 'llm' && <LLMScene key={`llm${llmText}`} />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

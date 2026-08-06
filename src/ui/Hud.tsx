@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { LANGS, LANG_LABEL } from '../i18n'
-import { MODELS } from '../nn/models'
+import { MODELS, Scale } from '../nn/models'
 import { Arch, totalSteps, useStore, useT } from '../store'
 import { InspectorPanel } from './InspectorPanel'
 import { ExplainPanel } from './ExplainPanel'
@@ -25,24 +25,26 @@ export function Hud() {
 
 // ---------------------------------------------------------------- top bar
 
+const ARCH_KEYS: { arch: Arch; kbd: string }[] = [
+  { arch: 'mlp', kbd: '1' },
+  { arch: 'cnn', kbd: '2' },
+  { arch: 'text', kbd: '3' },
+  { arch: 'llm', kbd: '4' },
+]
+
+const SCALES: Scale[] = ['s', 'm', 'l']
+
 function TopBar() {
   const t = useT()
   const arch = useStore((s) => s.arch)
   const lang = useStore((s) => s.lang)
+  const scale = useStore((s) => s.scale)
   const setArch = useStore((s) => s.setArch)
+  const setScale = useStore((s) => s.setScale)
   const setLang = useStore((s) => s.setLang)
   const toggleHelp = useStore((s) => s.toggleHelp)
 
-  const archBtn = (a: Arch, kbd: string, full: string) => (
-    <button
-      className={`tab${arch === a ? ' active' : ''}`}
-      onClick={() => setArch(a)}
-      title={full}
-    >
-      {t(`arch.${a}`)}
-      <kbd>{kbd}</kbd>
-    </button>
-  )
+  const scalable = arch === 'mlp' || arch === 'cnn'
 
   return (
     <div className="topbar">
@@ -53,9 +55,31 @@ function TopBar() {
       </div>
       <div className="top-controls">
         <div className="seg">
-          {archBtn('mlp', '1', t('arch.mlpFull'))}
-          {archBtn('cnn', '2', t('arch.cnnFull'))}
+          {ARCH_KEYS.map(({ arch: a, kbd }) => (
+            <button
+              key={a}
+              className={`tab${arch === a ? ' active' : ''}`}
+              onClick={() => setArch(a)}
+              title={t(`arch.${a}Full`)}
+            >
+              {t(`arch.${a}`)}
+              <kbd>{kbd}</kbd>
+            </button>
+          ))}
         </div>
+        {scalable && (
+          <div className="seg" title={t('scale.tooltip')}>
+            {SCALES.map((sz) => (
+              <button
+                key={sz}
+                className={`tab${scale[arch] === sz ? ' active' : ''}`}
+                onClick={() => setScale(sz)}
+              >
+                {t(`scale.${sz}`)}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="seg">
           {LANGS.map((l) => (
             <button key={l} className={`tab${lang === l ? ' active' : ''}`} onClick={() => setLang(l)}>
@@ -73,6 +97,47 @@ function TopBar() {
 
 // ---------------------------------------------------------------- bottom bar
 
+function TextEntry() {
+  const t = useT()
+  const arch = useStore((s) => s.arch)
+  const textRaw = useStore((s) => s.textRaw)
+  const llmText = useStore((s) => s.llmText)
+  const setTextInput = useStore((s) => s.setTextInput)
+  const setLLMInput = useStore((s) => s.setLLMInput)
+  const stored = arch === 'text' ? textRaw : llmText
+  const [val, setVal] = useState(stored)
+
+  useEffect(() => setVal(stored), [stored])
+
+  const submit = () => {
+    const trimmed = val.trim()
+    if (!trimmed) return
+    if (arch === 'text') setTextInput(trimmed)
+    else setLLMInput(trimmed)
+  }
+
+  return (
+    <div className="text-entry">
+      <input
+        className="text-input"
+        value={val}
+        maxLength={arch === 'llm' ? 24 : 60}
+        placeholder={t('controls.typeText')}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            submit()
+            e.currentTarget.blur()
+          }
+        }}
+      />
+      <button className="chip run" onClick={submit}>
+        {t('controls.run')}
+      </button>
+    </div>
+  )
+}
+
 function BottomBar() {
   const t = useT()
   const arch = useStore((s) => s.arch)
@@ -82,6 +147,8 @@ function BottomBar() {
   const speed = useStore((s) => s.speed)
   const mlpClass = useStore((s) => s.mlpClass)
   const cnnClass = useStore((s) => s.cnnClass)
+  const textClass = useStore((s) => s.textClass)
+  const llmClass = useStore((s) => s.llmClass)
   const { togglePlay, nextStep, prevStep, reset, cycleSpeed, newSample } = useStore.getState()
 
   const total = totalSteps(arch)
@@ -92,8 +159,11 @@ function BottomBar() {
   else if (step === 0) statusText = t('step.inputLoaded')
   else statusText = layerNameOf(arch, step - 1, t)
 
-  const classCount = arch === 'mlp' ? MODELS.mlp.classCount : MODELS.cnn.classCount
-  const currentClass = arch === 'mlp' ? mlpClass : cnnClass
+  const currentClass = { mlp: mlpClass, cnn: cnnClass, text: textClass, llm: llmClass }[arch]
+  const chips: string[] =
+    arch === 'llm'
+      ? MODELS.llm.samples.map((s) => `“${s}”`)
+      : Array.from({ length: MODELS[arch].classCount }, (_, i) => t(`class.${arch}.${i}`))
 
   return (
     <div className="bottombar">
@@ -128,25 +198,31 @@ function BottomBar() {
         </div>
         <div className="progress-track">
           {Array.from({ length: total }, (_, i) => (
-            <span key={i} className={`progress-seg${step > i ? ' filled' : ''}${running && step === i ? ' current' : ''}`} />
+            <span
+              key={i}
+              className={`progress-seg${step > i ? ' filled' : ''}${running && step === i ? ' current' : ''}`}
+            />
           ))}
         </div>
       </div>
 
       <div className="samples">
         <span className="samples-label">{t('controls.input')}</span>
-        {Array.from({ length: classCount }, (_, i) => (
+        {(arch === 'text' || arch === 'llm') && <TextEntry />}
+        {chips.map((label, i) => (
           <button
             key={i}
-            className={`chip${currentClass === i ? ' active' : ''}`}
+            className={`chip${currentClass === i ? ' active' : ''}${arch === 'llm' ? ' mono' : ''}`}
             onClick={() => newSample(i)}
           >
-            {t(`class.${arch}.${i}`)}
+            {label}
           </button>
         ))}
-        <button className="chip" onClick={() => newSample()} title={t('controls.randomize')}>
-          <IconShuffle />
-        </button>
+        {arch !== 'llm' && (
+          <button className="chip" onClick={() => newSample()} title={t('controls.randomize')}>
+            <IconShuffle />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -201,7 +277,6 @@ function Tooltip() {
   if (!hover) return null
 
   const layerName = layerNameOf(arch, hover.ref.layer, t)
-
   const where =
     hover.ref.space === 'vector'
       ? `#${hover.ref.index + 1}`
@@ -233,7 +308,7 @@ function HelpOverlay() {
     ['Space', t('help.space')],
     ['← →', t('help.arrows')],
     ['R', t('help.r')],
-    ['1 / 2 / 3', t('help.digits')],
+    ['1 / 2 / 3 / 4', t('help.digits')],
     ['L', t('help.l')],
     ['F', t('help.f')],
     ['Esc', t('help.esc')],

@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import { MODELS } from './nn/models'
+import { MODELS, Scale, extractTextFeatures, rebuildArch } from './nn/models'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
+import { LLMTrace, encodeLLM, forwardLLM } from './nn/transformer'
 import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
 
-export type Arch = 'mlp' | 'cnn'
+export type Arch = 'mlp' | 'cnn' | 'text' | 'llm'
 
 export type NodeRef =
   | { space: 'vector'; layer: number; index: number }
@@ -24,8 +25,11 @@ export const flow = { phase: 0, hold: 0 }
 
 const sampleRng = mulberry32(0xc0ffee)
 
+const LLM_STEP_COUNT = 6
+
 export function totalSteps(arch: Arch): number {
-  return arch === 'mlp' ? MODELS.mlp.model.layers.length : MODELS.cnn.model.layers.length
+  if (arch === 'llm') return LLM_STEP_COUNT
+  return MODELS[arch].model.layers.length
 }
 
 export interface HoverInfo {
@@ -33,9 +37,20 @@ export interface HoverInfo {
   value: number
 }
 
+/** Pad to the model's full context length so the layout stays fixed. */
+function llmIdsFor(text: string): number[] {
+  const model = MODELS.llm.model
+  const ids = encodeLLM(model, text)
+  const space = model.vocab.indexOf(' ')
+  while (ids.length < model.T) ids.unshift(space)
+  return ids
+}
+
 interface AppState {
   arch: Arch
   lang: Lang
+  scale: { mlp: Scale; cnn: Scale }
+  modelsVersion: number
   step: number
   playing: boolean
   transitioning: boolean
@@ -46,6 +61,13 @@ interface AppState {
   cnnInput: Tensor3
   cnnClass: number
   cnnTrace: CNNStep[]
+  textRaw: string
+  textClass: number
+  textFeatures: number[]
+  textTrace: DenseTrace[]
+  llmText: string
+  llmClass: number
+  llmTrace: LLMTrace
   selected: NodeRef | null
   /** layer index whose module explanation is open (-1 = input), for the current arch */
   explain: number | null
@@ -57,6 +79,7 @@ interface AppState {
   toast: string | null
 
   setArch: (a: Arch) => void
+  setScale: (size: Scale) => void
   togglePlay: () => void
   nextStep: () => void
   prevStep: () => void
@@ -69,6 +92,8 @@ interface AppState {
   setLang: (l: Lang) => void
   cycleLang: () => void
   newSample: (cls?: number) => void
+  setTextInput: (raw: string) => void
+  setLLMInput: (raw: string) => void
   requestFocus: (pos: [number, number, number] | null, distance?: number) => void
   toggleHelp: () => void
   showToast: (key: string) => void
@@ -79,24 +104,51 @@ function makeInputs(arch: Arch, cls: number) {
     const input = MODELS.mlp.makeSample(cls, sampleRng)
     return { mlpInput: input, mlpClass: cls, mlpTrace: forwardMLP(MODELS.mlp.model, input) }
   }
-  const input = MODELS.cnn.makeSample(cls, sampleRng)
-  return { cnnInput: input, cnnClass: cls, cnnTrace: forwardCNN(MODELS.cnn.model, input) }
+  if (arch === 'cnn') {
+    const input = MODELS.cnn.makeSample(cls, sampleRng)
+    return { cnnInput: input, cnnClass: cls, cnnTrace: forwardCNN(MODELS.cnn.model, input) }
+  }
+  if (arch === 'text') {
+    const raw = MODELS.text.sampleText(cls, sampleRng)
+    const features = extractTextFeatures(raw)
+    return {
+      textRaw: raw,
+      textClass: cls,
+      textFeatures: features,
+      textTrace: forwardMLP(MODELS.text.model, features),
+    }
+  }
+  const raw = MODELS.llm.samples[cls % MODELS.llm.samples.length]
+  return { llmText: raw, llmClass: cls, llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(raw)) }
 }
 
-const initialMLP = makeInputs('mlp', 0) as { mlpInput: number[]; mlpClass: number; mlpTrace: DenseTrace[] }
-const initialCNN = makeInputs('cnn', 0) as { cnnInput: Tensor3; cnnClass: number; cnnTrace: CNNStep[] }
+function classCountOf(arch: Arch): number {
+  if (arch === 'llm') return MODELS.llm.samples.length
+  return MODELS[arch].classCount
+}
+
+const restart = { step: 0, playing: true, transitioning: false }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
 export const useStore = create<AppState>((set, get) => ({
   arch: 'mlp',
   lang: detectLang(),
+  scale: { mlp: 's', cnn: 's' },
+  modelsVersion: 0,
   step: 0,
   playing: true,
   transitioning: false,
   speed: 1,
-  ...initialMLP,
-  ...initialCNN,
+  ...(makeInputs('mlp', 0) as { mlpInput: number[]; mlpClass: number; mlpTrace: DenseTrace[] }),
+  ...(makeInputs('cnn', 0) as { cnnInput: Tensor3; cnnClass: number; cnnTrace: CNNStep[] }),
+  ...(makeInputs('text', 1) as {
+    textRaw: string
+    textClass: number
+    textFeatures: number[]
+    textTrace: DenseTrace[]
+  }),
+  ...(makeInputs('llm', 0) as { llmText: string; llmClass: number; llmTrace: LLMTrace }),
   selected: null,
   explain: null,
   hoverInfo: null,
@@ -112,9 +164,7 @@ export const useStore = create<AppState>((set, get) => ({
     flow.hold = 0
     set((s) => ({
       arch: a,
-      step: 0,
-      playing: true,
-      transitioning: false,
+      ...restart,
       selected: null,
       explain: null,
       hoverInfo: null,
@@ -123,11 +173,39 @@ export const useStore = create<AppState>((set, get) => ({
     }))
   },
 
+  setScale: (size) => {
+    const s = get()
+    if (s.arch !== 'mlp' && s.arch !== 'cnn') return
+    const archKey = s.arch
+    if (s.scale[archKey] === size) return
+    get().showToast('toast.training')
+    // let the toast paint before the (synchronous) retraining burst
+    setTimeout(() => {
+      rebuildArch(archKey, size)
+      // refreshLayout is imported lazily to keep layout.ts free of runtime store deps
+      import('./scene/layout').then(({ refreshLayout }) => {
+        refreshLayout()
+        const cls = archKey === 'mlp' ? get().mlpClass : get().cnnClass
+        flow.phase = 0
+        flow.hold = 0
+        set((st) => ({
+          scale: { ...st.scale, [archKey]: size },
+          modelsVersion: st.modelsVersion + 1,
+          ...makeInputs(archKey, cls),
+          ...restart,
+          selected: null,
+          explain: null,
+          hoverInfo: null,
+        }))
+      })
+    }, 60)
+  },
+
   togglePlay: () => {
     const s = get()
     if (s.step >= totalSteps(s.arch) && !s.playing) {
       flow.phase = 0
-      set({ step: 0, playing: true, transitioning: false })
+      set(restart)
       return
     }
     set({ playing: !s.playing, transitioning: false })
@@ -160,8 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
   finishStep: () => {
     const s = get()
     const total = totalSteps(s.arch)
-    const next = Math.min(total, s.step + 1)
-    set({ step: next, transitioning: false, playing: s.playing })
+    set({ step: Math.min(total, s.step + 1), transitioning: false })
   },
 
   select: (ref) => set({ selected: ref, ...(ref ? { explain: null } : {}) }),
@@ -176,11 +253,35 @@ export const useStore = create<AppState>((set, get) => ({
 
   newSample: (cls) => {
     const s = get()
-    const count = s.arch === 'mlp' ? MODELS.mlp.classCount : MODELS.cnn.classCount
-    const chosen = cls ?? Math.floor(sampleRng() * count)
+    const chosen = cls ?? Math.floor(sampleRng() * classCountOf(s.arch))
     flow.phase = 0
     flow.hold = 0
-    set({ ...makeInputs(s.arch, chosen), step: 0, playing: true, transitioning: false })
+    set({ ...makeInputs(s.arch, chosen), ...restart })
+  },
+
+  setTextInput: (raw) => {
+    const features = extractTextFeatures(raw)
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      textRaw: raw,
+      textClass: -1,
+      textFeatures: features,
+      textTrace: forwardMLP(MODELS.text.model, features),
+      ...restart,
+    })
+  },
+
+  setLLMInput: (raw) => {
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      llmText: raw,
+      llmClass: -1,
+      llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(raw)),
+      ...restart,
+      selected: null,
+    })
   },
 
   requestFocus: (pos, distance = 4.5) =>
@@ -203,7 +304,17 @@ export function useT() {
 
 /** Seconds a step transition takes at 1x speed. */
 export function stepDuration(arch: Arch, step: number): number {
-  if (arch === 'mlp') return 1.6
-  const durations = [3.6, 2.4, 1.2, 1.6, 1.4]
-  return durations[step] ?? 1.2
+  if (arch === 'mlp' || arch === 'text') return 1.6
+  if (arch === 'llm') {
+    const durations = [1.6, 1.8, 3.2, 1.8, 1.6, 1.6]
+    return durations[step] ?? 1.4
+  }
+  const model = MODELS.cnn.model
+  const def = model.layers[step]
+  if (!def) return 1.2
+  const n = model.inputShape[1]
+  if (def.type === 'conv') return Math.min(6, 1.5 + (n - 2) ** 2 * 0.028)
+  if (def.type === 'pool') return Math.min(4.5, 1.1 + Math.floor((n - 2) / 2) ** 2 * 0.14)
+  if (def.type === 'flatten') return 1.2
+  return step === model.layers.length - 1 ? 1.4 : 1.6
 }

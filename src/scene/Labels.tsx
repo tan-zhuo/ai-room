@@ -1,8 +1,7 @@
 import { Html } from '@react-three/drei'
 import { argmax } from '../nn/mlp'
-import { MODELS } from '../nn/models'
-import { Arch, totalSteps, useStore, useT } from '../store'
-import { Vec3, mlpPos, cnnPos } from './layout'
+import { totalSteps, useStore, useT } from '../store'
+import { DenseArch, Vec3, cnnPos, densePos } from './layout'
 
 export function LayerLabel({
   position,
@@ -35,19 +34,20 @@ export function LayerLabel({
   )
 }
 
-/** Class name + live probability next to each output neuron. */
-export function OutputLabels({ arch }: { arch: Arch }) {
+/** Class name + live probability next to each output neuron (mlp / text / cnn). */
+export function OutputLabels({ arch }: { arch: DenseArch | 'cnn' }) {
   const t = useT()
   const step = useStore((s) => s.step)
   const mlpTrace = useStore((s) => s.mlpTrace)
+  const textTrace = useStore((s) => s.textTrace)
   const cnnTrace = useStore((s) => s.cnnTrace)
 
   const lastLayer = totalSteps(arch) - 1
   const done = step > lastLayer
   let probs: number[]
-  if (arch === 'mlp') {
-    probs = mlpTrace[mlpTrace.length - 1].a
-  } else {
+  if (arch === 'mlp') probs = mlpTrace[mlpTrace.length - 1].a
+  else if (arch === 'text') probs = textTrace[textTrace.length - 1].a
+  else {
     const last = cnnTrace[cnnTrace.length - 1]
     probs = last.kind === 'vector' ? last.a : []
   }
@@ -57,9 +57,7 @@ export function OutputLabels({ arch }: { arch: Arch }) {
     <>
       {probs.map((p, i) => {
         const pos =
-          arch === 'mlp'
-            ? mlpPos(MODELS.mlp.model.layers.length - 1, i)
-            : cnnPos(lastLayer, { index: i })
+          arch === 'cnn' ? cnnPos(lastLayer, { index: i }) : densePos(arch, lastLayer, i)
         return (
           <Html
             key={i}
@@ -83,14 +81,17 @@ export function OutputLabels({ arch }: { arch: Arch }) {
   )
 }
 
-/** Feature name + current value beside each MLP input node. */
-export function InputLabels() {
+/** Feature name + current value beside each input node (mlp / text). */
+export function InputLabels({ arch }: { arch: DenseArch }) {
   const t = useT()
-  const input = useStore((s) => s.mlpInput)
+  const mlpInput = useStore((s) => s.mlpInput)
+  const textFeatures = useStore((s) => s.textFeatures)
+  const values = arch === 'mlp' ? mlpInput : textFeatures
+  const nameOf = (i: number) => (arch === 'mlp' ? t('feature.n', { n: i + 1 }) : t(`textfeat.${i}`))
   return (
     <>
-      {input.map((v, i) => {
-        const pos = mlpPos(-1, i)
+      {values.map((v, i) => {
+        const pos = densePos(arch, -1, i)
         return (
           <Html
             key={i}
@@ -99,7 +100,7 @@ export function InputLabels() {
             style={{ pointerEvents: 'none' }}
           >
             <div className="in-label">
-              <span className="in-name">{t('feature.n', { n: i + 1 })}</span>
+              <span className="in-name">{nameOf(i)}</span>
               <span className="in-val">{v.toFixed(2)}</span>
             </div>
           </Html>

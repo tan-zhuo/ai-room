@@ -24,6 +24,12 @@ import { SlideAnim } from './SlideAnim'
 
 const v = (p: [number, number, number]) => new THREE.Vector3(p[0], p[1], p[2])
 
+/** Keep only the strongest connections when a scale makes the full set too dense. */
+function topSegments(segs: Segment[], cap: number): Segment[] {
+  if (segs.length <= cap) return segs
+  return [...segs].sort((a, b) => Math.abs(b.w) - Math.abs(a.w)).slice(0, cap)
+}
+
 export function CNNScene() {
   const model = MODELS.cnn.model
   const input = useStore((s) => s.cnnInput)
@@ -109,7 +115,7 @@ export function CNNScene() {
         values={flatOut}
         scale={maxAbs(flatOut)}
         layerIndex={2}
-        radius={0.18}
+        radius={Math.min(0.18, flatSlot.gapY * 0.42)}
         refFor={(i) => ({ space: 'vector', layer: 2, index: i })}
       />
       <VectorNodes
@@ -117,7 +123,7 @@ export function CNNScene() {
         values={denseOut}
         scale={maxAbs(denseOut)}
         layerIndex={3}
-        radius={0.28}
+        radius={Math.min(0.28, denseSlot.gapY * 0.42)}
         refFor={(i) => ({ space: 'vector', layer: 3, index: i })}
       />
       <VectorNodes
@@ -129,21 +135,31 @@ export function CNNScene() {
         refFor={(i) => ({ space: 'vector', layer: 4, index: i })}
       />
 
-      <Connections segments={flatSegments} layerIndex={2} maxRadius={0.015} />
-      <Connections segments={denseSegments} layerIndex={3} maxRadius={0.022} />
+      <Connections segments={topSegments(flatSegments, 2000)} layerIndex={2} maxRadius={0.015} />
+      <Connections segments={topSegments(denseSegments, 3000)} layerIndex={3} maxRadius={0.022} />
       <Connections segments={outSegments} layerIndex={4} maxRadius={0.03} />
-      <FlowParticles segments={flatSegments} layerIndex={2} size={0.08} />
-      <FlowParticles segments={denseSegments} layerIndex={3} size={0.07} />
-      <FlowParticles segments={outSegments} layerIndex={4} size={0.1} />
+      <FlowParticles segments={topSegments(flatSegments, 320)} layerIndex={2} size={0.08} />
+      <FlowParticles segments={topSegments(denseSegments, 320)} layerIndex={3} size={0.07} />
+      <FlowParticles segments={topSegments(outSegments, 320)} layerIndex={4} size={0.1} />
 
       <SlideAnim mode="conv" />
       <SlideAnim mode="pool" />
 
-      <LayerLabel position={cnnLabelAnchor(-1)} title={t('layer.input')} sub="1×8×8" layer={-1} />
-      <LayerLabel position={cnnLabelAnchor(0)} title={t('layer.conv')} sub="3×3 · 3 ch · ReLU" layer={0} />
+      <LayerLabel
+        position={cnnLabelAnchor(-1)}
+        title={t('layer.input')}
+        sub={`1×${inputSlot.rows}×${inputSlot.cols}`}
+        layer={-1}
+      />
+      <LayerLabel
+        position={cnnLabelAnchor(0)}
+        title={t('layer.conv')}
+        sub={`3×3 · ${convSlot.channels} ch · ReLU`}
+        layer={0}
+      />
       <LayerLabel position={cnnLabelAnchor(1)} title={t('layer.pool')} sub="2×2" layer={1} />
-      <LayerLabel position={cnnLabelAnchor(2)} title={t('layer.flatten')} sub="27" layer={2} />
-      <LayerLabel position={cnnLabelAnchor(3)} title={t('layer.dense')} sub="10 · ReLU" layer={3} />
+      <LayerLabel position={cnnLabelAnchor(2)} title={t('layer.flatten')} sub={`${flatSlot.size}`} layer={2} />
+      <LayerLabel position={cnnLabelAnchor(3)} title={t('layer.dense')} sub={`${denseSlot.size} · ReLU`} layer={3} />
       <LayerLabel position={cnnLabelAnchor(4)} title={t('layer.output')} sub="softmax" layer={4} />
 
       <OutputLabels arch="cnn" />

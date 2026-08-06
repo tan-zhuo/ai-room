@@ -1,40 +1,52 @@
-// Quick engine sanity check: run `npm run sanity`.
-import { MODELS } from '../src/nn/models'
+// Engine sanity check: run `npm run sanity`.
+import { MODELS, buildCNNTask, buildMLPTask, evalTextAccuracy } from '../src/nn/models'
 import { forwardMLP, argmax } from '../src/nn/mlp'
 import { forwardCNN } from '../src/nn/cnn'
+import { evalLLMAccuracy, forwardLLM, encodeLLM } from '../src/nn/transformer'
 import { mulberry32 } from '../src/nn/rng'
 
 const rng = mulberry32(999)
+const failures: string[] = []
 
-let mlpOk = 0
-const MLP_N = 60
-for (let i = 0; i < MLP_N; i++) {
-  const cls = i % MODELS.mlp.classCount
-  const x = MODELS.mlp.makeSample(cls, rng)
-  const traces = forwardMLP(MODELS.mlp.model, x)
-  if (argmax(traces[traces.length - 1].a) === cls) mlpOk++
+// --- MLP + CNN across all scales
+for (const scale of ['s', 'm', 'l'] as const) {
+  const t0 = Date.now()
+  const mlp = buildMLPTask(scale)
+  const cnn = buildCNNTask(scale)
+  const buildMs = Date.now() - t0
+
+  let mlpOk = 0
+  for (let i = 0; i < 60; i++) {
+    const cls = i % mlp.classCount
+    const traces = forwardMLP(mlp.model, mlp.makeSample(cls, rng))
+    if (argmax(traces[traces.length - 1].a) === cls) mlpOk++
+  }
+  let cnnOk = 0
+  for (let i = 0; i < 60; i++) {
+    const cls = i % cnn.classCount
+    const steps = forwardCNN(cnn.model, cnn.makeSample(cls, rng))
+    const last = steps[steps.length - 1]
+    if (last.kind === 'vector' && argmax(last.a) === cls) cnnOk++
+  }
+  console.log(`scale=${scale}: MLP ${mlpOk}/60, CNN ${cnnOk}/60 (build+train ${buildMs}ms)`)
+  if (mlpOk < 51 || cnnOk < 51) failures.push(`scale ${scale} accuracy too low`)
 }
-console.log(`MLP accuracy on fresh samples: ${mlpOk}/${MLP_N}`)
 
-let cnnOk = 0
-const CNN_N = 80
-for (let i = 0; i < CNN_N; i++) {
-  const cls = i % MODELS.cnn.classCount
-  const x = MODELS.cnn.makeSample(cls, rng)
-  const steps = forwardCNN(MODELS.cnn.model, x)
-  const last = steps[steps.length - 1]
-  if (last.kind === 'vector' && argmax(last.a) === cls) cnnOk++
-}
-console.log(`CNN accuracy on fresh samples: ${cnnOk}/${CNN_N}`)
+// --- text language detector
+const textAcc = evalTextAccuracy(90)
+console.log(`TEXT language detector accuracy: ${(textAcc * 100).toFixed(1)}%`)
+if (textAcc < 0.85) failures.push('text accuracy too low')
 
-const probs = (() => {
-  const steps = forwardCNN(MODELS.cnn.model, MODELS.cnn.makeSample(0, rng))
-  const last = steps[steps.length - 1]
-  return last.kind === 'vector' ? last.a.map((v) => v.toFixed(3)).join(', ') : ''
-})()
-console.log(`Sample CNN output distribution: [${probs}]`)
+// --- tiny transformer
+const llm = MODELS.llm
+const llmAcc = evalLLMAccuracy(llm)
+console.log(`LLM final training loss: ${llm.finalLoss.toFixed(3)}, next-char top-1: ${(llmAcc * 100).toFixed(1)}%`)
+const demo = forwardLLM(llm.model, encodeLLM(llm.model, 'attentio'))
+const top = [...demo.probs.keys()].sort((a, b) => demo.probs[b] - demo.probs[a]).slice(0, 3)
+console.log(`  "attentio" → next char candidates: ${top.map((i) => `'${llm.model.vocab[i]}' ${(demo.probs[i] * 100).toFixed(0)}%`).join(', ')}`)
+if (llm.finalLoss > 2.2 || llmAcc < 0.25) failures.push('llm did not learn')
 
-if (mlpOk / MLP_N < 0.85 || cnnOk / CNN_N < 0.85) {
-  throw new Error('Accuracy too low — tune training.')
+if (failures.length > 0) {
+  throw new Error('Sanity failures: ' + failures.join('; '))
 }
 console.log('Sanity OK')

@@ -129,6 +129,86 @@ const en: Dict = {
     'It mixes evidence from every location and every kernel into higher-level combinations that separate the classes.',
   'explain.dense.simple':
     'The deliberation room: all the collected clues are weighed together before the verdict.',
+  'arch.text': 'TEXT',
+  'arch.textFull': 'Text Language Detector',
+  'arch.llm': 'LLM',
+  'arch.llmFull': 'Tiny Transformer (char-level LLM)',
+  'scale.s': 'S',
+  'scale.m': 'M',
+  'scale.l': 'L',
+  'scale.tooltip': 'Network scale — rebuilds and retrains live',
+  'toast.training': 'Retraining the network…',
+  'controls.typeText': 'Type any text…',
+  'controls.run': 'Run',
+  'class.text.0': '中文',
+  'class.text.1': 'English',
+  'class.text.2': '日本語',
+  'textfeat.0': 'Latin %',
+  'textfeat.1': 'CJK %',
+  'textfeat.2': 'Kana %',
+  'textfeat.3': 'Digits %',
+  'textfeat.4': 'Punct. %',
+  'textfeat.5': 'Spaces %',
+  'textfeat.6': 'Word length',
+  'textfeat.7': 'Vowel ratio',
+  'layer.tokens': 'Tokens',
+  'layer.embed': 'Embedding',
+  'layer.attn': 'Attention',
+  'layer.attnout': 'Weighted sum A·V',
+  'layer.ffn': 'Feed-forward',
+  'llm.next': 'Next char',
+  'llm.masked': 'Masked (future token)',
+  'llm.maskedNote':
+    'Token i may only attend to tokens ≤ i — the model must not peek at the future it is trying to predict.',
+  'llm.score': 'score',
+  'llm.attnWeight': 'attention weight',
+  'llm.topCandidates': 'Top candidates',
+  'panel.token': 'Token',
+  'panel.rawText': 'Input text',
+  'explain.textInput.what':
+    'The typed text is converted into 8 numeric features — the share of Latin letters, CJK characters, kana, digits, punctuation and spaces, plus average word length and vowel ratio. Only these numbers enter the network.',
+  'explain.textInput.why':
+    'Networks can only compute with numbers. Turning raw text into a fixed-length feature vector is the simplest form of encoding — real language models do the same job with learned embeddings.',
+  'explain.textInput.simple':
+    "Like describing a sentence over the phone: you don't read it aloud, you report a few statistics about it.",
+  'explain.tokens.what':
+    'The typed text is split into single characters; each becomes a token with an id from the 27-symbol vocabulary. The model always looks at the last 8 tokens.',
+  'explain.tokens.why':
+    'A network cannot read raw text — it needs a discrete, numbered alphabet to look things up in. Real LLMs do exactly this with subword tokens instead of characters.',
+  'explain.tokens.simple': 'Cutting the sentence into tiles, one letter per tile.',
+  'explain.embed.what':
+    'Each token id looks up a learned 10-dimensional vector, and a learned position vector is added so the model knows where in the sequence each token sits.',
+  'explain.embed.why':
+    'Embeddings turn discrete symbols into coordinates the network can do math on; without positional vectors, "ab" and "ba" would look identical.',
+  'explain.embed.simple':
+    'Every letter gets a personality profile, plus a note about where it is standing in line.',
+  'explain.qkv.what':
+    "Each token's embedding is multiplied by three learned matrices, producing a query (what am I looking for?), a key (what do I contain?) and a value (what do I pass along?).",
+  'explain.qkv.why':
+    "Splitting the roles lets each token both ask questions about the context and answer other tokens' questions — the core trick behind attention.",
+  'explain.qkv.simple': 'Every token writes a search query, a business card, and a package to hand over.',
+  'explain.attn.what':
+    'Every query is dotted with every earlier key, scaled by 1/√d, and each row is turned into weights with softmax. Cell (i, j) shows how much token i attends to token j; future tokens are masked out.',
+  'explain.attn.why':
+    'This is how the model decides which earlier characters matter for predicting the next one — the pattern is learned, not hard-coded.',
+  'explain.attn.simple':
+    'A spotlight each letter shines back over the letters before it — brighter means more relevant.',
+  'explain.attnout.what':
+    "Each token's new representation is the weighted average of all value vectors, using its attention row as the weights: zᵢ = Σ A[i][j]·vⱼ.",
+  'explain.attnout.why':
+    'This actually moves information between positions — the only place in the block where tokens exchange content.',
+  'explain.attnout.simple': 'Each letter blends the packages it collected, in proportion to its spotlight.',
+  'explain.ffn.what':
+    "A small two-layer network (ReLU in the middle) transforms each position's vector independently.",
+  'explain.ffn.why':
+    'Attention mixes tokens; the feed-forward layer then processes what was gathered, adding nonlinear pattern-matching capacity.',
+  'explain.ffn.simple': 'After gathering opinions, each letter thinks on its own for a moment.',
+  'explain.llmOutput.what':
+    "The last position's vector is projected onto every vocabulary symbol to give scores, and softmax turns them into next-character probabilities.",
+  'explain.llmOutput.why':
+    'Language modeling is just "predict the next symbol" — sampling from this distribution over and over is how LLMs write text.',
+  'explain.llmOutput.simple':
+    'The model finishes your sentence: one letter at a time, by voting over the alphabet.',
 }
 
 const zh: Dict = {
@@ -248,6 +328,79 @@ const zh: Dict = {
   'explain.dense.why':
     '它把来自每个位置、每个卷积核的证据混合起来，形成能区分类别的高层组合。',
   'explain.dense.simple': '合议室：所有收集到的线索在这里一起权衡，然后给出结论。',
+  'arch.text': 'TEXT',
+  'arch.textFull': '文本语言识别',
+  'arch.llm': 'LLM',
+  'arch.llmFull': '迷你 Transformer（字符级 LLM）',
+  'scale.s': '小',
+  'scale.m': '中',
+  'scale.l': '大',
+  'scale.tooltip': '网络规模——实时重建并重新训练',
+  'toast.training': '正在重新训练网络…',
+  'controls.typeText': '输入任意文字…',
+  'controls.run': '运行',
+  'class.text.0': '中文',
+  'class.text.1': 'English',
+  'class.text.2': '日本語',
+  'textfeat.0': '拉丁字母占比',
+  'textfeat.1': '汉字占比',
+  'textfeat.2': '假名占比',
+  'textfeat.3': '数字占比',
+  'textfeat.4': '标点占比',
+  'textfeat.5': '空格占比',
+  'textfeat.6': '平均词长',
+  'textfeat.7': '元音比例',
+  'layer.tokens': 'Token 序列',
+  'layer.embed': '嵌入层',
+  'layer.attn': '注意力',
+  'layer.attnout': '加权求和 A·V',
+  'layer.ffn': '前馈层',
+  'llm.next': '下一个字符',
+  'llm.masked': '已掩码（未来 token）',
+  'llm.maskedNote': 'token i 只能关注 ≤ i 的 token——模型不能偷看它正要预测的未来。',
+  'llm.score': '得分',
+  'llm.attnWeight': '注意力权重',
+  'llm.topCandidates': '最高候选',
+  'panel.token': 'Token',
+  'panel.rawText': '输入文本',
+  'explain.textInput.what':
+    '输入的文字被转换成 8 个数值特征——拉丁字母、汉字、假名、数字、标点、空格的占比，以及平均词长和元音比例。进入网络的只有这些数字。',
+  'explain.textInput.why':
+    '神经网络只能对数字做计算。把原始文本变成定长特征向量是最简单的"编码"方式——真正的语言模型用学习到的词向量做同样的事。',
+  'explain.textInput.simple': '就像打电话向网络描述一句话：不是逐字朗读，而是报出几个统计数字。',
+  'explain.tokens.what':
+    '输入的文字被切分成单个字符，每个字符成为一个 token，并从 27 个符号的词表中获得一个编号。模型始终查看最后 8 个 token。',
+  'explain.tokens.why':
+    '网络无法直接阅读原始文本——它需要一个离散、有编号的字母表来查表。真正的 LLM 用的是子词（subword）token，原理相同。',
+  'explain.tokens.simple': '把句子剪成一块块瓷砖，每块放一个字母。',
+  'explain.embed.what':
+    '每个 token 编号查出一个学习到的 10 维向量，再加上位置向量，让模型知道每个 token 在序列中的位置。',
+  'explain.embed.why':
+    '嵌入把离散符号变成可以做数学运算的坐标；没有位置向量，"ab" 和 "ba" 看起来会完全一样。',
+  'explain.embed.simple': '每个字母领到一份性格档案，外加一张写着自己排队位置的纸条。',
+  'explain.qkv.what':
+    '每个 token 的嵌入分别乘以三个学习到的矩阵，得到查询 Query（我在找什么？）、键 Key（我包含什么？）和值 Value（我要传递什么？）。',
+  'explain.qkv.why':
+    '角色分离让每个 token 既能对上下文提问，也能回答其他 token 的提问——这是注意力机制的核心技巧。',
+  'explain.qkv.simple': '每个 token 写下一条搜索请求、一张名片和一个待转交的包裹。',
+  'explain.attn.what':
+    '每个查询与所有更早的键做点积，除以 √d 缩放，再对每行做 softmax 得到权重。格子 (i, j) 表示 token i 对 token j 的关注程度；未来的 token 被掩码遮住。',
+  'explain.attn.why':
+    '模型正是通过它来决定哪些更早的字符对预测下一个字符重要——这个模式是学出来的，不是写死的。',
+  'explain.attn.simple': '每个字母向前面的字母打一束聚光灯——越亮表示越相关。',
+  'explain.attnout.what':
+    '每个 token 的新表示是所有值向量的加权平均，权重就是它的注意力行：zᵢ = Σ A[i][j]·vⱼ。',
+  'explain.attnout.why':
+    '这一步真正在位置之间搬运信息——是整个模块中 token 之间唯一交换内容的地方。',
+  'explain.attnout.simple': '每个字母按聚光灯的亮度比例，把收到的包裹混合在一起。',
+  'explain.ffn.what': '一个小型两层网络（中间是 ReLU）独立地变换每个位置的向量。',
+  'explain.ffn.why': '注意力负责混合 token；前馈层随后加工收集到的信息，提供非线性的模式识别能力。',
+  'explain.ffn.simple': '收集完大家的意见后，每个字母自己静静思考一会儿。',
+  'explain.llmOutput.what':
+    '最后一个位置的向量被投影到词表的每个符号上得到分数，softmax 把分数变成下一个字符的概率。',
+  'explain.llmOutput.why':
+    '语言建模就是"预测下一个符号"——反复从这个分布中采样，LLM 就是这样写出文字的。',
+  'explain.llmOutput.simple': '模型接着写你的句子：对字母表投票，一次写一个字母。',
 }
 
 const ja: Dict = {
@@ -373,6 +526,84 @@ const ja: Dict = {
   'explain.dense.why':
     'あらゆる位置・あらゆるカーネルからの証拠を混ぜ合わせ、クラスを分ける高次の組み合わせを作ります。',
   'explain.dense.simple': '評議室：集めた手がかりをまとめて検討し、結論を出す場所です。',
+  'arch.text': 'TEXT',
+  'arch.textFull': 'テキスト言語判定',
+  'arch.llm': 'LLM',
+  'arch.llmFull': 'ミニTransformer（文字レベルLLM）',
+  'scale.s': '小',
+  'scale.m': '中',
+  'scale.l': '大',
+  'scale.tooltip': 'ネットワークの規模——その場で再構築・再学習します',
+  'toast.training': 'ネットワークを再学習中…',
+  'controls.typeText': 'テキストを入力…',
+  'controls.run': '実行',
+  'class.text.0': '中文',
+  'class.text.1': 'English',
+  'class.text.2': '日本語',
+  'textfeat.0': 'ラテン文字率',
+  'textfeat.1': '漢字率',
+  'textfeat.2': 'かな率',
+  'textfeat.3': '数字率',
+  'textfeat.4': '句読点率',
+  'textfeat.5': '空白率',
+  'textfeat.6': '平均語長',
+  'textfeat.7': '母音率',
+  'layer.tokens': 'トークン',
+  'layer.embed': '埋め込み',
+  'layer.attn': 'アテンション',
+  'layer.attnout': '加重和 A·V',
+  'layer.ffn': 'FFN',
+  'llm.next': '次の文字',
+  'llm.masked': 'マスク済み（未来トークン）',
+  'llm.maskedNote':
+    'トークン i は i 以前のトークンにしか注目できません——予測しようとしている未来を覗いてはいけないからです。',
+  'llm.score': 'スコア',
+  'llm.attnWeight': 'アテンション重み',
+  'llm.topCandidates': '上位候補',
+  'panel.token': 'トークン',
+  'panel.rawText': '入力テキスト',
+  'explain.textInput.what':
+    '入力されたテキストは 8 つの数値特徴——ラテン文字・漢字・かな・数字・句読点・空白の割合、平均語長、母音率——に変換されます。ネットワークに入るのはこの数値だけです。',
+  'explain.textInput.why':
+    'ニューラルネットワークは数値しか計算できません。テキストを固定長の特徴ベクトルにするのは最も簡単な「符号化」で、本物の言語モデルは学習した埋め込みで同じことをします。',
+  'explain.textInput.simple':
+    '電話で文章を説明するようなもの：読み上げるのではなく、いくつかの統計値を伝えます。',
+  'explain.tokens.what':
+    '入力テキストは 1 文字ずつに分割され、それぞれが 27 記号の語彙から番号を持つトークンになります。モデルは常に最後の 8 トークンを見ます。',
+  'explain.tokens.why':
+    'ネットワークは生のテキストを読めません——番号付きの離散的なアルファベットが必要です。本物の LLM は文字の代わりにサブワードトークンで同じことをします。',
+  'explain.tokens.simple': '文章をタイルに切り分け、1 枚に 1 文字ずつ載せるイメージです。',
+  'explain.embed.what':
+    '各トークン番号から学習済みの 10 次元ベクトルを引き、さらに位置ベクトルを加えて、そのトークンが列のどこにいるかを伝えます。',
+  'explain.embed.why':
+    '埋め込みは離散記号を計算可能な座標に変えます。位置ベクトルがなければ「ab」と「ba」は同じに見えてしまいます。',
+  'explain.embed.simple':
+    '各文字が性格プロファイルと、列の何番目に立っているかのメモを受け取ります。',
+  'explain.qkv.what':
+    '各トークンの埋め込みに 3 つの学習済み行列を掛け、クエリ（何を探す？）、キー（何を持つ？）、バリュー（何を渡す？）を作ります。',
+  'explain.qkv.why':
+    '役割を分けることで、各トークンは文脈に質問することも、他のトークンの質問に答えることもできます——アテンションの核心です。',
+  'explain.qkv.simple': '各トークンが検索クエリと名刺と手渡す荷物を書き上げます。',
+  'explain.attn.what':
+    '各クエリとそれ以前のすべてのキーの内積を 1/√d でスケールし、行ごとに softmax で重みにします。セル (i, j) はトークン i がトークン j にどれだけ注目しているか。未来のトークンはマスクされます。',
+  'explain.attn.why':
+    '次の文字を予測するのにどの過去の文字が重要かを、モデルはここで決めます——このパターンは学習で獲得されたものです。',
+  'explain.attn.simple': '各文字が前の文字たちに向けるスポットライト——明るいほど関連が強い。',
+  'explain.attnout.what':
+    '各トークンの新しい表現は、アテンション行を重みとした全バリューベクトルの加重平均です：zᵢ = Σ A[i][j]·vⱼ。',
+  'explain.attnout.why':
+    '位置の間で実際に情報が動くのはここだけ——ブロック内でトークン同士が内容を交換する唯一の場所です。',
+  'explain.attnout.simple': '各文字がスポットライトの明るさに応じて、集めた荷物をブレンドします。',
+  'explain.ffn.what':
+    '小さな 2 層ネットワーク（中間に ReLU）が各位置のベクトルを独立に変換します。',
+  'explain.ffn.why':
+    'アテンションはトークンを混ぜ、フィードフォワード層は集めた情報を加工して非線形なパターン認識力を加えます。',
+  'explain.ffn.simple': '意見を集めた後、各文字がひとりで少し考える時間です。',
+  'explain.llmOutput.what':
+    '最後の位置のベクトルを語彙の全記号に射影してスコアを出し、softmax が次の文字の確率に変えます。',
+  'explain.llmOutput.why':
+    '言語モデリングとは「次の記号を予測する」こと——この分布から繰り返しサンプリングして LLM は文章を書きます。',
+  'explain.llmOutput.simple': 'モデルがあなたの文を続きから書きます：アルファベットへの投票で 1 文字ずつ。',
 }
 
 const dicts: Record<Lang, Dict> = { en, zh, ja }

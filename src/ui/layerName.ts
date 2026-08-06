@@ -3,11 +3,17 @@ import { Arch } from '../store'
 
 type T = (key: string, params?: Record<string, string | number>) => string
 
+const LLM_LAYER_KEYS = ['layer.embed', 'layer.qkv', 'layer.attn', 'layer.attnout', 'layer.ffn', 'layer.output']
+
 /** Localized display name for a layer (-1 = input). */
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
+  if (arch === 'llm') {
+    if (layer === -1) return t('layer.tokens')
+    return layer === 1 ? 'Q · K · V' : t(LLM_LAYER_KEYS[layer] ?? 'layer.output')
+  }
   if (layer === -1) return t('layer.input')
-  if (arch === 'mlp') {
-    const last = MODELS.mlp.model.layers.length - 1
+  if (arch === 'mlp' || arch === 'text') {
+    const last = MODELS[arch].model.layers.length - 1
     return layer === last ? t('layer.output') : t('layer.hidden', { n: layer + 1 })
   }
   const last = MODELS.cnn.model.layers.length - 1
@@ -27,6 +33,14 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
 
 /** i18n key prefix (explain.<key>) for a layer's module explanation. */
 export function explainKeyOf(arch: Arch, layer: number): string {
+  if (arch === 'llm') {
+    const keys = ['tokens', 'embed', 'qkv', 'attn', 'attnout', 'ffn', 'llmOutput']
+    return keys[layer + 1] ?? 'llmOutput'
+  }
+  if (arch === 'text') {
+    if (layer === -1) return 'textInput'
+    return layer === MODELS.text.model.layers.length - 1 ? 'output' : 'hidden'
+  }
   if (arch === 'mlp') {
     if (layer === -1) return 'input'
     return layer === MODELS.mlp.model.layers.length - 1 ? 'output' : 'hidden'
