@@ -279,9 +279,9 @@ export function LLMScene() {
         )
       })}
 
-      {/* vocab characters + probabilities beside the output column (top candidates only) */}
-      {topIdx.map((i) => {
-        const p = outPositions[i]
+      {/* every vocab character labels its node; top candidates also show their probability */}
+      {outPositions.map((p, i) => {
+        const isTop = topIdx.includes(i)
         return (
           <Html
             key={`ov${i}`}
@@ -290,8 +290,8 @@ export function LLMScene() {
             style={{ pointerEvents: 'none' }}
           >
             <div className={`out-label${done ? ' done' : ''}${done && i === pred ? ' pred' : ''}`}>
-              <span className="out-name mono-char">{showChar(model.vocab[i])}</span>
-              {done && <span className="out-prob">{(trace.probs[i] * 100).toFixed(1)}%</span>}
+              <span className={`out-name mono-char${isTop ? '' : ' dim'}`}>{showChar(model.vocab[i])}</span>
+              {done && isTop && <span className="out-prob">{(trace.probs[i] * 100).toFixed(1)}%</span>}
             </div>
           </Html>
         )

@@ -120,13 +120,13 @@ export function LSTMScene() {
           </Html>
         )
       })}
-      {topIdx.map((i) => {
-        const p = outPositions[i]
+      {outPositions.map((p, i) => {
+        const isTop = topIdx.includes(i)
         return (
           <Html key={`ov${i}`} position={[p[0] + 0.4, p[1], p[2]]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
             <div className={`out-label${done ? ' done' : ''}${done && i === pred ? ' pred' : ''}`}>
-              <span className="out-name mono-char">{showChar(model.vocab[i])}</span>
-              {done && <span className="out-prob">{(trace.probs[i] * 100).toFixed(1)}%</span>}
+              <span className={`out-name mono-char${isTop ? '' : ' dim'}`}>{showChar(model.vocab[i])}</span>
+              {done && isTop && <span className="out-prob">{(trace.probs[i] * 100).toFixed(1)}%</span>}
             </div>
           </Html>
         )

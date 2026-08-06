@@ -427,7 +427,8 @@ function trainStep(model: LLMModel, ids: number[], targets: number[], lr: number
 export const LLM_CORPUS =
   'hello world. the ai room. attention is all you need. neural networks learn deep patterns. ' +
   'we walk inside a living neural network. data flows through every layer. the model learns to ' +
-  'read and the room comes alive. deep nets see the world. '
+  'read and the room comes alive. deep nets see the world. ' +
+  'the quick brown fox jumps over the lazy dog. ' // pangram: every letter a–z is in the vocabulary
 
 export interface LLMTask {
   model: LLMModel
@@ -482,7 +483,7 @@ export function buildLLMTask(): LLMTask {
 
   let loss = 0
   const order = windows.map((_, i) => i)
-  const epochs = 30
+  const epochs = 42
   for (let epoch = 0; epoch < epochs; epoch++) {
     shuffleInPlace(order, rng)
     const lr = 0.1 * (1 - (epoch / epochs) * 0.7)
