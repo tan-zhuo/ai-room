@@ -3,7 +3,7 @@ import { MODELS, getVAETask } from '../nn/models'
 import { ActivationKind } from '../nn/mlp'
 import { convAt, poolAt, unflattenIndex } from '../nn/cnn'
 import { NodeRef, useStore, useT } from '../store'
-import { DenseArch, FlattenSlot, cnnSlot, llmStageKind } from '../scene/layout'
+import { DenseArch, FlattenSlot, cnnSlot, diffSlot, llmStageKind } from '../scene/layout'
 import { layerNameOf } from './layerName'
 import { NumGrid, cellStyle, fmt } from './valueCell'
 
@@ -859,7 +859,9 @@ function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
   if (sel.layer === 0) {
-    const hIdx = sel.row * 8 + sel.col
+    const hS = diffSlot(0)
+    const hIdx = sel.row * (hS.kind === 'grid' ? hS.cols : 8) + sel.col
+    if (hIdx >= cur.h2.a.length) return <p className="explain-text">—</p>
     const weights = cur.h1.a.map((_, m) => model.l2.weights[hIdx][m])
     return (
       <DenseComputation

@@ -28,10 +28,11 @@ export type AEVariant = 'ae' | 'vae'
 export let AE_VARIANT: AEVariant = 'ae'
 
 let vaeTask: VAETask | null = null
+let aeScale: Scale = 's'
 
-/** Lazily build + train the VAE the first time it is requested. */
+/** Lazily build + train the VAE (at the Autoencoder's current scale) on first use. */
 export function getVAETask(): VAETask {
-  if (!vaeTask) vaeTask = buildVAETask(cnnSampleOfSize)
+  if (!vaeTask) vaeTask = buildVAETask(cnnSampleOfSize, aeScale)
   return vaeTask
 }
 
@@ -144,7 +145,7 @@ function blankImage(n: number, rng: Rng): number[][] {
   )
 }
 
-function cnnSampleOfSize(n: number, cls: number, rng: Rng): Tensor3 {
+export function cnnSampleOfSize(n: number, cls: number, rng: Rng): Tensor3 {
   const img = blankImage(n, rng)
   const bright = () => clamp01(0.85 + gaussian(rng) * 0.08)
   if (cls === 0) {
@@ -316,9 +317,17 @@ function sampleTextOf(cls: number, rng: Rng): string {
   return s
 }
 
-export function buildTextTask(): TextTask {
-  const rng = mulberry32(0x7e47)
-  const model = createMLP(rng, [TEXT_FEATURE_COUNT, 10, 8, TEXT_CLASS_COUNT], ['relu', 'relu', 'softmax'])
+const TEXT_SCALE_CFG: Record<Scale, number[]> = {
+  s: [TEXT_FEATURE_COUNT, 10, 8, TEXT_CLASS_COUNT],
+  m: [TEXT_FEATURE_COUNT, 16, 12, TEXT_CLASS_COUNT],
+  l: [TEXT_FEATURE_COUNT, 24, 18, 12, TEXT_CLASS_COUNT],
+}
+
+export function buildTextTask(scale: Scale = 's'): TextTask {
+  const rng = mulberry32(0x7e47 + scale.charCodeAt(0))
+  const sizes = TEXT_SCALE_CFG[scale]
+  const acts = [...Array.from({ length: sizes.length - 2 }, () => 'relu' as const), 'softmax' as const]
+  const model = createMLP(rng, sizes, acts)
   const data: TrainSample[] = []
   for (let c = 0; c < TEXT_CLASS_COUNT; c++) {
     for (let i = 0; i < 60; i++) {
@@ -332,11 +341,16 @@ export function buildTextTask(): TextTask {
 // ---------------------------------------------------------------- Autoencoder
 // Compress an 8×8 pattern through a 4-number bottleneck and reconstruct it.
 
-export function buildAETask(): AETask {
-  const rng = mulberry32(0xae0e)
-  const n = 8
-  const latent = 6
-  const model = createMLP(rng, [n * n, 24, latent, 24, n * n], ['relu', 'tanh', 'relu', 'sigmoid'])
+const AE_SCALE_CFG: Record<Scale, { n: number; hidden: number; latent: number; epochs: number }> = {
+  s: { n: 8, hidden: 24, latent: 6, epochs: 80 },
+  m: { n: 10, hidden: 36, latent: 8, epochs: 75 },
+  l: { n: 12, hidden: 52, latent: 10, epochs: 65 },
+}
+
+export function buildAETask(scale: Scale = 's'): AETask {
+  const rng = mulberry32(0xae0e + scale.charCodeAt(0))
+  const { n, hidden, latent, epochs } = AE_SCALE_CFG[scale]
+  const model = createMLP(rng, [n * n, hidden, latent, hidden, n * n], ['relu', 'tanh', 'relu', 'sigmoid'])
   const makeSample = (cls: number, r: Rng) => cnnSampleOfSize(n, cls, r)
   const data: TrainSample[] = []
   for (let c = 0; c < CNN_CLASS_COUNT; c++) {
@@ -345,7 +359,7 @@ export function buildAETask(): AETask {
       data.push({ x: img, y: img })
     }
   }
-  const finalMSE = trainMLPMSE(model, data, { lr: 0.1, epochs: 80, rng })
+  const finalMSE = trainMLPMSE(model, data, { lr: 0.1, epochs, rng })
   return { model, n, latent, classCount: CNN_CLASS_COUNT, makeSample, finalMSE }
 }
 
@@ -448,15 +462,51 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
   MODELS = partial as Models
 }
 
-/** Rebuild + retrain one architecture at a new scale / kernel mode. */
-export function rebuildArch(arch: 'mlp' | 'cnn', scale: Scale, kernelMode: KernelMode = 'hand'): void {
-  if (arch === 'mlp') MODELS = { ...MODELS, mlp: buildMLPTask(scale) }
-  else MODELS = { ...MODELS, cnn: buildCNNTask(scale, kernelMode) }
+export type ScalableArch = keyof Models
+
+/** Rebuild + retrain one architecture at a new scale (every arch supports s/m/l). */
+export function rebuildArch(
+  arch: ScalableArch,
+  scale: Scale,
+  opts: { kernelMode?: KernelMode; llmVariant?: LLMVariant } = {},
+): void {
+  switch (arch) {
+    case 'mlp':
+      MODELS = { ...MODELS, mlp: buildMLPTask(scale) }
+      break
+    case 'cnn':
+      MODELS = { ...MODELS, cnn: buildCNNTask(scale, opts.kernelMode ?? 'hand') }
+      break
+    case 'rnn':
+      MODELS = { ...MODELS, rnn: buildRNNTask(scale) }
+      break
+    case 'lstm':
+      MODELS = { ...MODELS, lstm: buildLSTMTask(scale) }
+      break
+    case 'llm':
+      MODELS = { ...MODELS, llm: buildLLMTask(opts.llmVariant ?? 'dense', scale) }
+      break
+    case 'ae':
+      MODELS = { ...MODELS, ae: buildAETask(scale) }
+      aeScale = scale
+      vaeTask = null // retrain the VAE variant lazily at the new scale
+      if (AE_VARIANT === 'vae') getVAETask()
+      break
+    case 'diff':
+      MODELS = { ...MODELS, diff: buildDiffusionTask(cnnSampleOfSize, scale) }
+      break
+    case 'gan':
+      MODELS = { ...MODELS, gan: buildGANTask(cnnSampleOfSize, scale) }
+      break
+    case 'text':
+      MODELS = { ...MODELS, text: buildTextTask(scale) }
+      break
+  }
 }
 
 /** Rebuild + retrain the transformer with a dense or mixture-of-experts FFN. */
-export function rebuildLLM(variant: LLMVariant): void {
-  MODELS = { ...MODELS, llm: buildLLMTask(variant) }
+export function rebuildLLM(variant: LLMVariant, scale: Scale = 's'): void {
+  MODELS = { ...MODELS, llm: buildLLMTask(variant, scale) }
 }
 
 /** Quick self-check used by scripts/sanity.ts. */

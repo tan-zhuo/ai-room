@@ -91,14 +91,22 @@ export interface VAETask {
   finalKL: number
 }
 
-export function buildVAETask(patternSample: (n: number, cls: number, rng: Rng) => Tensor3): VAETask {
-  const rng = mulberry32(0x7ae1)
-  const n = 8
-  const latent = 6
+const VAE_SCALE_CFG = {
+  s: { n: 8, hidden: 24, latent: 6, epochs: 200 },
+  m: { n: 10, hidden: 36, latent: 8, epochs: 170 },
+  l: { n: 12, hidden: 52, latent: 10, epochs: 140 },
+} as const
+
+export function buildVAETask(
+  patternSample: (n: number, cls: number, rng: Rng) => Tensor3,
+  scale: 's' | 'm' | 'l' = 's',
+): VAETask {
+  const rng = mulberry32(0x7ae1 + scale.charCodeAt(0))
+  const { n, hidden, latent, epochs } = VAE_SCALE_CFG[scale]
   const beta = 0.001 // KL weight — small so reconstructions stay sharp at this tiny scale
 
-  const scaffold = createMLP(rng, [n * n, 24, latent, 24, n * n], ['relu', 'linear', 'relu', 'sigmoid'])
-  const lvScaffold = createMLP(rng, [24, latent], ['linear'])
+  const scaffold = createMLP(rng, [n * n, hidden, latent, hidden, n * n], ['relu', 'linear', 'relu', 'sigmoid'])
+  const lvScaffold = createMLP(rng, [hidden, latent], ['linear'])
   const model: VAEModel = {
     n,
     latent,
@@ -114,7 +122,6 @@ export function buildVAETask(patternSample: (n: number, cls: number, rng: Rng) =
   for (let c = 0; c < 4; c++) for (let i = 0; i < 30; i++) data.push(makeSample(c, rng)[0].flat())
 
   const order = data.map((_, i) => i)
-  const epochs = 200
   const lr = 0.05
   let mse = 0
   let kl = 0

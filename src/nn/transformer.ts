@@ -566,16 +566,17 @@ export interface LLMTask {
   finalLoss: number
 }
 
-export function buildLLMTask(variant: LLMVariant = 'dense'): LLMTask {
-  const rng = mulberry32(0x11a1)
+const LLM_SCALE_CFG = {
+  s: { d: 12, dff: 24, heads: 2, T: 8, nExperts: 4, dffE: 12, epochs: 42 },
+  m: { d: 16, dff: 32, heads: 4, T: 10, nExperts: 4, dffE: 16, epochs: 38 },
+  l: { d: 24, dff: 48, heads: 4, T: 12, nExperts: 6, dffE: 20, epochs: 32 },
+} as const
+
+export function buildLLMTask(variant: LLMVariant = 'dense', scale: 's' | 'm' | 'l' = 's'): LLMTask {
+  const rng = mulberry32(0x11a1 + scale.charCodeAt(0))
   const vocab = [...new Set([...LLM_CORPUS.toLowerCase()])].sort()
-  const d = 12
-  const dff = 24
-  const heads = 2
-  const T = 8
+  const { d, dff, heads, T, nExperts, dffE, epochs } = LLM_SCALE_CFG[scale]
   const moe = variant === 'moe'
-  const nExperts = 4
-  const dffE = 12
   const model: LLMModel = {
     vocab,
     d,
@@ -626,7 +627,6 @@ export function buildLLMTask(variant: LLMVariant = 'dense'): LLMTask {
 
   let loss = 0
   const order = windows.map((_, i) => i)
-  const epochs = 42
   for (let epoch = 0; epoch < epochs; epoch++) {
     shuffleInPlace(order, rng)
     const lr = 0.1 * (1 - (epoch / epochs) * 0.7)

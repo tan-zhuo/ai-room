@@ -104,12 +104,18 @@ export interface DiffusionTask {
   finalLoss: number
 }
 
+const DIFF_SCALE_CFG = {
+  s: { n: 8, T: 20, h1: 96, h2: 64, epochs: 220 },
+  m: { n: 10, T: 25, h1: 128, h2: 96, epochs: 170 },
+  l: { n: 12, T: 30, h1: 160, h2: 128, epochs: 130 },
+} as const
+
 export function buildDiffusionTask(
   patternSample: (n: number, cls: number, rng: Rng) => Tensor3,
+  scale: 's' | 'm' | 'l' = 's',
 ): DiffusionTask {
-  const rng = mulberry32(0xd1ff)
-  const n = 8
-  const T = 20
+  const rng = mulberry32(0xd1ff + scale.charCodeAt(0))
+  const { n, T, h1, h2, epochs } = DIFF_SCALE_CFG[scale]
   const tdim = 6
   const betas = Array.from({ length: T }, (_, i) => 0.02 + (0.26 - 0.02) * (i / (T - 1)))
   const alphas = betas.map((b) => 1 - b)
@@ -120,7 +126,7 @@ export function buildDiffusionTask(
     return v
   }, 1)
 
-  const scaffold = createMLP(rng, [n * n + tdim, 96, 64, n * n], ['relu', 'relu', 'tanh'])
+  const scaffold = createMLP(rng, [n * n + tdim, h1, h2, n * n], ['relu', 'relu', 'tanh'])
   const model: DiffusionModel = {
     n,
     T,
@@ -140,7 +146,6 @@ export function buildDiffusionTask(
       data.push(patternSample(n, c, rng)[0].flat().map((v) => v * 2 - 1))
 
   const order = data.map((_, i) => i)
-  const epochs = 220
   const lr = 0.02
   let loss = 0
   for (let e = 0; e < epochs; e++) {

@@ -174,12 +174,16 @@ export interface RNNTask {
   finalLoss: number
 }
 
-export function buildRNNTask(): RNNTask {
-  const rng = mulberry32(0x4e4e)
+const RNN_SCALE_CFG = {
+  s: { d: 10, h: 14, T: 8, epochs: 20 },
+  m: { d: 14, h: 22, T: 10, epochs: 24 },
+  l: { d: 16, h: 32, T: 12, epochs: 26 },
+} as const
+
+export function buildRNNTask(scale: 's' | 'm' | 'l' = 's'): RNNTask {
+  const rng = mulberry32(0x4e4e + scale.charCodeAt(0))
   const vocab = buildVocab()
-  const d = 10
-  const h = 14
-  const T = 8
+  const { d, h, T, epochs } = RNN_SCALE_CFG[scale]
   const model: RNNModel = {
     vocab,
     d,
@@ -195,7 +199,6 @@ export function buildRNNTask(): RNNTask {
   const windows = corpusWindows(vocab, T)
   const order = windows.map((_, i) => i)
   let loss = 0
-  const epochs = 20
   for (let e = 0; e < epochs; e++) {
     shuffleInPlace(order, rng)
     const lr = 0.1 * (1 - (e / epochs) * 0.6)
@@ -389,12 +392,16 @@ export interface LSTMTask {
   finalLoss: number
 }
 
-export function buildLSTMTask(): LSTMTask {
-  const rng = mulberry32(0x157a)
+const LSTM_SCALE_CFG = {
+  s: { d: 10, h: 14, T: 8, epochs: 30 },
+  m: { d: 14, h: 20, T: 10, epochs: 32 },
+  l: { d: 16, h: 26, T: 12, epochs: 34 },
+} as const
+
+export function buildLSTMTask(scale: 's' | 'm' | 'l' = 's'): LSTMTask {
+  const rng = mulberry32(0x157a + scale.charCodeAt(0))
   const vocab = buildVocab()
-  const d = 10
-  const h = 14
-  const T = 8
+  const { d, h, T, epochs } = LSTM_SCALE_CFG[scale]
   const D = d + h
   const model: LSTMModel = {
     vocab,
@@ -416,7 +423,6 @@ export function buildLSTMTask(): LSTMTask {
   const windows = corpusWindows(vocab, T)
   const order = windows.map((_, i) => i)
   let loss = 0
-  const epochs = 30
   for (let e = 0; e < epochs; e++) {
     shuffleInPlace(order, rng)
     const lr = 0.16 * (1 - (e / epochs) * 0.65)

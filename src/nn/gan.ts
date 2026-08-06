@@ -91,15 +91,21 @@ export interface GANTask {
   modes: number
 }
 
+const GAN_SCALE_CFG = {
+  s: { n: 8, zdim: 8, gh: 32, dh: 24, epochs: 120 },
+  m: { n: 8, zdim: 12, gh: 48, dh: 32, epochs: 130 },
+  l: { n: 12, zdim: 16, gh: 72, dh: 48, epochs: 120 },
+} as const
+
 export function buildGANTask(
   patternSample: (n: number, cls: number, rng: Rng) => Tensor3,
+  scale: 's' | 'm' | 'l' = 's',
 ): GANTask {
-  const rng = mulberry32(0x9a4)
-  const n = 8
-  const zdim = 8
+  const rng = mulberry32(0x9a4 + scale.charCodeAt(0))
+  const { n, zdim, gh, dh, epochs } = GAN_SCALE_CFG[scale]
 
-  const gScaffold = createMLP(rng, [zdim, 32, n * n], ['relu', 'tanh'])
-  const dScaffold = createMLP(rng, [n * n, 24, 1], ['leaky', 'sigmoid'])
+  const gScaffold = createMLP(rng, [zdim, gh, n * n], ['relu', 'tanh'])
+  const dScaffold = createMLP(rng, [n * n, dh, 1], ['leaky', 'sigmoid'])
   const model: GANModel = {
     n,
     zdim,
@@ -116,7 +122,6 @@ export function buildGANTask(
       data.push(patternSample(n, c, rng)[0].flat().map((v) => v * 2 - 1))
 
   const order = data.map((_, i) => i)
-  const epochs = 120
   const lrD = 0.008
   const lrG = 0.02
   let dReal = 0

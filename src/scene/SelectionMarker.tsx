@@ -364,7 +364,7 @@ function diffSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
     const hS = diffSlot(0) as GridSlot
     const idx = sel.row * task.n + sel.col
     model.out.weights[idx].forEach((w, m) =>
-      segs.push({ a: v(gridPos(hS, 0, Math.floor(m / 8), m % 8)), b: target, w, target: 0 }),
+      segs.push({ a: v(gridPos(hS, 0, Math.floor(m / hS.cols), m % hS.cols)), b: target, w, target: 0 }),
     )
     return segs
   }

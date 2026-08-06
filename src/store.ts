@@ -64,11 +64,12 @@ const initialLang: Lang = LANGS.includes(urlParam('lang') as Lang)
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, diff: 20, gan: 4 }
+const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, gan: 4 }
 
 export function totalSteps(arch: Arch): number {
   if (arch === 'llm') return MODELS.llm.model.moe ? 11 : 9
   if (arch === 'ae') return useStore.getState().aeVariant === 'vae' ? 5 : 4
+  if (arch === 'diff') return MODELS.diff.model.T
   const fixed = FIXED_STEPS[arch]
   if (fixed !== undefined) return fixed
   return (MODELS[arch as 'mlp' | 'cnn' | 'text'].model as { layers: unknown[] }).layers.length
@@ -91,7 +92,7 @@ function llmIdsFor(text: string): number[] {
 interface AppState {
   arch: Arch
   lang: Lang
-  scale: { mlp: Scale; cnn: Scale }
+  scale: Record<Arch, Scale>
   cnnKernels: KernelMode
   llmVariant: LLMVariant
   modelsVersion: number
@@ -236,7 +237,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 export const useStore = create<AppState>((set, get) => ({
   arch: initialArch,
   lang: initialLang,
-  scale: { mlp: 's', cnn: 's' },
+  scale: { mlp: 's', cnn: 's', rnn: 's', lstm: 's', llm: 's', ae: 's', diff: 's', gan: 's', text: 's' },
   cnnKernels: 'hand',
   llmVariant: 'dense',
   modelsVersion: 0,
@@ -298,28 +299,63 @@ export const useStore = create<AppState>((set, get) => ({
 
   setScale: (size) => {
     const s = get()
-    if (s.arch !== 'mlp' && s.arch !== 'cnn') return
     const archKey = s.arch
     if (s.scale[archKey] === size) return
     get().showToast('toast.training')
     // let the toast paint before the (synchronous) retraining burst
     setTimeout(() => {
-      rebuildArch(archKey, size, get().cnnKernels)
-      {
-        refreshLayout()
-        const cls = archKey === 'mlp' ? get().mlpClass : get().cnnClass
-        flow.phase = 0
-        flow.hold = 0
-        set((st) => ({
-          scale: { ...st.scale, [archKey]: size },
-          modelsVersion: st.modelsVersion + 1,
-          ...makeInputs(archKey, cls),
-          ...restart,
-          selected: null,
-          explain: null,
-          hoverInfo: null,
-        }))
+      rebuildArch(archKey, size, { kernelMode: get().cnnKernels, llmVariant: get().llmVariant })
+      refreshLayout()
+      flow.phase = 0
+      flow.hold = 0
+
+      // re-run the forward pass on the freshly trained model
+      let inputs: Partial<AppState>
+      if (archKey === 'text') {
+        const features = extractTextFeatures(get().textRaw)
+        inputs = {
+          textFeatures: features,
+          textTrace: forwardMLP(MODELS.text.model, features),
+        }
+      } else if (archKey === 'llm') {
+        inputs = {
+          llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(get().llmText)),
+          llmGenerated: '',
+          llmGenerating: false,
+        }
+      } else if (archKey === 'rnn') {
+        const m = MODELS.rnn.model
+        inputs = { rnnTrace: forwardRNN(m, encodeSeq(m.vocab, m.T, get().rnnText)) }
+      } else if (archKey === 'lstm') {
+        const m = MODELS.lstm.model
+        inputs = { lstmTrace: forwardLSTM(m, encodeSeq(m.vocab, m.T, get().lstmText)) }
+      } else if (archKey === 'ae') {
+        // the input grid size may have changed — draw a fresh sample
+        const cls = Math.max(0, get().aeClass)
+        inputs = makeInputs('ae', cls)
+        if (get().aeVariant === 'vae') {
+          const img = (inputs as { aeInput: Tensor3 }).aeInput
+          inputs = {
+            ...inputs,
+            vaeTrace: forwardVAE(getVAETask().model, img[0].flat(), undefined, sampleRng),
+          }
+        }
+      } else {
+        const cls =
+          archKey === 'mlp' ? get().mlpClass : archKey === 'cnn' ? Math.max(0, get().cnnClass) : 0
+        inputs = makeInputs(archKey, cls)
       }
+
+      set((st) => ({
+        scale: { ...st.scale, [archKey]: size },
+        modelsVersion: st.modelsVersion + 1,
+        ...inputs,
+        ...restart,
+        selected: null,
+        explain: null,
+        hoverInfo: null,
+        drawMode: false,
+      }))
     }, 60)
   },
 
@@ -328,7 +364,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (s.arch !== 'cnn' || s.cnnKernels === mode) return
     get().showToast('toast.training')
     setTimeout(() => {
-      rebuildArch('cnn', get().scale.cnn, mode)
+      rebuildArch('cnn', get().scale.cnn, { kernelMode: mode })
       {
         refreshLayout()
         flow.phase = 0
@@ -351,7 +387,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (s.arch !== 'llm' || s.llmVariant === variant) return
     get().showToast('toast.training')
     setTimeout(() => {
-      rebuildLLM(variant)
+      rebuildLLM(variant, get().scale.llm)
       {
         refreshLayout()
         flow.phase = 0

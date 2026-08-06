@@ -45,7 +45,12 @@ const VAE_LAYER_KEYS = ['layer.encoder', '', 'layer.sampleZ', 'layer.decoder', '
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'llm') {
     const kind = llmStageKind(layer)
-    return kind === 'qkv' ? 'Q · K · V' : t(LLM_KIND_NAMES[kind])
+    if (kind === 'qkv') return 'Q · K · V'
+    if (kind === 'router') {
+      const m = MODELS.llm.model
+      return t('layer.router', { n: m.nExperts, k: m.topK })
+    }
+    return t(LLM_KIND_NAMES[kind])
   }
   if (arch === 'rnn' || arch === 'lstm') {
     if (layer === -1) return t('layer.tokens')

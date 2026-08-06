@@ -37,7 +37,13 @@ export function DiffusionScene() {
   const done = step >= total
 
   const xVals = useMemo(() => toGrid(trace.xs[Math.min(step, total)], task.n), [trace, step, total, task.n])
-  const hVals = useMemo(() => toGrid(cur.h2.a, 8), [cur])
+  const hVals = useMemo(() => {
+    const padded = [...cur.h2.a]
+    while (padded.length < hSlot.rows * hSlot.cols) padded.push(0)
+    return [
+      Array.from({ length: hSlot.rows }, (_, r) => padded.slice(r * hSlot.cols, (r + 1) * hSlot.cols)),
+    ]
+  }, [cur, hSlot])
   const predVals = useMemo(() => toGrid(cur.pred.a, task.n), [cur, task.n])
   const nextVals = useMemo(
     () => toGrid(trace.xs[Math.min(step + 1, total)], task.n),

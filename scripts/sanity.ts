@@ -78,6 +78,37 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (gan.modes < 2) failures.push('gan mode-collapsed to a single pattern class')
 }
 
+// --- large-scale variants (every arch supports s/m/l; L must still learn)
+{
+  const { buildRNNTask, buildLSTMTask } = await import('../src/nn/rnn')
+  const { buildDiffusionTask } = await import('../src/nn/diffusion')
+  const { buildGANTask } = await import('../src/nn/gan')
+  const { buildAETask, buildTextTask } = await import('../src/nn/models')
+  const { cnnSampleOfSize } = await import('../src/nn/models')
+
+  const t0 = Date.now()
+  const rnnL = buildRNNTask('l')
+  const lstmL = buildLSTMTask('l')
+  const aeL = buildAETask('l')
+  const diffL = buildDiffusionTask(cnnSampleOfSize, 'l')
+  const ganL = buildGANTask(cnnSampleOfSize, 'l')
+  buildTextTask('l')
+  console.log(
+    `L-scale: RNN ${rnnL.finalLoss.toFixed(2)}, LSTM ${lstmL.finalLoss.toFixed(2)}, AE ${aeL.finalMSE.toFixed(4)}, ` +
+      `DIFF ${diffL.finalLoss.toFixed(3)}, GAN q ${ganL.quality.toFixed(4)}/${ganL.modes} modes (${Date.now() - t0}ms)`,
+  )
+  if (rnnL.finalLoss > 2.0) failures.push('rnn L did not learn')
+  if (lstmL.finalLoss > 2.0) failures.push('lstm L did not learn')
+  if (aeL.finalMSE > 0.03) failures.push('ae L reconstruction too poor')
+  if (diffL.finalLoss > 0.35) failures.push('diffusion L did not learn')
+  if (ganL.quality > 0.09 || ganL.modes < 2) failures.push('gan L failed')
+
+  const llmL = (await import('../src/nn/transformer')).buildLLMTask('dense', 'l')
+  const llmAccL = evalLLMAccuracy(llmL)
+  console.log(`L-scale LLM: loss ${llmL.finalLoss.toFixed(3)}, top-1 ${(llmAccL * 100).toFixed(1)}%`)
+  if (llmL.finalLoss > 2.0 || llmAccL < 0.4) failures.push('llm L did not learn')
+}
+
 // --- tiny transformer
 {
   const moe = (await import('../src/nn/transformer')).buildLLMTask('moe')

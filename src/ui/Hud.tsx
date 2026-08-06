@@ -93,7 +93,7 @@ function TopBar() {
   const toggleMenu = useStore((s) => s.toggleMenu)
   const toggleOverview = useStore((s) => s.toggleOverview)
 
-  const scalable = arch === 'mlp' || arch === 'cnn'
+  const scalable = true // every architecture now retrains live at s/m/l
 
   return (
     <div className="topbar">
@@ -507,7 +507,7 @@ function LLMVariantChips() {
         onClick={() => setLLMVariant('moe')}
         title={t('llm.variantTip')}
       >
-        {t('llm.moeChip')}
+        {t('llm.moeChip', { n: MODELS.llm.model.nExperts })}
       </button>
     </>
   )

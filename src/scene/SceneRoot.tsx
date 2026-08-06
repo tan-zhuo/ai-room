@@ -38,11 +38,11 @@ export function SceneRoot() {
       {(arch === 'mlp' || arch === 'text') && <DenseScene key={`${arch}${version}`} arch={arch} />}
       {arch === 'cnn' && <CNNScene key={`cnn${version}`} />}
       {arch === 'llm' && <LLMScene key={`llm${version}:${llmText}`} />}
-      {arch === 'rnn' && <RNNScene key="rnn" />}
-      {arch === 'lstm' && <LSTMScene key="lstm" />}
-      {arch === 'ae' && <AEScene key="ae" />}
-      {arch === 'diff' && <DiffusionScene key="diff" />}
-      {arch === 'gan' && <GanScene key="gan" />}
+      {arch === 'rnn' && <RNNScene key={`rnn${version}`} />}
+      {arch === 'lstm' && <LSTMScene key={`lstm${version}`} />}
+      {arch === 'ae' && <AEScene key={`ae${version}`} />}
+      {arch === 'diff' && <DiffusionScene key={`diff${version}`} />}
+      {arch === 'gan' && <GanScene key={`gan${version}`} />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

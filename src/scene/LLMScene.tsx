@@ -319,7 +319,10 @@ export function LLMScene() {
       case 'ffn':
         return { title: t('layer.ffn'), sub: `${model.dff} · ReLU` }
       case 'router':
-        return { title: t('layer.router'), sub: `softmax → top-${model.topK}` }
+        return {
+          title: t('layer.router', { n: model.nExperts, k: model.topK }),
+          sub: `softmax → top-${model.topK}`,
+        }
       case 'experts':
         return { title: t('layer.experts'), sub: `${model.nExperts} × FFN ${model.dffE}` }
       case 'combine':

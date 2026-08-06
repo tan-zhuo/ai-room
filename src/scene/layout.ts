@@ -179,37 +179,43 @@ function computeLlmSlots(): CNNSlot[] {
     chGap = 0,
   ): CNNSlot => ({ kind: 'grid', layer, channels, rows, cols, cell, x, chGap })
 
+  // cells shrink as widths grow so larger scales still fit the fixed x gaps
+  const cd = Math.min(0.34, 4.2 / d)
+  const cq = Math.min(0.3, 3.6 / d)
+  const ca = Math.min(0.44, 4.6 / T)
+  const cf = Math.min(0.27, 4.4 / dff)
   if (!m.moe) {
     llmKinds = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm1', 'ffn', 'addnorm2', 'output']
     const xs = [-14, -10.9, -7.9, -4.7, -1.2, 1.9, 4.6, 7.3, 9.9, 12.7]
     return [
-      grid(-1, 1, 1, T, 0.7, xs[0]),
-      grid(0, 1, T, d, 0.34, xs[1]),
-      grid(1, 1, T, d, 0.34, xs[2]),
-      grid(2, 3, T, d, 0.3, xs[3], 0.62),
-      grid(3, heads, T, T, 0.44, xs[4], 0.85),
-      grid(4, 1, T, d, 0.34, xs[5]),
-      grid(5, 1, T, d, 0.34, xs[6]),
-      grid(6, 1, T, dff, 0.27, xs[7]),
-      grid(7, 1, T, d, 0.34, xs[8]),
+      grid(-1, 1, 1, T, Math.min(0.7, 6.4 / T), xs[0]),
+      grid(0, 1, T, d, cd, xs[1]),
+      grid(1, 1, T, d, cd, xs[2]),
+      grid(2, 3, T, d, cq, xs[3], 0.62),
+      grid(3, heads, T, T, ca, xs[4], Math.min(0.85, 3 / heads)),
+      grid(4, 1, T, d, cd, xs[5]),
+      grid(5, 1, T, d, cd, xs[6]),
+      grid(6, 1, T, dff, cf, xs[7]),
+      grid(7, 1, T, d, cd, xs[8]),
       { kind: 'vector', layer: 8, size: V, x: xs[9], gapY: Math.min(0.72, 12.5 / V) },
     ]
   }
 
   llmKinds = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm1', 'router', 'experts', 'combine', 'addnorm2', 'output']
   const xs = [-16.4, -13.4, -10.6, -7.6, -4.2, -1.3, 1.4, 3.9, 6.7, 9.6, 12.2, 15]
+  const ce = Math.min(0.26, 3.4 / m.dffE)
   return [
-    grid(-1, 1, 1, T, 0.7, xs[0]),
-    grid(0, 1, T, d, 0.32, xs[1]),
-    grid(1, 1, T, d, 0.32, xs[2]),
-    grid(2, 3, T, d, 0.28, xs[3], 0.6),
-    grid(3, heads, T, T, 0.4, xs[4], 0.8),
-    grid(4, 1, T, d, 0.32, xs[5]),
-    grid(5, 1, T, d, 0.32, xs[6]),
-    grid(6, 1, T, m.nExperts, 0.5, xs[7]),
-    grid(7, m.nExperts, T, m.dffE, 0.26, xs[8], 0.6),
-    grid(8, 1, T, d, 0.32, xs[9]),
-    grid(9, 1, T, d, 0.32, xs[10]),
+    grid(-1, 1, 1, T, Math.min(0.7, 6.4 / T), xs[0]),
+    grid(0, 1, T, d, cd, xs[1]),
+    grid(1, 1, T, d, cd, xs[2]),
+    grid(2, 3, T, d, cq, xs[3], 0.6),
+    grid(3, heads, T, T, Math.min(0.4, 4.2 / T), xs[4], Math.min(0.8, 2.8 / heads)),
+    grid(4, 1, T, d, cd, xs[5]),
+    grid(5, 1, T, d, cd, xs[6]),
+    grid(6, 1, T, m.nExperts, Math.min(0.5, 3.2 / m.nExperts), xs[7]),
+    grid(7, m.nExperts, T, m.dffE, ce, xs[8], Math.min(0.6, 3.4 / m.nExperts)),
+    grid(8, 1, T, d, cd, xs[9]),
+    grid(9, 1, T, d, cd, xs[10]),
     { kind: 'vector', layer: 10, size: V, x: xs[11], gapY: Math.min(0.72, 12.5 / V) },
   ]
 }
@@ -240,9 +246,9 @@ function computeRnnSlots(): CNNSlot[] {
   const V = m.vocab.length
   const xs = [-8.5, -4.6, 0.2, 5.4]
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
-    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.4, x: xs[1], chGap: 0 },
-    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: h, cell: 0.4, x: xs[2], chGap: 0 },
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: Math.min(0.7, 6.4 / T), x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: Math.min(0.4, 4.2 / d), x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: h, cell: Math.min(0.4, 4.6 / h), x: xs[2], chGap: 0 },
     { kind: 'vector', layer: 2, size: V, x: xs[3], gapY: Math.min(0.72, 12.5 / V) },
   ]
 }
@@ -257,12 +263,13 @@ function computeLstmSlots(): CNNSlot[] {
   const { T, d, h } = m
   const V = m.vocab.length
   const xs = [-12, -8.4, -4, 0.6, 4.2, 8.6]
+  const ch = Math.min(0.38, 4.4 / h)
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
-    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.38, x: xs[1], chGap: 0 },
-    { kind: 'grid', layer: 1, channels: 4, rows: T, cols: h, cell: 0.3, x: xs[2], chGap: 0.65 },
-    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: h, cell: 0.38, x: xs[3], chGap: 0 },
-    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: h, cell: 0.38, x: xs[4], chGap: 0 },
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: Math.min(0.7, 6.4 / T), x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: Math.min(0.38, 4 / d), x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 4, rows: T, cols: h, cell: Math.min(0.3, 3 / h), x: xs[2], chGap: 0.65 },
+    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: h, cell: ch, x: xs[3], chGap: 0 },
+    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: h, cell: ch, x: xs[4], chGap: 0 },
     { kind: 'vector', layer: 4, size: V, x: xs[5], gapY: Math.min(0.72, 12.5 / V) },
   ]
 }
@@ -278,26 +285,28 @@ function computeAeSlots(): CNNSlot[] {
     const t = getVAETask()
     const enc = t.model.enc.biases.length
     const dec = t.model.dec.biases.length
+    const cell = Math.min(0.5, 4.2 / t.n)
     const xs = [-9.4, -5.4, -1.9, 1.2, 4.6, 8.6]
     return [
-      { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[0], chGap: 0 },
+      { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell, x: xs[0], chGap: 0 },
       { kind: 'vector', layer: 0, size: enc, x: xs[1], gapY: Math.min(0.72, 13 / enc) },
-      { kind: 'grid', layer: 1, channels: 1, rows: t.latent, cols: 2, cell: 0.7, x: xs[2], chGap: 0 },
-      { kind: 'vector', layer: 2, size: t.latent, x: xs[3], gapY: 1.1 },
+      { kind: 'grid', layer: 1, channels: 1, rows: t.latent, cols: 2, cell: Math.min(0.7, 8.4 / t.latent), x: xs[2], chGap: 0 },
+      { kind: 'vector', layer: 2, size: t.latent, x: xs[3], gapY: Math.min(1.1, 11 / t.latent) },
       { kind: 'vector', layer: 3, size: dec, x: xs[4], gapY: Math.min(0.72, 13 / dec) },
-      { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[5], chGap: 0 },
+      { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell, x: xs[5], chGap: 0 },
     ]
   }
   const t = MODELS.ae
   const enc = t.model.layers[0].biases.length
   const dec = t.model.layers[2].biases.length
+  const cell = Math.min(0.5, 4.2 / t.n)
   const xs = [-8, -3.6, 0, 3.6, 8]
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell, x: xs[0], chGap: 0 },
     { kind: 'vector', layer: 0, size: enc, x: xs[1], gapY: Math.min(0.72, 13 / enc) },
-    { kind: 'vector', layer: 1, size: t.latent, x: xs[2], gapY: 1.15 },
+    { kind: 'vector', layer: 1, size: t.latent, x: xs[2], gapY: Math.min(1.15, 11 / t.latent) },
     { kind: 'vector', layer: 2, size: dec, x: xs[3], gapY: Math.min(0.72, 13 / dec) },
-    { kind: 'grid', layer: 3, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[4], chGap: 0 },
+    { kind: 'grid', layer: 3, channels: 1, rows: t.n, cols: t.n, cell, x: xs[4], chGap: 0 },
   ]
 }
 
@@ -306,16 +315,19 @@ function computeAeSlots(): CNNSlot[] {
 // 2 next image x_{t-1}. Playback steps are denoising iterations, so every
 // slot stays visible and its contents evolve.
 
-export const DIFF_STEPS = 20
-
 function computeDiffSlots(): CNNSlot[] {
   const n = MODELS.diff.n
+  // denoiser hidden activations shown as a near-square sheet
+  const h2 = MODELS.diff.model.l2.biases.length
+  const hCols = Math.ceil(Math.sqrt(h2))
+  const hRows = Math.ceil(h2 / hCols)
+  const cell = Math.min(0.55, 4.4 / n)
   const xs = [-7.8, -2.6, 2.6, 7.8]
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: n, cols: n, cell: 0.55, x: xs[0], chGap: 0 },
-    { kind: 'grid', layer: 0, channels: 1, rows: 8, cols: 8, cell: 0.42, x: xs[1], chGap: 0 },
-    { kind: 'grid', layer: 1, channels: 1, rows: n, cols: n, cell: 0.5, x: xs[2], chGap: 0 },
-    { kind: 'grid', layer: 2, channels: 1, rows: n, cols: n, cell: 0.55, x: xs[3], chGap: 0 },
+    { kind: 'grid', layer: -1, channels: 1, rows: n, cols: n, cell, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: hRows, cols: hCols, cell: Math.min(0.42, 4.2 / hCols), x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: n, cols: n, cell: Math.min(0.5, 4.2 / n), x: xs[2], chGap: 0 },
+    { kind: 'grid', layer: 2, channels: 1, rows: n, cols: n, cell, x: xs[3], chGap: 0 },
   ]
 }
 
@@ -325,21 +337,22 @@ function computeDiffSlots(): CNNSlot[] {
 // Fake image sits on top, the real sample below — both feed the same D.
 
 export const GAN_STEPS = 4
-export const GAN_IMG_Y = 2.8
 
 function computeGanSlots(): CNNSlot[] {
   const t = MODELS.gan
   const m = t.model
   const gh = m.g1.biases.length
   const dh = m.d1.biases.length
+  const cell = Math.min(0.5, 4 / t.n)
+  const imgY = (t.n * cell) / 2 + 1 // keep a gap between the stacked fake/real sheets
   const xs = [-11, -6.6, -1.8, 3.4, 7.6]
   return [
-    { kind: 'vector', layer: -1, size: m.zdim, x: xs[0], gapY: 1.0 },
+    { kind: 'vector', layer: -1, size: m.zdim, x: xs[0], gapY: Math.min(1.0, 9.5 / m.zdim) },
     { kind: 'vector', layer: 0, size: gh, x: xs[1], gapY: Math.min(0.72, 13 / gh) },
-    { kind: 'grid', layer: 1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[2], chGap: 0, y: GAN_IMG_Y },
-    { kind: 'vector', layer: 2, size: dh, x: xs[3], gapY: Math.min(0.62, 11 / dh) },
-    { kind: 'vector', layer: 3, size: 2, x: xs[4], gapY: 2 * GAN_IMG_Y },
-    { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[2], chGap: 0, y: -GAN_IMG_Y },
+    { kind: 'grid', layer: 1, channels: 1, rows: t.n, cols: t.n, cell, x: xs[2], chGap: 0, y: imgY },
+    { kind: 'vector', layer: 2, size: dh, x: xs[3], gapY: Math.min(0.62, 12 / dh) },
+    { kind: 'vector', layer: 3, size: 2, x: xs[4], gapY: 2 * imgY },
+    { kind: 'grid', layer: 4, channels: 1, rows: t.n, cols: t.n, cell, x: xs[2], chGap: 0, y: -imgY },
   ]
 }
 

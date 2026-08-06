@@ -98,7 +98,7 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `1` – `5` | Models: MLP / CNN / RNN / LSTM / Transformer |
 | `6` – `8` | Generative: Autoencoder / Diffusion / GAN |
 | `9` | AI apps: Lang ID |
-| `S / M / L` buttons | Network scale (retrains live) |
+| `S / M / L` buttons | Network scale — **every** architecture retrains live (L is the largest that still trains in-browser in seconds) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
 | `Esc` | Close panel / deselect |
@@ -136,7 +136,8 @@ src/
 
 ## 中文说明（简要）
 
-- **真实计算**：全部八个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
+- **真实计算**：全部九个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
+- **三档规模**：所有模型都有 小/中/大 三档，切换时现场重新训练。大档是浏览器几秒内还能训完的「大模型」——而且明显更强：大档 Transformer（d=24、4 头、12 上下文）训练集 top-1 达 100%，RNN loss 从 1.2 降到 0.38，扩散模型升到 12×12 图像、30 步去噪，GAN 生成器/判别器同步加宽。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
 - **RNN / LSTM**：字符级下一字符预测，手写 BPTT 训练；RNN 隐状态逐时间步计算并画出循环连线，LSTM 完整展示 f/i/g/o 四门、细胞状态传送带与 h = o⊙tanh(c)。
