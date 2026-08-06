@@ -1,19 +1,40 @@
 import { MODELS } from '../nn/models'
 import { Arch } from '../store'
+import { LLMStageKind, llmStageKind } from '../scene/layout'
 
 type T = (key: string, params?: Record<string, string | number>) => string
 
-const LLM_LAYER_KEYS = [
-  'layer.embed',
-  'layer.posenc',
-  'layer.qkv',
-  'layer.attn',
-  'layer.attnout',
-  'layer.addnorm',
-  'layer.ffn',
-  'layer.addnorm',
-  'layer.output',
-]
+const LLM_KIND_NAMES: Record<LLMStageKind, string> = {
+  tokens: 'layer.tokens',
+  embed: 'layer.embed',
+  posenc: 'layer.posenc',
+  qkv: '',
+  attn: 'layer.attn',
+  attnout: 'layer.attnout',
+  addnorm1: 'layer.addnorm',
+  ffn: 'layer.ffn',
+  router: 'layer.router',
+  experts: 'layer.experts',
+  combine: 'layer.combine',
+  addnorm2: 'layer.addnorm',
+  output: 'layer.output',
+}
+
+const LLM_KIND_EXPLAIN: Record<LLMStageKind, string> = {
+  tokens: 'tokens',
+  embed: 'embed',
+  posenc: 'posenc',
+  qkv: 'qkv',
+  attn: 'attn',
+  attnout: 'attnout',
+  addnorm1: 'addnorm',
+  ffn: 'ffn',
+  router: 'router',
+  experts: 'experts',
+  combine: 'combine',
+  addnorm2: 'addnorm',
+  output: 'llmOutput',
+}
 
 const RNN_LAYER_KEYS = ['layer.embed', 'layer.rnnHidden', 'layer.output']
 const LSTM_LAYER_KEYS = ['layer.embed', 'layer.gates', 'layer.cell', 'layer.rnnHidden', 'layer.output']
@@ -22,8 +43,8 @@ const AE_LAYER_KEYS = ['layer.encoder', 'layer.latent', 'layer.decoder', 'layer.
 /** Localized display name for a layer (-1 = input). */
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'llm') {
-    if (layer === -1) return t('layer.tokens')
-    return layer === 2 ? 'Q · K · V' : t(LLM_LAYER_KEYS[layer] ?? 'layer.output')
+    const kind = llmStageKind(layer)
+    return kind === 'qkv' ? 'Q · K · V' : t(LLM_KIND_NAMES[kind])
   }
   if (arch === 'rnn' || arch === 'lstm') {
     if (layer === -1) return t('layer.tokens')
@@ -57,8 +78,7 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
 /** i18n key prefix (explain.<key>) for a layer's module explanation. */
 export function explainKeyOf(arch: Arch, layer: number): string {
   if (arch === 'llm') {
-    const keys = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm', 'ffn', 'addnorm', 'llmOutput']
-    return keys[layer + 1] ?? 'llmOutput'
+    return LLM_KIND_EXPLAIN[llmStageKind(layer)]
   }
   if (arch === 'rnn') {
     return ['tokens', 'embed', 'rnnHidden', 'llmOutput'][layer + 1] ?? 'llmOutput'

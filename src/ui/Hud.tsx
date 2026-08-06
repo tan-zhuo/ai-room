@@ -375,6 +375,7 @@ function BottomBar() {
           </button>
         )}
         {(arch === 'cnn' || arch === 'ae') && <CNNControls />}
+        {arch === 'llm' && <LLMVariantChips />}
         {arch === 'llm' && <TempSlider />}
         {arch === 'llm' && <EmbedMapButton />}
       </div>
@@ -433,6 +434,32 @@ function KernelChips({
         title={t('cnn.learnedFull')}
       >
         {t('cnn.learned')}
+      </button>
+    </>
+  )
+}
+
+/** Dense FFN vs mixture-of-experts toggle (Transformer only). */
+function LLMVariantChips() {
+  const t = useT()
+  const variant = useStore((s) => s.llmVariant)
+  const setLLMVariant = useStore((s) => s.setLLMVariant)
+  return (
+    <>
+      <span className="chip-divider" />
+      <button
+        className={`chip${variant === 'dense' ? ' active' : ''}`}
+        onClick={() => setLLMVariant('dense')}
+        title={t('llm.variantTip')}
+      >
+        {t('llm.denseChip')}
+      </button>
+      <button
+        className={`chip${variant === 'moe' ? ' active' : ''}`}
+        onClick={() => setLLMVariant('moe')}
+        title={t('llm.variantTip')}
+      >
+        {t('llm.moeChip')}
       </button>
     </>
   )

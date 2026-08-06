@@ -62,6 +62,13 @@ console.log(`Autoencoder training MSE: ${MODELS.ae.finalMSE.toFixed(4)}`)
 if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poor')
 
 // --- tiny transformer
+{
+  const moe = (await import('../src/nn/transformer')).buildLLMTask('moe')
+  const moeAcc = evalLLMAccuracy(moe)
+  console.log(`MoE transformer loss: ${moe.finalLoss.toFixed(3)}, next-char top-1: ${(moeAcc * 100).toFixed(1)}%`)
+  if (moe.finalLoss > 2.0 || moeAcc < 0.25) failures.push('moe llm did not learn')
+}
+
 const llm = MODELS.llm
 const llmAcc = evalLLMAccuracy(llm)
 console.log(`LLM final training loss: ${llm.finalLoss.toFixed(3)}, next-char top-1: ${(llmAcc * 100).toFixed(1)}%`)

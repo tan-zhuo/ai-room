@@ -3,7 +3,7 @@ import { MODELS } from '../nn/models'
 import { ActivationKind } from '../nn/mlp'
 import { convAt, poolAt, unflattenIndex } from '../nn/cnn'
 import { NodeRef, useStore, useT } from '../store'
-import { DenseArch, FlattenSlot, cnnSlot } from '../scene/layout'
+import { DenseArch, FlattenSlot, cnnSlot, llmStageKind } from '../scene/layout'
 import { layerNameOf } from './layerName'
 import { NumGrid, cellStyle, fmt } from './valueCell'
 
@@ -29,9 +29,11 @@ export function InspectorPanel() {
   if (sel.space === 'vector') {
     subtitle = `${t('panel.neuron')} #${sel.index + 1}`
   } else if (arch === 'llm') {
+    const kind = llmStageKind(sel.layer)
     let chName = ''
-    if (sel.layer === 2) chName = ['Q', 'K', 'V'][sel.channel] + ' · '
-    else if (sel.layer === 3) chName = t('llm.head', { n: sel.channel + 1 }) + ' · '
+    if (kind === 'qkv') chName = ['Q', 'K', 'V'][sel.channel] + ' · '
+    else if (kind === 'attn') chName = t('llm.head', { n: sel.channel + 1 }) + ' · '
+    else if (kind === 'experts') chName = `E${sel.channel + 1} · `
     subtitle = `${chName}(${sel.row}, ${sel.col})`
   } else if (arch === 'lstm' && sel.space === 'grid' && sel.layer === 1) {
     subtitle = `${['f', 'i', 'g', 'o'][sel.channel]} · (${sel.row}, ${sel.col})`
@@ -703,7 +705,12 @@ function AddNormDetail({
   const t = useT()
   const model = MODELS.llm.model
   const a = which === 1 ? trace.X[row][col] : trace.R1[row][col]
-  const b = which === 1 ? trace.Z[row][col] : trace.F[row][col]
+  const b =
+    which === 1
+      ? trace.Z[row][col]
+      : MODELS.llm.model.moe
+        ? trace.Y[row][col]
+        : trace.F[row][col]
   const res = which === 1 ? trace.res1[row][col] : trace.res2[row][col]
   const mu = which === 1 ? trace.mu1[row] : trace.mu2[row]
   const sig = which === 1 ? trace.sig1[row] : trace.sig2[row]
@@ -711,7 +718,7 @@ function AddNormDetail({
   const be = which === 1 ? model.be1[col] : model.be2[col]
   const out = which === 1 ? trace.R1[row][col] : trace.R2[row][col]
   const inputName = which === 1 ? 'x' : 'r₁'
-  const subName = which === 1 ? 'attn' : 'ffn'
+  const subName = which === 1 ? 'attn' : MODELS.llm.model.moe ? 'moe' : 'ffn'
   return (
     <>
       <section>
@@ -755,6 +762,128 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   const model = MODELS.llm.model
   const dh = model.d / model.heads
   const show = (c: string) => (c === ' ' ? '␣' : c)
+  const kind = llmStageKind(sel.layer)
+
+  // ---- MoE stages
+  if (sel.space === 'grid' && kind === 'router') {
+    const tk = sel.row
+    const e = sel.col
+    const weights = Array.from({ length: model.d }, (_, m) => model.Wr[m][e])
+    const selected = (trace.topIdx[tk] ?? []).includes(e)
+    return (
+      <>
+        <section>
+          <h4>
+            r₁[{tk}] · Wr[:, E{e + 1}]
+          </h4>
+          <ProductRows prev={trace.R1[tk]} prevLabel={(m) => `r₁[${m}]`} weights={weights} />
+        </section>
+        <section>
+          <h4>softmax → {t('llm.gate')}</h4>
+          <div className="calc-chain">
+            <span>
+              score = <b className="num">{fmt(trace.Sr[tk][e])}</b>
+            </span>
+            <span>
+              g = <b className="num accent">{fmt(trace.G[tk][e])}</b>
+            </span>
+            <span className={selected ? 'accent' : 'muted'}>
+              {selected ? `✓ ${t('llm.selected')}` : t('llm.notSelected')}
+            </span>
+          </div>
+          <div className="prob-list" style={{ marginTop: 8 }}>
+            {trace.G[tk].map((g, ee) => (
+              <div className="prob-row" key={ee}>
+                <span className="prob-name mono-char">E{ee + 1}</span>
+                <span className="prob-bar">
+                  <span style={{ width: `${Math.max(2, g * 100)}%` }} />
+                </span>
+                <span className="num">{(g * 100).toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'grid' && kind === 'experts') {
+    const e = sel.channel
+    const tk = sel.row
+    const routed = (trace.topIdx[tk] ?? []).includes(e)
+    if (!routed) {
+      return (
+        <section>
+          <h4>E{e + 1}</h4>
+          <p className="explain-text">{t('llm.notRouted')}</p>
+        </section>
+      )
+    }
+    const weights = Array.from({ length: model.d }, (_, m) => model.We1[e][m][sel.col])
+    const h = trace.expertH[e][tk][sel.col]
+    return (
+      <>
+        <section>
+          <h4>
+            E{e + 1} · r₁[{tk}] · W[:, {sel.col}]
+          </h4>
+          <ProductRows prev={trace.R1[tk]} prevLabel={(m) => `r₁[${m}]`} weights={weights} />
+        </section>
+        <section>
+          <h4>{t('panel.activation')} · ReLU</h4>
+          <div className="calc-chain">
+            <span>
+              + b <b className="num">{fmt(model.bE1[e][sel.col])}</b>
+            </span>
+            <span>
+              ReLU → <b className="num accent">{fmt(h)}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'grid' && kind === 'combine') {
+    const tk = sel.row
+    const k = sel.col
+    const parts = (trace.topIdx[tk] ?? []).map((e) => {
+      const h = trace.expertH[e][tk]
+      const out = model.bE2[e][k] + h.reduce((s, hv, j) => s + hv * model.We2[e][j][k], 0)
+      return { e, g: trace.G[tk][e], out }
+    })
+    return (
+      <>
+        <section>
+          <h4>
+            y[{tk}][{k}] = Σ gₑ · Eₑ(x)[{k}]
+          </h4>
+          <div className="dense-table">
+            <div className="dense-row dense-head">
+              <span />
+              <span>g</span>
+              <span>Eₑ(x)</span>
+              <span>g·Eₑ</span>
+            </div>
+            {parts.map((p) => (
+              <div className="dense-row" key={p.e}>
+                <span className="dense-label">E{p.e + 1}</span>
+                <span className="num">{fmt(p.g)}</span>
+                <span className="num">{fmt(p.out)}</span>
+                <span className="num strong">{fmt(p.g * p.out)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section>
+          <h4>{t('panel.sum')}</h4>
+          <div className="calc-chain">
+            <span>
+              Σ = <b className="num accent">{fmt(trace.Y[tk][k])}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
 
   // token tile
   if (sel.space === 'grid' && sel.layer === -1) {
@@ -935,15 +1064,15 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   }
 
   // Add & Norm stages
-  if (sel.space === 'grid' && sel.layer === 5) {
+  if (sel.space === 'grid' && kind === 'addnorm1') {
     return <AddNormDetail which={1} row={sel.row} col={sel.col} />
   }
-  if (sel.space === 'grid' && sel.layer === 7) {
+  if (sel.space === 'grid' && kind === 'addnorm2') {
     return <AddNormDetail which={2} row={sel.row} col={sel.col} />
   }
 
   // ffn cell
-  if (sel.space === 'grid' && sel.layer === 6) {
+  if (sel.space === 'grid' && kind === 'ffn') {
     const i = sel.row
     const k = sel.col
     const weights = trace.R1[i].map((_, m) => model.W1[m][k])
@@ -961,7 +1090,7 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
   }
 
   // output logit / next-char probability
-  if (sel.space === 'vector' && sel.layer === 8) {
+  if (sel.space === 'vector' && kind === 'output') {
     const T = trace.ids.length
     const vIdx = sel.index
     const weights = trace.R2[T - 1].map((_, k) => model.Wout[k][vIdx])

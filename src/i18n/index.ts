@@ -149,6 +149,35 @@ const en: Dict = {
   'llm.temp': 'Temp',
   'llm.tempTip': 'Sampling temperature — lower is safer, higher is wilder',
   'llm.loop': 'Autoregression: output → input',
+  'llm.denseChip': 'Dense FFN',
+  'llm.moeChip': 'MoE ×4',
+  'llm.variantTip': 'Feed-forward type — MoE routes each token to 2 of 4 experts (retrains live)',
+  'llm.gate': 'gate weight',
+  'llm.selected': 'selected (top-2)',
+  'llm.notSelected': 'not selected — this expert is skipped for this token',
+  'llm.notRouted':
+    'This token was not routed to this expert — the computation is genuinely skipped. That sparsity is the point of MoE.',
+  'layer.router': 'Router (top-2 of 4)',
+  'layer.experts': 'Experts',
+  'layer.combine': 'Weighted combine',
+  'explain.router.what':
+    'A small gating network scores all 4 experts for every token and softmaxes the scores. Only the top-2 experts per token are activated; the rest are skipped entirely.',
+  'explain.router.why':
+    'Routing grows total capacity without growing per-token compute — each token only pays for 2 of the 4 experts. This is how Mixtral / DeepSeek-style LLMs scale.',
+  'explain.router.simple':
+    'A receptionist who reads each token and sends it to the two most suitable specialists.',
+  'explain.experts.what':
+    'Four independent feed-forward networks. A dark row means that token was not routed here — its computation is genuinely skipped (sparsity).',
+  'explain.experts.why':
+    'Experts specialize: different tokens exercise different sub-networks, so the model stores more knowledge than a single FFN of the same per-token cost.',
+  'explain.experts.simple':
+    'A clinic with four doctors; each patient only sees the two who fit their symptoms.',
+  'explain.combine.what':
+    "Each token's chosen experts are blended by their gate weights: yₜ = Σ gₑ·Eₑ(xₜ).",
+  'explain.combine.why':
+    'Gate-weighted mixing keeps everything differentiable, so the router and the experts train together end-to-end.',
+  'explain.combine.simple':
+    "Merging the two specialists' opinions, weighted by how much the receptionist trusted each.",
   'llm.embedMap': 'Embedding map',
   'llm.embedMapNote':
     'PCA projection of the 28 learned character embeddings — characters the model treats similarly end up close together (vowels cyan, space/period orange).',
@@ -454,6 +483,29 @@ const zh: Dict = {
   'llm.temp': '温度',
   'llm.tempTip': '采样温度——越低越保守，越高越放飞',
   'llm.loop': '自回归：输出 → 输入',
+  'llm.denseChip': '密集 FFN',
+  'llm.moeChip': 'MoE 专家×4',
+  'llm.variantTip': '前馈类型——MoE 把每个 token 路由到 4 个专家中的 2 个（实时重训练）',
+  'llm.gate': '门控权重',
+  'llm.selected': '已选中（top-2）',
+  'llm.notSelected': '未选中——该专家对这个 token 被跳过',
+  'llm.notRouted': '该 token 未被路由到此专家——计算被真实跳过。这种稀疏性正是 MoE 的意义所在。',
+  'layer.router': '路由器（4 选 2）',
+  'layer.experts': '专家网络',
+  'layer.combine': '加权合并',
+  'explain.router.what':
+    '一个小型门控网络为每个 token 给全部 4 个专家打分并做 softmax。每个 token 只激活得分前 2 的专家，其余完全跳过。',
+  'explain.router.why':
+    '路由让模型在不增加单 token 计算量的前提下扩大总容量——每个 token 只为 4 个专家中的 2 个付费。Mixtral / DeepSeek 这类 MoE 大模型正是这样扩展的。',
+  'explain.router.simple': '像前台接待员：读一眼每个 token，把它送到最合适的两位专家那里。',
+  'explain.experts.what':
+    '四个相互独立的前馈网络。某一行是暗的，说明该 token 没有被路由到这里——它的计算被真实跳过（稀疏性）。',
+  'explain.experts.why':
+    '专家会分工：不同的 token 走不同的子网络，模型在同样的单 token 成本下能存下更多知识。',
+  'explain.experts.simple': '一间有四位医生的诊所：每位病人只看和自己症状最匹配的两位。',
+  'explain.combine.what': '每个 token 选中的专家按门控权重混合：yₜ = Σ gₑ·Eₑ(xₜ)。',
+  'explain.combine.why': '门控加权保持了整体可微，路由器和专家因此能端到端一起训练。',
+  'explain.combine.simple': '把两位专家的意见按前台的信任程度加权合成一个结论。',
   'llm.embedMap': '嵌入地图',
   'llm.embedMapNote':
     '28 个学习到的字符嵌入的 PCA 投影——模型认为相似的字符会聚在一起（元音为青色，空格/句号为橙色）。',
@@ -749,6 +801,35 @@ const ja: Dict = {
   'llm.temp': '温度',
   'llm.tempTip': 'サンプリング温度——低いほど堅実、高いほど大胆',
   'llm.loop': '自己回帰：出力 → 入力',
+  'llm.denseChip': '密なFFN',
+  'llm.moeChip': 'MoE ×4',
+  'llm.variantTip': 'FFNの種類——MoE は各トークンを 4 人中 2 人の専門家へルーティング（その場で再学習）',
+  'llm.gate': 'ゲート重み',
+  'llm.selected': '選択済み（top-2）',
+  'llm.notSelected': '未選択——このトークンではこの専門家はスキップされます',
+  'llm.notRouted':
+    'このトークンはこの専門家にルーティングされず、計算は実際にスキップされています。この疎性こそ MoE の要点です。',
+  'layer.router': 'ルーター（4 中 2）',
+  'layer.experts': 'エキスパート',
+  'layer.combine': '加重合成',
+  'explain.router.what':
+    '小さなゲートネットワークが各トークンについて 4 人の専門家を採点し softmax します。上位 2 人だけが起動され、残りは完全にスキップされます。',
+  'explain.router.why':
+    'ルーティングにより、トークンあたりの計算量を増やさずに総容量を拡大できます——各トークンは 4 人中 2 人分しか支払いません。Mixtral / DeepSeek 系の MoE LLM はこの方法でスケールしています。',
+  'explain.router.simple':
+    '受付係のようなもの：各トークンを一読し、最も適した 2 人の専門家へ案内します。',
+  'explain.experts.what':
+    '4 つの独立したフィードフォワードネットワーク。暗い行はそのトークンがここにルーティングされなかった印——計算は本当にスキップされています（疎性）。',
+  'explain.experts.why':
+    '専門家は分業します：トークンごとに別のサブネットワークが働くため、同じトークン単価でより多くの知識を蓄えられます。',
+  'explain.experts.simple':
+    '4 人の医師がいる診療所：患者は症状に合う 2 人だけを受診します。',
+  'explain.combine.what':
+    '各トークンの選ばれた専門家をゲート重みで混合します：yₜ = Σ gₑ·Eₑ(xₜ)。',
+  'explain.combine.why':
+    'ゲート加重の混合により全体が微分可能に保たれ、ルーターと専門家がエンドツーエンドで一緒に学習できます。',
+  'explain.combine.simple':
+    '受付係の信頼度に応じて、2 人の専門家の意見を重み付けして 1 つにまとめる作業。',
   'llm.embedMap': '埋め込みマップ',
   'llm.embedMapNote':
     '学習済み 28 文字埋め込みの PCA 射影——モデルが似ていると判断した文字は近くに集まります（母音は水色、空白/句点は橙色）。',

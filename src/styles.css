@@ -1045,6 +1045,13 @@ kbd {
   color: var(--accent);
   text-shadow: 0 0 8px rgba(56, 214, 255, 0.6);
   pointer-events: none;
+  white-space: nowrap;
+}
+
+.expert-util {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
 }
 
 .mono-char {

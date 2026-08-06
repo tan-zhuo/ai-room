@@ -35,7 +35,7 @@ export function SceneRoot() {
       />
       {(arch === 'mlp' || arch === 'text') && <DenseScene key={`${arch}${version}`} arch={arch} />}
       {arch === 'cnn' && <CNNScene key={`cnn${version}`} />}
-      {arch === 'llm' && <LLMScene key={`llm${llmText}`} />}
+      {arch === 'llm' && <LLMScene key={`llm${version}:${llmText}`} />}
       {arch === 'rnn' && <RNNScene key="rnn" />}
       {arch === 'lstm' && <LSTMScene key="lstm" />}
       {arch === 'ae' && <AEScene key="ae" />}

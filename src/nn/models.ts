@@ -15,7 +15,7 @@ import {
   poolForward,
   trainCNNEndToEnd,
 } from './cnn'
-import { LLMTask, buildLLMTask } from './transformer'
+import { LLMTask, LLMVariant, buildLLMTask } from './transformer'
 import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
 import { trainMLPMSE } from './mlp'
 
@@ -415,6 +415,11 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
 export function rebuildArch(arch: 'mlp' | 'cnn', scale: Scale, kernelMode: KernelMode = 'hand'): void {
   if (arch === 'mlp') MODELS = { ...MODELS, mlp: buildMLPTask(scale) }
   else MODELS = { ...MODELS, cnn: buildCNNTask(scale, kernelMode) }
+}
+
+/** Rebuild + retrain the transformer with a dense or mixture-of-experts FFN. */
+export function rebuildLLM(variant: LLMVariant): void {
+  MODELS = { ...MODELS, llm: buildLLMTask(variant) }
 }
 
 /** Quick self-check used by scripts/sanity.ts. */

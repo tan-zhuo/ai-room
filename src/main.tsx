@@ -1,7 +1,12 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { inject } from '@vercel/analytics'
+import { injectSpeedInsights } from '@vercel/speed-insights'
 import './styles.css'
 import { BootLine, initModels } from './nn/models'
+
+inject()
+injectSpeedInsights()
 
 const root = createRoot(document.getElementById('root')!)
 

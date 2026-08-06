@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { KernelMode, MODELS, Scale, extractTextFeatures, rebuildArch } from './nn/models'
+import { KernelMode, MODELS, Scale, extractTextFeatures, rebuildArch, rebuildLLM } from './nn/models'
+import { LLMVariant } from './nn/transformer'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
 import { clamp01 } from './nn/rng'
@@ -7,6 +8,7 @@ import { LLMTrace, encodeLLM, forwardLLM } from './nn/transformer'
 import { LSTMTrace, RNNTrace, encodeSeq, forwardLSTM, forwardRNN } from './nn/rnn'
 import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
+import { refreshLayout } from './scene/layout'
 
 export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae'
 
@@ -49,9 +51,10 @@ const initialLang: Lang = LANGS.includes(urlParam('lang') as Lang)
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const FIXED_STEPS: Partial<Record<Arch, number>> = { llm: 9, rnn: 3, lstm: 5, ae: 4 }
+const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4 }
 
 export function totalSteps(arch: Arch): number {
+  if (arch === 'llm') return MODELS.llm.model.moe ? 11 : 9
   const fixed = FIXED_STEPS[arch]
   if (fixed !== undefined) return fixed
   return (MODELS[arch as 'mlp' | 'cnn' | 'text'].model as { layers: unknown[] }).layers.length
@@ -76,6 +79,7 @@ interface AppState {
   lang: Lang
   scale: { mlp: Scale; cnn: Scale }
   cnnKernels: KernelMode
+  llmVariant: LLMVariant
   modelsVersion: number
   menuOpen: boolean
   /** paint-on-the-input mode for the CNN */
@@ -123,6 +127,7 @@ interface AppState {
   setArch: (a: Arch) => void
   setScale: (size: Scale) => void
   setKernelMode: (mode: KernelMode) => void
+  setLLMVariant: (variant: LLMVariant) => void
   toggleMenu: () => void
   toggleDraw: () => void
   paintPixel: (row: number, col: number) => void
@@ -202,6 +207,7 @@ export const useStore = create<AppState>((set, get) => ({
   lang: initialLang,
   scale: { mlp: 's', cnn: 's' },
   cnnKernels: 'hand',
+  llmVariant: 'dense',
   modelsVersion: 0,
   menuOpen: false,
   drawMode: false,
@@ -262,8 +268,7 @@ export const useStore = create<AppState>((set, get) => ({
     // let the toast paint before the (synchronous) retraining burst
     setTimeout(() => {
       rebuildArch(archKey, size, get().cnnKernels)
-      // refreshLayout is imported lazily to keep layout.ts free of runtime store deps
-      import('./scene/layout').then(({ refreshLayout }) => {
+      {
         refreshLayout()
         const cls = archKey === 'mlp' ? get().mlpClass : get().cnnClass
         flow.phase = 0
@@ -277,7 +282,7 @@ export const useStore = create<AppState>((set, get) => ({
           explain: null,
           hoverInfo: null,
         }))
-      })
+      }
     }, 60)
   },
 
@@ -287,7 +292,7 @@ export const useStore = create<AppState>((set, get) => ({
     get().showToast('toast.training')
     setTimeout(() => {
       rebuildArch('cnn', get().scale.cnn, mode)
-      import('./scene/layout').then(({ refreshLayout }) => {
+      {
         refreshLayout()
         flow.phase = 0
         flow.hold = 0
@@ -300,7 +305,32 @@ export const useStore = create<AppState>((set, get) => ({
           explain: null,
           hoverInfo: null,
         }))
-      })
+      }
+    }, 60)
+  },
+
+  setLLMVariant: (variant) => {
+    const s = get()
+    if (s.arch !== 'llm' || s.llmVariant === variant) return
+    get().showToast('toast.training')
+    setTimeout(() => {
+      rebuildLLM(variant)
+      {
+        refreshLayout()
+        flow.phase = 0
+        flow.hold = 0
+        set((st) => ({
+          llmVariant: variant,
+          modelsVersion: st.modelsVersion + 1,
+          llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(get().llmText)),
+          ...restart,
+          selected: null,
+          explain: null,
+          hoverInfo: null,
+          llmGenerated: '',
+          llmGenerating: false,
+        }))
+      }
     }, 60)
   },
 
@@ -565,7 +595,9 @@ export function useT() {
 export function stepDuration(arch: Arch, step: number): number {
   if (arch === 'mlp' || arch === 'text') return 1.6
   if (arch === 'llm') {
-    const durations = [1.3, 1.3, 1.8, 3.0, 1.8, 1.5, 1.6, 1.5, 1.5]
+    const durations = MODELS.llm.model.moe
+      ? [1.3, 1.3, 1.8, 3.0, 1.8, 1.5, 1.8, 2.4, 1.6, 1.5, 1.5]
+      : [1.3, 1.3, 1.8, 3.0, 1.8, 1.5, 1.6, 1.5, 1.5]
     return durations[step] ?? 1.4
   }
   if (arch === 'rnn') return [1.4, 3.4, 1.5][step] ?? 1.4

@@ -8,6 +8,8 @@ import { Rng, gaussian, mulberry32, shuffleInPlace } from './rng'
 
 export const LN_EPS = 1e-5
 
+export type LLMVariant = 'dense' | 'moe'
+
 export interface LLMModel {
   vocab: string[]
   /** model width */
@@ -18,6 +20,19 @@ export interface LLMModel {
   heads: number
   /** max sequence length */
   T: number
+  /** mixture-of-experts FFN instead of a dense one */
+  moe: boolean
+  nExperts: number
+  dffE: number
+  topK: number
+  /** router [d][nExperts] */
+  Wr: number[][]
+  br: number[]
+  /** expert FFNs: [expert][d][dffE] and [expert][dffE][d] */
+  We1: number[][][]
+  bE1: number[][]
+  We2: number[][][]
+  bE2: number[][]
   /** token embeddings [vocab][d] */
   E: number[][]
   /** fixed sinusoidal positional encodings [T][d] */
@@ -71,6 +86,14 @@ export interface LLMTrace {
   H: number[][]
   /** FFN output projected back to d */
   F: number[][]
+  /** MoE (empty when dense): raw router scores, softmax gates, top-k picks,
+   *  per-expert hidden activations (zero rows = token not routed = skipped),
+   *  and the gate-weighted combination */
+  Sr: number[][]
+  G: number[][]
+  topIdx: number[][]
+  expertH: number[][][]
+  Y: number[][]
   res2: number[][]
   mu2: number[]
   sig2: number[]
@@ -182,10 +205,48 @@ export function forwardLLM(model: LLMModel, ids: number[]): LLMTrace {
     sig1.push(sig)
     return y
   })
-  const Hpre = matmul(R1, model.W1).map((row) => row.map((v, j) => v + model.b1[j]))
-  const H = Hpre.map((row) => row.map((v) => Math.max(0, v)))
-  const F = matmul(H, model.W2).map((row) => row.map((v, j) => v + model.b2[j]))
-  const res2 = R1.map((row, i) => row.map((v, k) => v + F[i][k]))
+
+  let Hpre: number[][] = []
+  let H: number[][] = []
+  let F: number[][] = []
+  let Sr: number[][] = []
+  let G: number[][] = []
+  let topIdx: number[][] = []
+  let expertH: number[][][] = []
+  let Y: number[][] = []
+
+  if (!model.moe) {
+    Hpre = matmul(R1, model.W1).map((row) => row.map((v, j) => v + model.b1[j]))
+    H = Hpre.map((row) => row.map((v) => Math.max(0, v)))
+    F = matmul(H, model.W2).map((row) => row.map((v, j) => v + model.b2[j]))
+  } else {
+    const E = model.nExperts
+    Sr = R1.map((row) => model.br.map((b, e) => row.reduce((s, v, m) => s + v * model.Wr[m][e], b)))
+    G = Sr.map((row) => softmaxRow(row))
+    topIdx = G.map((g) =>
+      [...g.keys()].sort((a, b) => g[b] - g[a]).slice(0, model.topK).sort((a, b) => a - b),
+    )
+    expertH = Array.from({ length: E }, () => zeros(T, model.dffE))
+    Y = zeros(T, d)
+    for (let t = 0; t < T; t++) {
+      for (const e of topIdx[t]) {
+        for (let j = 0; j < model.dffE; j++) {
+          let s = model.bE1[e][j]
+          for (let m = 0; m < d; m++) s += R1[t][m] * model.We1[e][m][j]
+          expertH[e][t][j] = Math.max(0, s)
+        }
+        const g = G[t][e]
+        for (let k = 0; k < d; k++) {
+          let s = model.bE2[e][k]
+          for (let j = 0; j < model.dffE; j++) s += expertH[e][t][j] * model.We2[e][j][k]
+          Y[t][k] += g * s
+        }
+      }
+    }
+  }
+
+  const sub = model.moe ? Y : F
+  const res2 = R1.map((row, i) => row.map((v, k) => v + sub[i][k]))
   const mu2: number[] = []
   const sig2: number[] = []
   const R2 = res2.map((row) => {
@@ -214,6 +275,11 @@ export function forwardLLM(model: LLMModel, ids: number[]): LLMTrace {
     Hpre,
     H,
     F,
+    Sr,
+    G,
+    topIdx,
+    expertH,
+    Y,
     res2,
     mu2,
     sig2,
@@ -297,32 +363,96 @@ function trainStep(model: LLMModel, ids: number[], targets: number[], lr: number
   const dR1 = dRes2.map((row) => [...row]) // residual branch
   const dF = dRes2
 
-  // FFN backward
-  const dW2 = zeros(dff, d)
-  const db2 = Array.from({ length: d }, () => 0)
-  const dH = zeros(T, dff)
-  for (let i = 0; i < T; i++) {
-    for (let j = 0; j < d; j++) {
-      const gr = dF[i][j]
-      if (gr === 0) continue
-      db2[j] += gr
-      for (let k = 0; k < dff; k++) {
-        dW2[k][j] += tr.H[i][k] * gr
-        dH[i][k] += gr * model.W2[k][j]
-      }
-    }
-  }
-  const dHpre = dH.map((row, i) => row.map((gr, k) => (tr.Hpre[i][k] > 0 ? gr : 0)))
+  // FFN backward — dense path, or MoE (combine → selected experts → router softmax)
   const dW1 = zeros(d, dff)
   const db1 = Array.from({ length: dff }, () => 0)
-  for (let i = 0; i < T; i++) {
-    for (let k = 0; k < dff; k++) {
-      const gr = dHpre[i][k]
-      if (gr === 0) continue
-      db1[k] += gr
-      for (let m = 0; m < d; m++) {
-        dW1[m][k] += tr.R1[i][m] * gr
-        dR1[i][m] += gr * model.W1[m][k]
+  const dW2 = zeros(dff, d)
+  const db2 = Array.from({ length: d }, () => 0)
+  if (!model.moe) {
+    const dH = zeros(T, dff)
+    for (let i = 0; i < T; i++) {
+      for (let j = 0; j < d; j++) {
+        const gr = dF[i][j]
+        if (gr === 0) continue
+        db2[j] += gr
+        for (let k = 0; k < dff; k++) {
+          dW2[k][j] += tr.H[i][k] * gr
+          dH[i][k] += gr * model.W2[k][j]
+        }
+      }
+    }
+    const dHpre = dH.map((row, i) => row.map((gr, k) => (tr.Hpre[i][k] > 0 ? gr : 0)))
+    for (let i = 0; i < T; i++) {
+      for (let k = 0; k < dff; k++) {
+        const gr = dHpre[i][k]
+        if (gr === 0) continue
+        db1[k] += gr
+        for (let m = 0; m < d; m++) {
+          dW1[m][k] += tr.R1[i][m] * gr
+          dR1[i][m] += gr * model.W1[m][k]
+        }
+      }
+    }
+  } else {
+    const E = model.nExperts
+    const dffE = model.dffE
+    const dWr = zeros(d, E)
+    const dbr = Array.from({ length: E }, () => 0)
+    const dWe1 = Array.from({ length: E }, () => zeros(d, dffE))
+    const dbE1 = Array.from({ length: E }, () => Array.from({ length: dffE }, () => 0))
+    const dWe2 = Array.from({ length: E }, () => zeros(dffE, d))
+    const dbE2 = Array.from({ length: E }, () => Array.from({ length: d }, () => 0))
+    for (let t = 0; t < T; t++) {
+      const dg = Array.from({ length: E }, () => 0)
+      for (const e of tr.topIdx[t]) {
+        const h = tr.expertH[e][t]
+        // recompute this expert's output — needed for the gate gradient
+        const out = model.bE2[e].map((b, k) => b + h.reduce((s, hv, j) => s + hv * model.We2[e][j][k], 0))
+        const g = tr.G[t][e]
+        const dh = Array.from({ length: dffE }, () => 0)
+        for (let k = 0; k < d; k++) {
+          dg[e] += dF[t][k] * out[k]
+          const gy = g * dF[t][k]
+          if (gy === 0) continue
+          dbE2[e][k] += gy
+          for (let j = 0; j < dffE; j++) {
+            dWe2[e][j][k] += h[j] * gy
+            dh[j] += gy * model.We2[e][j][k]
+          }
+        }
+        for (let j = 0; j < dffE; j++) {
+          if (h[j] <= 0) continue
+          const dpre = dh[j]
+          dbE1[e][j] += dpre
+          for (let m = 0; m < d; m++) {
+            dWe1[e][m][j] += tr.R1[t][m] * dpre
+            dR1[t][m] += dpre * model.We1[e][m][j]
+          }
+        }
+      }
+      // router softmax backward (unselected experts contribute dg = 0)
+      let dot = 0
+      for (let e = 0; e < E; e++) dot += tr.G[t][e] * dg[e]
+      for (let e = 0; e < E; e++) {
+        const ds = tr.G[t][e] * (dg[e] - dot)
+        if (ds === 0) continue
+        dbr[e] += ds
+        for (let m = 0; m < d; m++) {
+          dWr[m][e] += tr.R1[t][m] * ds
+          dR1[t][m] += ds * model.Wr[m][e]
+        }
+      }
+    }
+    for (let e = 0; e < E; e++) {
+      model.br[e] -= lr * dbr[e]
+      for (let m = 0; m < d; m++) model.Wr[m][e] -= lr * dWr[m][e]
+      for (let j = 0; j < dffE; j++) {
+        model.bE1[e][j] -= lr * dbE1[e][j]
+        for (let m = 0; m < d; m++) model.We1[e][m][j] -= lr * dWe1[e][m][j]
+      }
+      for (let k = 0; k < d; k++) {
+        model.bE2[e][k] -= lr * dbE2[e][k]
+        for (let j = 0; j < dffE; j++) model.We2[e][j][k] -= lr * dWe2[e][j][k]
       }
     }
   }
@@ -436,19 +566,26 @@ export interface LLMTask {
   finalLoss: number
 }
 
-export function buildLLMTask(): LLMTask {
+export function buildLLMTask(variant: LLMVariant = 'dense'): LLMTask {
   const rng = mulberry32(0x11a1)
   const vocab = [...new Set([...LLM_CORPUS.toLowerCase()])].sort()
   const d = 12
   const dff = 24
   const heads = 2
   const T = 8
+  const moe = variant === 'moe'
+  const nExperts = 4
+  const dffE = 12
   const model: LLMModel = {
     vocab,
     d,
     dff,
     heads,
     T,
+    moe,
+    nExperts,
+    dffE,
+    topK: 2,
     E: randn(vocab.length, d, 0.3, rng),
     P: sinusoidalP(T, d).map((row) => row.map((v) => v * 0.4)),
     Wq: randn(d, d, 0.28, rng),
@@ -460,6 +597,12 @@ export function buildLLMTask(): LLMTask {
     b1: Array.from({ length: dff }, () => 0),
     W2: randn(dff, d, 0.28, rng),
     b2: Array.from({ length: d }, () => 0),
+    Wr: moe ? randn(d, nExperts, 0.3, rng) : [],
+    br: moe ? Array.from({ length: nExperts }, () => 0) : [],
+    We1: moe ? Array.from({ length: nExperts }, () => randn(d, dffE, 0.28, rng)) : [],
+    bE1: moe ? Array.from({ length: nExperts }, () => Array.from({ length: dffE }, () => 0)) : [],
+    We2: moe ? Array.from({ length: nExperts }, () => randn(dffE, d, 0.28, rng)) : [],
+    bE2: moe ? Array.from({ length: nExperts }, () => Array.from({ length: d }, () => 0)) : [],
     g1: Array.from({ length: d }, () => 1),
     be1: Array.from({ length: d }, () => 0),
     g2: Array.from({ length: d }, () => 1),

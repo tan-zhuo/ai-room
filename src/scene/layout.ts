@@ -141,28 +141,89 @@ function computeCnnSlots(): CNNSlot[] {
 }
 
 // ------------------------------------------------------------------ LLM slots
-// Layer indices: -1 tokenizer, 0 embedding, 1 +positional encoding, 2 Q/K/V,
-// 3 multi-head attention, 4 concat A·V, 5 Add&Norm, 6 FFN, 7 Add&Norm, 8 output.
+// Dense: tokenizer → embed → posenc → QKV → attention → A·V·Wo → Add&Norm →
+// FFN → Add&Norm → output. MoE swaps the FFN stage for router → experts →
+// weighted combine (11 steps instead of 9).
 
-export const LLM_STEPS = 9
+export type LLMStageKind =
+  | 'tokens'
+  | 'embed'
+  | 'posenc'
+  | 'qkv'
+  | 'attn'
+  | 'attnout'
+  | 'addnorm1'
+  | 'ffn'
+  | 'router'
+  | 'experts'
+  | 'combine'
+  | 'addnorm2'
+  | 'output'
+
+let llmKinds: LLMStageKind[] = []
 
 function computeLlmSlots(): CNNSlot[] {
   const m = MODELS.llm.model
   const { T, d, dff, heads } = m
   const V = m.vocab.length
-  const xs = [-14, -10.9, -7.9, -4.7, -1.2, 1.9, 4.6, 7.3, 9.9, 12.7]
+  const grid = (
+    layer: number,
+    channels: number,
+    rows: number,
+    cols: number,
+    cell: number,
+    x: number,
+    chGap = 0,
+  ): CNNSlot => ({ kind: 'grid', layer, channels, rows, cols, cell, x, chGap })
+
+  if (!m.moe) {
+    llmKinds = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm1', 'ffn', 'addnorm2', 'output']
+    const xs = [-14, -10.9, -7.9, -4.7, -1.2, 1.9, 4.6, 7.3, 9.9, 12.7]
+    return [
+      grid(-1, 1, 1, T, 0.7, xs[0]),
+      grid(0, 1, T, d, 0.34, xs[1]),
+      grid(1, 1, T, d, 0.34, xs[2]),
+      grid(2, 3, T, d, 0.3, xs[3], 0.62),
+      grid(3, heads, T, T, 0.44, xs[4], 0.85),
+      grid(4, 1, T, d, 0.34, xs[5]),
+      grid(5, 1, T, d, 0.34, xs[6]),
+      grid(6, 1, T, dff, 0.27, xs[7]),
+      grid(7, 1, T, d, 0.34, xs[8]),
+      { kind: 'vector', layer: 8, size: V, x: xs[9], gapY: Math.min(0.72, 12.5 / V) },
+    ]
+  }
+
+  llmKinds = ['tokens', 'embed', 'posenc', 'qkv', 'attn', 'attnout', 'addnorm1', 'router', 'experts', 'combine', 'addnorm2', 'output']
+  const xs = [-16.4, -13.4, -10.6, -7.6, -4.2, -1.3, 1.4, 3.9, 6.7, 9.6, 12.2, 15]
   return [
-    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
-    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[1], chGap: 0 },
-    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[2], chGap: 0 },
-    { kind: 'grid', layer: 2, channels: 3, rows: T, cols: d, cell: 0.3, x: xs[3], chGap: 0.62 },
-    { kind: 'grid', layer: 3, channels: heads, rows: T, cols: T, cell: 0.44, x: xs[4], chGap: 0.85 },
-    { kind: 'grid', layer: 4, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[5], chGap: 0 },
-    { kind: 'grid', layer: 5, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[6], chGap: 0 },
-    { kind: 'grid', layer: 6, channels: 1, rows: T, cols: dff, cell: 0.27, x: xs[7], chGap: 0 },
-    { kind: 'grid', layer: 7, channels: 1, rows: T, cols: d, cell: 0.34, x: xs[8], chGap: 0 },
-    { kind: 'vector', layer: 8, size: V, x: xs[9], gapY: Math.min(0.72, 12.5 / V) },
+    grid(-1, 1, 1, T, 0.7, xs[0]),
+    grid(0, 1, T, d, 0.32, xs[1]),
+    grid(1, 1, T, d, 0.32, xs[2]),
+    grid(2, 3, T, d, 0.28, xs[3], 0.6),
+    grid(3, heads, T, T, 0.4, xs[4], 0.8),
+    grid(4, 1, T, d, 0.32, xs[5]),
+    grid(5, 1, T, d, 0.32, xs[6]),
+    grid(6, 1, T, m.nExperts, 0.5, xs[7]),
+    grid(7, m.nExperts, T, m.dffE, 0.26, xs[8], 0.6),
+    grid(8, 1, T, d, 0.32, xs[9]),
+    grid(9, 1, T, d, 0.32, xs[10]),
+    { kind: 'vector', layer: 10, size: V, x: xs[11], gapY: Math.min(0.72, 12.5 / V) },
   ]
+}
+
+/** Semantic stage of an LLM layer (-1 = tokenizer) under the current variant. */
+export function llmStageKind(layer: number): LLMStageKind {
+  return llmKinds[layer + 1] ?? 'output'
+}
+
+/** Layer index of a stage kind, or -2 if absent in the current variant. */
+export function llmLayerOf(kind: LLMStageKind): number {
+  const i = llmKinds.indexOf(kind)
+  return i === -1 ? -2 : i - 1
+}
+
+export function llmSteps(): number {
+  return llmKinds.length - 1
 }
 
 // ------------------------------------------------------------------ RNN slots
@@ -371,7 +432,7 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   mlp: { position: [8, 4.5, 13], target: [0, 0, 0] },
   text: { position: [8, 4.5, 13], target: [0, 0, 0] },
   cnn: { position: [11, 6, 18], target: [0, 0, 0] },
-  llm: { position: [14, 7, 24], target: [0, 0, 0] },
+  llm: { position: [15, 7.5, 26], target: [0, 0, 0] },
   rnn: { position: [8.5, 5, 14], target: [0, 0, 0] },
   lstm: { position: [12, 6.5, 20], target: [0, 0, 0] },
   ae: { position: [9, 5, 15], target: [0, 0, 0] },

@@ -5,7 +5,18 @@ import { Html } from '@react-three/drei'
 import { MODELS } from '../nn/models'
 import { Tensor3 } from '../nn/cnn'
 import { totalSteps, useStore, useT } from '../store'
-import { GridSlot, LLM_STEPS, VecSlot, gridPos, llmLabelAnchor, llmSlot, vecPos } from './layout'
+import {
+  GridSlot,
+  LLMStageKind,
+  VecSlot,
+  gridPos,
+  llmLabelAnchor,
+  llmLayerOf,
+  llmSlot,
+  llmStageKind,
+  llmSteps,
+  vecPos,
+} from './layout'
 import { Segment, ease } from './common'
 import { GridNodes } from './GridNodes'
 import { VectorNodes } from './VectorNodes'
@@ -34,7 +45,7 @@ function FeedbackLoop() {
   const generated = useStore((s) => s.llmGenerated)
   const model = MODELS.llm.model
   const tokSlot = llmSlot(-1) as GridSlot
-  const outSlot = llmSlot(LLM_STEPS - 1) as VecSlot
+  const outSlot = llmSlot(llmSteps() - 1) as VecSlot
   const flyer = useRef<THREE.Group>(null)
   const flowMesh = useRef<THREE.InstancedMesh>(null)
   const flash = useRef<THREE.Mesh>(null)
@@ -47,7 +58,6 @@ function FeedbackLoop() {
     [tokSlot],
   )
 
-  // the permanent return wire (kept together with its curve for the flow particles)
   const { wire, curve, arrowPos, arrowQuat, labelPos } = useMemo(() => {
     const from = new THREE.Vector3(outSlot.x, -((outSlot.size - 1) / 2) * outSlot.gapY - 1, 0)
     const to = lastTokenPos.clone().add(new THREE.Vector3(0, -0.7, 0))
@@ -71,7 +81,6 @@ function FeedbackLoop() {
     }
   }, [outSlot, tokSlot, lastTokenPos])
 
-  // launch a flight whenever a character is committed
   useEffect(() => {
     if (!generated) {
       anim.current = null
@@ -94,7 +103,6 @@ function FeedbackLoop() {
   useFrame((state, dt) => {
     ;(wire.material as THREE.LineBasicMaterial).opacity = generating ? 0.5 : 0.15
 
-    // continuous direction-flow particles while generating
     const fm = flowMesh.current
     if (fm) {
       fm.visible = generating
@@ -110,7 +118,6 @@ function FeedbackLoop() {
       }
     }
 
-    // committed character flying home
     const g = flyer.current
     if (g) {
       const a = anim.current
@@ -121,7 +128,7 @@ function FeedbackLoop() {
         if (a.t >= 1) {
           anim.current = null
           g.visible = false
-          flashT.current = 0 // landed: flash the queue tail
+          flashT.current = 0
         } else {
           g.visible = true
           g.position.copy(a.curve.getPoint(ease(a.t)))
@@ -129,7 +136,6 @@ function FeedbackLoop() {
       }
     }
 
-    // landing flash
     const fl = flash.current
     if (fl) {
       if (flashT.current >= 0) {
@@ -154,7 +160,6 @@ function FeedbackLoop() {
   return (
     <group>
       <primitive object={wire} />
-      {/* direction arrowhead where the wire re-enters the token queue */}
       <mesh position={arrowPos} quaternion={arrowQuat}>
         <coneGeometry args={[0.14, 0.4, 8]} />
         <meshBasicMaterial color="#38d6ff" transparent opacity={0.7} toneMapped={false} />
@@ -235,15 +240,19 @@ function sheetFlow(
   return Array.from({ length: cap }, (_, i) => segs[Math.floor(i * step)])
 }
 
-/** Faithful transformer scene:
- *  tokenizer → embedding → +positional encoding → Q/K/V → multi-head attention
- *  → concat A·V → Add&Norm → feed-forward → Add&Norm → next-char output. */
+/** Faithful transformer scene (dense FFN or mixture-of-experts). */
 export function LLMScene() {
   const trace = useStore((s) => s.llmTrace)
   const step = useStore((s) => s.step)
   const generated = useStore((s) => s.llmGenerated)
   const t = useT()
   const model = MODELS.llm.model
+
+  const steps = llmSteps()
+  const kinds = useMemo(
+    () => Array.from({ length: steps + 1 }, (_, i) => llmStageKind(i - 1)),
+    [steps],
+  )
 
   // conveyor effect: when a char is committed the whole token queue slides one tile
   const tokGroup = useRef<THREE.Group>(null)
@@ -252,13 +261,9 @@ export function LLMScene() {
     if (generated) slideT.current = 0
   }, [generated])
 
-  const slots = useMemo(
-    () => Array.from({ length: LLM_STEPS + 1 }, (_, i) => llmSlot(i - 1)),
-    [],
-  )
-  const tokSlot = slots[0] as GridSlot
-  const outSlot = slots[LLM_STEPS] as VecSlot
-  const grid = (layer: number) => slots[layer + 1] as GridSlot
+  const tokSlot = llmSlot(-1) as GridSlot
+  const outSlot = llmSlot(steps - 1) as VecSlot
+  const grid = (layer: number) => llmSlot(layer) as GridSlot
 
   const T = model.T
   const vocabN = model.vocab.length
@@ -267,20 +272,64 @@ export function LLMScene() {
     () => [[trace.ids.map((id) => 0.25 + (0.7 * id) / vocabN)]],
     [trace, vocabN],
   )
-  const sheets = useMemo(
-    () =>
-      [
-        { layer: 0, values: [trace.E] },
-        { layer: 1, values: [trace.X] },
-        { layer: 2, values: [trace.Q, trace.K, trace.V] },
-        { layer: 3, values: trace.A },
-        { layer: 4, values: [trace.Z] },
-        { layer: 5, values: [trace.R1] },
-        { layer: 6, values: [trace.H] },
-        { layer: 7, values: [trace.R2] },
-      ] as { layer: number; values: Tensor3 }[],
-    [trace],
-  )
+
+  const valuesOf = (kind: LLMStageKind): Tensor3 => {
+    switch (kind) {
+      case 'embed':
+        return [trace.E]
+      case 'posenc':
+        return [trace.X]
+      case 'qkv':
+        return [trace.Q, trace.K, trace.V]
+      case 'attn':
+        return trace.A
+      case 'attnout':
+        return [trace.Z]
+      case 'addnorm1':
+        return [trace.R1]
+      case 'ffn':
+        return [trace.H]
+      case 'router':
+        return [trace.G]
+      case 'experts':
+        return trace.expertH
+      case 'combine':
+        return [trace.Y]
+      default:
+        return [trace.R2]
+    }
+  }
+
+  const labelOf = (kind: LLMStageKind): { title: string; sub: string } => {
+    switch (kind) {
+      case 'tokens':
+        return { title: t('layer.tokens'), sub: `${T}` }
+      case 'embed':
+        return { title: t('layer.embed'), sub: `${T}×${model.d}` }
+      case 'posenc':
+        return { title: t('layer.posenc'), sub: 'X = E + P' }
+      case 'qkv':
+        return { title: 'Q · K · V', sub: `3 × ${T}×${model.d}` }
+      case 'attn':
+        return { title: t('layer.attn'), sub: `${model.heads} × ${T}×${T} · softmax` }
+      case 'attnout':
+        return { title: t('layer.attnout'), sub: 'concat · W_O' }
+      case 'addnorm1':
+        return { title: t('layer.addnorm'), sub: 'LN(x + attn)' }
+      case 'ffn':
+        return { title: t('layer.ffn'), sub: `${model.dff} · ReLU` }
+      case 'router':
+        return { title: t('layer.router'), sub: `softmax → top-${model.topK}` }
+      case 'experts':
+        return { title: t('layer.experts'), sub: `${model.nExperts} × FFN ${model.dffE}` }
+      case 'combine':
+        return { title: t('layer.combine'), sub: 'Σ gₑ · Eₑ(x)' }
+      case 'addnorm2':
+        return { title: t('layer.addnorm'), sub: model.moe ? 'LN(x + moe)' : 'LN(x + ffn)' }
+      default:
+        return { title: t('layer.output'), sub: `${vocabN} · softmax` }
+    }
+  }
 
   const outPositions = useMemo(
     () => Array.from({ length: vocabN }, (_, i) => vecPos(outSlot, i)),
@@ -289,61 +338,97 @@ export function LLMScene() {
 
   const flows = useMemo(() => {
     const dh = model.d / model.heads
-    const all: Segment[][] = []
-    all.push(sheetFlow(tokSlot, grid(0)))
-    all.push(sheetFlow(grid(0), grid(1)))
-    all.push(sheetFlow(grid(1), grid(2)))
-    // attention: from Q (ch 0) and K (ch 1) rows into each head's matrix
-    const attnSegs: Segment[] = []
-    for (let h = 0; h < model.heads; h++) {
-      const off = h * dh + Math.floor(dh / 2)
-      for (let i = 0; i < T; i++) {
-        for (let j = 0; j <= i; j++) {
-          attnSegs.push({ a: v(gridPos(grid(2), 0, i, off)), b: v(gridPos(grid(3), h, i, j)), w: 0.5, target: 0 })
-          attnSegs.push({ a: v(gridPos(grid(2), 1, j, off)), b: v(gridPos(grid(3), h, i, j)), w: -0.5, target: 0 })
+    const byLayer: Segment[][] = []
+    for (let layer = 0; layer < steps; layer++) {
+      const kind = kinds[layer + 1]
+      if (kind === 'output') {
+        const outSegs: Segment[] = []
+        const prev = grid(layer - 1)
+        for (let k = 0; k < model.d; k++)
+          for (let j = 0; j < vocabN; j += 2)
+            outSegs.push({ a: v(gridPos(prev, 0, T - 1, k)), b: v(outPositions[j]), w: 0.5, target: j })
+        byLayer.push(outSegs)
+        continue
+      }
+      if (kind === 'attn') {
+        const attnSegs: Segment[] = []
+        const qkv = grid(layer - 1)
+        const att = grid(layer)
+        for (let h = 0; h < model.heads; h++) {
+          const off = h * dh + Math.floor(dh / 2)
+          for (let i = 0; i < T; i++) {
+            for (let j = 0; j <= i; j++) {
+              attnSegs.push({ a: v(gridPos(qkv, 0, i, off)), b: v(gridPos(att, h, i, j)), w: 0.5, target: 0 })
+              attnSegs.push({ a: v(gridPos(qkv, 1, j, off)), b: v(gridPos(att, h, i, j)), w: -0.5, target: 0 })
+            }
+          }
         }
+        byLayer.push(attnSegs)
+        continue
       }
-    }
-    all.push(attnSegs)
-    // concat A·V: each z column is fed from its own head's attention row
-    const zSegs: Segment[] = []
-    for (let r = 0; r < T; r++) {
-      for (let c = 0; c < model.d; c++) {
-        const head = Math.floor(c / dh)
-        zSegs.push({
-          a: v(gridPos(grid(3), head, r, Math.min(r, T - 1))),
-          b: v(gridPos(grid(4), 0, r, c)),
-          w: 0.5,
-          target: 0,
-        })
+      if (kind === 'attnout') {
+        const zSegs: Segment[] = []
+        const att = grid(layer - 1)
+        const zSlot = grid(layer)
+        for (let r = 0; r < T; r++) {
+          for (let c = 0; c < model.d; c++) {
+            const head = Math.floor(c / dh)
+            zSegs.push({ a: v(gridPos(att, head, r, Math.min(r, T - 1))), b: v(gridPos(zSlot, 0, r, c)), w: 0.5, target: 0 })
+          }
+        }
+        byLayer.push(zSegs)
+        continue
       }
+      if (kind === 'addnorm1') {
+        byLayer.push([
+          ...sheetFlow(grid(layer - 1), grid(layer), { cap: 160 }),
+          ...sheetFlow(grid(llmLayerOf('posenc')), grid(layer), { cap: 140 }), // residual skip
+        ])
+        continue
+      }
+      if (kind === 'experts') {
+        // THE MoE picture: each token flows only to its routed experts
+        const segs: Segment[] = []
+        const routerSlot = grid(layer - 1)
+        const expSlot = grid(layer)
+        for (let tk = 0; tk < T; tk++) {
+          for (const e of trace.topIdx[tk] ?? []) {
+            for (let j = 0; j < model.dffE; j += 2) {
+              segs.push({ a: v(gridPos(routerSlot, 0, tk, e)), b: v(gridPos(expSlot, e, tk, j)), w: 0.5, target: 0 })
+            }
+          }
+        }
+        byLayer.push(segs)
+        continue
+      }
+      if (kind === 'combine') {
+        const segs: Segment[] = []
+        const expSlot = grid(layer - 1)
+        const combSlot = grid(layer)
+        for (let tk = 0; tk < T; tk++) {
+          for (const e of trace.topIdx[tk] ?? []) {
+            for (let k = 0; k < model.d; k += 2) {
+              segs.push({ a: v(gridPos(expSlot, e, tk, k % model.dffE)), b: v(gridPos(combSlot, 0, tk, k)), w: 0.5, target: 0 })
+            }
+          }
+        }
+        byLayer.push(segs)
+        continue
+      }
+      if (kind === 'addnorm2') {
+        byLayer.push([
+          ...sheetFlow(grid(layer - 1), grid(layer), { cap: 160 }),
+          ...sheetFlow(grid(llmLayerOf('addnorm1')), grid(layer), { cap: 140 }), // residual skip
+        ])
+        continue
+      }
+      // tokens→embed, embed→posenc, posenc→qkv, addnorm1→ffn/router
+      const src = layer === 0 ? tokSlot : grid(layer - 1)
+      byLayer.push(sheetFlow(src, grid(layer), { srcCol: (c) => c % Math.max(1, src.cols) }))
     }
-    all.push(zSegs)
-    // Add&Norm 1: from Z plus the residual skip from X
-    all.push([
-      ...sheetFlow(grid(4), grid(5), { cap: 160 }),
-      ...sheetFlow(grid(1), grid(5), { cap: 140 }),
-    ])
-    all.push(sheetFlow(grid(5), grid(6), { srcCol: (c) => c % model.d }))
-    // Add&Norm 2: from FFN plus the residual skip from R1
-    all.push([
-      ...sheetFlow(grid(6), grid(7), { srcCol: (c) => Math.min(model.dff - 1, c * 2) , cap: 160 }),
-      ...sheetFlow(grid(5), grid(7), { cap: 140 }),
-    ])
-    // output: last row of R2 to every vocab node
-    const outSegs: Segment[] = []
-    for (let k = 0; k < model.d; k++)
-      for (let j = 0; j < vocabN; j += 2)
-        outSegs.push({ a: v(gridPos(grid(7), 0, T - 1, k)), b: v(outPositions[j]), w: 0.5, target: j })
-    all.push(outSegs)
-    return all
+    return byLayer
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, tokSlot, outPositions, T, vocabN])
-
-  const done = step >= totalSteps('llm')
-  const pred = trace.probs.indexOf(Math.max(...trace.probs))
-  const topIdx = [...trace.probs.keys()].sort((a, b) => trace.probs[b] - trace.probs[a]).slice(0, 5)
-  const showChar = (c: string) => (c === ' ' ? '␣' : c)
+  }, [model, steps, kinds, trace, tokSlot, outPositions, T, vocabN])
 
   useFrame((_, dt) => {
     const g = tokGroup.current
@@ -356,6 +441,19 @@ export function LLMScene() {
     }
   })
 
+  const done = step >= totalSteps('llm')
+  const pred = trace.probs.indexOf(Math.max(...trace.probs))
+  const topIdx = [...trace.probs.keys()].sort((a, b) => trace.probs[b] - trace.probs[a]).slice(0, 5)
+  const showChar = (c: string) => (c === ' ' ? '␣' : c)
+
+  const expertsLayer = llmLayerOf('experts')
+  const utilization = useMemo(() => {
+    if (!model.moe) return []
+    const u = Array.from({ length: model.nExperts }, () => 0)
+    trace.topIdx.forEach((sel) => sel.forEach((e) => u[e]++))
+    return u
+  }, [model, trace])
+
   return (
     <group>
       <group ref={tokGroup}>
@@ -363,44 +461,52 @@ export function LLMScene() {
         {trace.chars.map((ch, i) => {
           const p = gridPos(tokSlot, 0, 0, i)
           return (
-            <Html
-              key={`tk${i}`}
-              position={[p[0], p[1], p[2]]}
-              center
-              zIndexRange={[20, 0]}
-              style={{ pointerEvents: 'none' }}
-            >
+            <Html key={`tk${i}`} position={[p[0], p[1], p[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
               <div className="token-char">{showChar(ch)}</div>
             </Html>
           )
         })}
       </group>
-      {sheets.map((sh) => (
-        <GridNodes key={sh.layer} slot={grid(sh.layer)} values={sh.values} scale={tensorMax(sh.values)} />
-      ))}
+
+      {kinds.slice(1, -1).map((kind, idx) => {
+        const layer = idx
+        const vals = valuesOf(kind)
+        return <GridNodes key={`${kind}${layer}`} slot={grid(layer)} values={vals} scale={kind === 'attn' || kind === 'router' ? 1 : tensorMax(vals)} />
+      })}
       <VectorNodes
         positions={outPositions}
         values={trace.probs}
         scale={Math.max(...trace.probs)}
-        layerIndex={LLM_STEPS - 1}
+        layerIndex={steps - 1}
         radius={Math.min(0.22, outSlot.gapY * 0.42)}
-        refFor={(i) => ({ space: 'vector', layer: LLM_STEPS - 1, index: i })}
+        refFor={(i) => ({ space: 'vector', layer: steps - 1, index: i })}
       />
 
       {flows.map((segs, k) => (
         <FlowParticles key={`p${k}`} segments={segs} layerIndex={k} size={0.06} />
       ))}
 
-      {/* every vocab character labels its node; top candidates also show their probability */}
+      {/* expert badges: name + live utilization */}
+      {model.moe &&
+        Array.from({ length: model.nExperts }, (_, e) => {
+          const slot = grid(expertsLayer)
+          const p = gridPos(slot, e, 0, Math.floor(model.dffE / 2))
+          const computed = step > expertsLayer
+          return (
+            <Html key={`ex${e}`} position={[p[0], p[1] + 0.7, p[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+              <div className="gate-letter">
+                E{e + 1}
+                {computed && <span className="expert-util"> {utilization[e]}/{T}</span>}
+              </div>
+            </Html>
+          )
+        })}
+
+      {/* every vocab character labels its node; top candidates also show probability */}
       {outPositions.map((p, i) => {
         const isTop = topIdx.includes(i)
         return (
-          <Html
-            key={`ov${i}`}
-            position={[p[0] + 0.4, p[1], p[2]]}
-            zIndexRange={[20, 0]}
-            style={{ pointerEvents: 'none' }}
-          >
+          <Html key={`ov${i}`} position={[p[0] + 0.4, p[1], p[2]]} zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
             <div className={`out-label${done ? ' done' : ''}${done && i === pred ? ' pred' : ''}`}>
               <span className={`out-name mono-char${isTop ? '' : ' dim'}`}>{showChar(model.vocab[i])}</span>
               {done && isTop && <span className="out-prob">{(trace.probs[i] * 100).toFixed(1)}%</span>}
@@ -421,21 +527,11 @@ export function LLMScene() {
         </Html>
       )}
 
-      <LayerLabel position={llmLabelAnchor(-1)} title={t('layer.tokens')} sub={`${T}`} layer={-1} />
-      <LayerLabel position={llmLabelAnchor(0)} title={t('layer.embed')} sub={`${T}×${model.d}`} layer={0} />
-      <LayerLabel position={llmLabelAnchor(1)} title={t('layer.posenc')} sub="X = E + P" layer={1} />
-      <LayerLabel position={llmLabelAnchor(2)} title="Q · K · V" sub={`3 × ${T}×${model.d}`} layer={2} />
-      <LayerLabel
-        position={llmLabelAnchor(3)}
-        title={t('layer.attn')}
-        sub={`${model.heads} × ${T}×${T} · softmax`}
-        layer={3}
-      />
-      <LayerLabel position={llmLabelAnchor(4)} title={t('layer.attnout')} sub="concat · W_O" layer={4} />
-      <LayerLabel position={llmLabelAnchor(5)} title={t('layer.addnorm')} sub="LN(x + attn)" layer={5} />
-      <LayerLabel position={llmLabelAnchor(6)} title={t('layer.ffn')} sub={`${model.dff} · ReLU`} layer={6} />
-      <LayerLabel position={llmLabelAnchor(7)} title={t('layer.addnorm')} sub="LN(x + ffn)" layer={7} />
-      <LayerLabel position={llmLabelAnchor(8)} title={t('layer.output')} sub={`${vocabN} · softmax`} layer={8} />
+      {kinds.map((kind, i) => {
+        const layer = i - 1
+        const { title, sub } = labelOf(kind)
+        return <LayerLabel key={`lb${kind}${layer}`} position={llmLabelAnchor(layer)} title={title} sub={sub} layer={layer} />
+      })}
 
       <FeedbackLoop />
       <SelectionMarker />
