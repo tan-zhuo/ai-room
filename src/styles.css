@@ -496,6 +496,39 @@ kbd {
   background: linear-gradient(to right, #101a28, var(--accent));
 }
 
+/* ---------------------------------------------------------------- footer links */
+
+.footer-links {
+  position: absolute;
+  right: 20px;
+  bottom: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.footer-links a {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 11.5px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  backdrop-filter: blur(10px);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+  border-color: var(--border-strong);
+}
+
 /* ---------------------------------------------------------------- 3D labels */
 
 .layer-label {

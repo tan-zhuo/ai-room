@@ -2,6 +2,11 @@
   "name": "ai-room",
   "private": true,
   "version": "0.1.0",
+  "author": "tanzhuo (https://tanzhuo.xyz)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tan-zhuo/ai-room"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
