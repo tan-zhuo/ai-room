@@ -107,7 +107,7 @@ export function CNNScene() {
 
   return (
     <group>
-      <GridNodes slot={inputSlot} values={input} scale={1} />
+      <GridNodes slot={inputSlot} values={input} scale={1} paintable />
       <GridNodes slot={convSlot} values={convOut} scale={tensorMaxAbs(convOut)} />
       <GridNodes slot={poolSlot} values={poolOut} scale={tensorMaxAbs(poolOut)} />
       <VectorNodes

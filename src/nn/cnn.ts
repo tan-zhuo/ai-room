@@ -1,7 +1,10 @@
 // Convolutional network primitives: conv / max-pool / flatten / dense,
 // all computed for real with every intermediate value inspectable.
+// Includes end-to-end training with a hand-written conv backward pass,
+// so the kernels themselves can be learned rather than hand-crafted.
 
-import { DenseLayer, denseForward } from './mlp'
+import { DenseLayer, DenseTrace, denseForward } from './mlp'
+import { Rng, shuffleInPlace } from './rng'
 
 /** [channel][row][col] */
 export type Tensor3 = number[][][]
@@ -178,6 +181,102 @@ export function unflattenIndex(shape: [number, number, number], i: number): { ch
   const channel = Math.floor(i / perCh)
   const rem = i % perCh
   return { channel, row: Math.floor(rem / w), col: rem % w }
+}
+
+export interface CNNTrainSample {
+  x: Tensor3
+  y: number[]
+}
+
+/**
+ * End-to-end SGD through dense head, flatten, max-pool, ReLU and the conv
+ * layer itself. Assumes the layer stack [conv, pool, flatten, dense…, dense]
+ * with softmax + cross-entropy on the final layer.
+ */
+export function trainCNNEndToEnd(
+  model: CNNModel,
+  data: CNNTrainSample[],
+  opts: { lr: number; epochs: number; rng: Rng },
+): void {
+  const { lr, epochs, rng } = opts
+  const conv = model.layers[0]
+  const pool = model.layers[1]
+  if (conv.type !== 'conv' || pool.type !== 'pool') return
+  const denseLayers = model.layers.filter((l): l is DenseWrapDef => l.type === 'dense').map((l) => l.layer)
+  const order = data.map((_, i) => i)
+
+  for (let e = 0; e < epochs; e++) {
+    shuffleInPlace(order, rng)
+    for (const idx of order) {
+      const { x, y } = data[idx]
+      // ---- forward with caches
+      const { pre, out } = convForward(x, conv)
+      const pooled = poolForward(out, pool.size)
+      const flat = flattenTensor(pooled)
+      const traces: DenseTrace[] = []
+      let cur = flat
+      for (const layer of denseLayers) {
+        const tr = denseForward(layer, cur)
+        traces.push(tr)
+        cur = tr.a
+      }
+      // ---- dense backward (softmax + CE)
+      const L = denseLayers.length
+      let delta = traces[L - 1].a.map((v, j) => v - y[j])
+      for (let k = L - 1; k >= 0; k--) {
+        const layer = denseLayers[k]
+        const aPrev = k === 0 ? flat : traces[k - 1].a
+        const prevDelta = aPrev.map((_, i) => layer.weights.reduce((s, row, j) => s + row[i] * delta[j], 0))
+        for (let j = 0; j < layer.weights.length; j++) {
+          const row = layer.weights[j]
+          const d = lr * delta[j]
+          for (let i = 0; i < aPrev.length; i++) row[i] -= d * aPrev[i]
+          layer.biases[j] -= d
+        }
+        if (k > 0) {
+          const zPrev = traces[k - 1].z
+          delta = prevDelta.map((d, i) => (zPrev[i] > 0 ? d : 0)) // hidden dense layers are ReLU
+        } else {
+          delta = prevDelta // gradient w.r.t. the flat vector
+        }
+      }
+      // ---- unflatten + max-pool backward (gradient routes to the argmax)
+      const [ch, ph, pw] = tensorShape(pooled)
+      const dOut: Tensor3 = out.map((c) => c.map((row) => row.map(() => 0)))
+      for (let c = 0; c < ch; c++) {
+        for (let py = 0; py < ph; py++) {
+          for (let px = 0; px < pw; px++) {
+            const g = delta[c * ph * pw + py * pw + px]
+            if (g === 0) continue
+            const d = poolAt(out, pool.size, c, py, px)
+            dOut[c][py * pool.size + d.argRow][px * pool.size + d.argCol] += g
+          }
+        }
+      }
+      // ---- ReLU + conv backward
+      const kh = conv.kernels[0][0].length
+      const kw = conv.kernels[0][0][0].length
+      const [, outH, outW] = tensorShape(out)
+      for (let c = 0; c < conv.kernels.length; c++) {
+        let dBias = 0
+        for (let yy = 0; yy < outH; yy++) {
+          for (let xx = 0; xx < outW; xx++) {
+            const g = pre[c][yy][xx] > 0 ? dOut[c][yy][xx] : 0
+            if (g === 0) continue
+            dBias += g
+            for (let ic = 0; ic < conv.kernels[c].length; ic++) {
+              for (let ky = 0; ky < kh; ky++) {
+                for (let kx = 0; kx < kw; kx++) {
+                  conv.kernels[c][ic][ky][kx] -= lr * g * x[ic][yy + ky][xx + kx]
+                }
+              }
+            }
+          }
+        }
+        conv.biases[c] -= lr * dBias
+      }
+    }
+  }
 }
 
 export function forwardCNN(model: CNNModel, input: Tensor3): CNNStep[] {

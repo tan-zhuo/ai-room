@@ -11,6 +11,7 @@ export function Hud() {
   return (
     <div className="hud">
       <TopBar />
+      <Drawer />
       <Hint />
       <GenBanner />
       <BottomBar />
@@ -42,41 +43,29 @@ function TopBar() {
   const arch = useStore((s) => s.arch)
   const lang = useStore((s) => s.lang)
   const scale = useStore((s) => s.scale)
-  const setArch = useStore((s) => s.setArch)
   const setScale = useStore((s) => s.setScale)
   const setLang = useStore((s) => s.setLang)
   const toggleHelp = useStore((s) => s.toggleHelp)
+  const toggleMenu = useStore((s) => s.toggleMenu)
 
   const scalable = arch === 'mlp' || arch === 'cnn'
-
-  const archBtn = ({ arch: a, kbd }: { arch: Arch; kbd: string }) => (
-    <button
-      key={a}
-      className={`tab${arch === a ? ' active' : ''}`}
-      onClick={() => setArch(a)}
-      title={t(`arch.${a}Full`)}
-    >
-      {t(`arch.${a}`)}
-      <kbd>{kbd}</kbd>
-    </button>
-  )
 
   return (
     <div className="topbar">
       <div className="brand">
+        <button className="menu-btn" onClick={toggleMenu} title={t('nav.menu')}>
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor">
+            <path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z" />
+          </svg>
+        </button>
         <span className="logo-dot" />
         <h1>{t('app.title')}</h1>
+        <button className="current-arch" onClick={toggleMenu} title={t(`arch.${arch}Full`)}>
+          {t(`arch.${arch}`)} <span className="caret">▾</span>
+        </button>
         <span className="tagline">{t('app.tagline')}</span>
       </div>
       <div className="top-controls">
-        <div className="seg">
-          <span className="seg-label">{t('nav.models')}</span>
-          {MODEL_ARCHS.map(archBtn)}
-        </div>
-        <div className="seg">
-          <span className="seg-label">{t('nav.apps')}</span>
-          {APP_ARCHS.map(archBtn)}
-        </div>
         {scalable && (
           <div className="seg" title={t('scale.tooltip')}>
             {SCALES.map((sz) => (
@@ -102,6 +91,55 @@ function TopBar() {
         </button>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------- drawer
+
+function Drawer() {
+  const t = useT()
+  const open = useStore((s) => s.menuOpen)
+  const arch = useStore((s) => s.arch)
+  const setArch = useStore((s) => s.setArch)
+  const toggleMenu = useStore((s) => s.toggleMenu)
+
+  const item = ({ arch: a, kbd }: { arch: Arch; kbd: string }) => (
+    <button
+      key={a}
+      className={`drawer-item${arch === a ? ' active' : ''}`}
+      onClick={() => {
+        setArch(a)
+        if (arch !== a) return
+        toggleMenu()
+      }}
+    >
+      <span className="drawer-dot" />
+      <span className="drawer-texts">
+        <span className="drawer-name">{t(`arch.${a}`)}</span>
+        <span className="drawer-sub">{t(`arch.${a}Full`)}</span>
+      </span>
+      <kbd>{kbd}</kbd>
+    </button>
+  )
+
+  return (
+    <>
+      <div className={`drawer-backdrop${open ? ' open' : ''}`} onClick={toggleMenu} />
+      <aside className={`drawer${open ? ' open' : ''}`}>
+        <header className="drawer-head">
+          <span className="logo-dot" />
+          <h2>{t('app.title')}</h2>
+          <button className="icon-btn" onClick={toggleMenu} title={t('panel.close')}>
+            ×
+          </button>
+        </header>
+        <div className="drawer-section">{t('nav.models')}</div>
+        {MODEL_ARCHS.map(item)}
+        <div className="drawer-section">{t('nav.apps')}</div>
+        {APP_ARCHS.map(item)}
+        <p className="drawer-note">{t('nav.more')}</p>
+      </aside>
+    </>
   )
 }
 
@@ -261,7 +299,68 @@ function BottomBar() {
             <IconShuffle />
           </button>
         )}
+        {arch === 'cnn' && <CNNControls />}
+        {arch === 'llm' && <TempSlider />}
       </div>
+    </div>
+  )
+}
+
+/** CNN extras: paint-your-own input + hand-crafted vs learned kernels. */
+function CNNControls() {
+  const t = useT()
+  const drawMode = useStore((s) => s.drawMode)
+  const cnnKernels = useStore((s) => s.cnnKernels)
+  const toggleDraw = useStore((s) => s.toggleDraw)
+  const clearCnnInput = useStore((s) => s.clearCnnInput)
+  const setKernelMode = useStore((s) => s.setKernelMode)
+  return (
+    <>
+      <span className="chip-divider" />
+      <button className={`chip${drawMode ? ' active' : ''}`} onClick={toggleDraw}>
+        ✎ {t('controls.draw')}
+      </button>
+      {drawMode && (
+        <button className="chip" onClick={clearCnnInput}>
+          {t('controls.clear')}
+        </button>
+      )}
+      <span className="chip-divider" />
+      <button
+        className={`chip${cnnKernels === 'hand' ? ' active' : ''}`}
+        onClick={() => setKernelMode('hand')}
+        title={t('cnn.handFull')}
+      >
+        {t('cnn.hand')}
+      </button>
+      <button
+        className={`chip${cnnKernels === 'learned' ? ' active' : ''}`}
+        onClick={() => setKernelMode('learned')}
+        title={t('cnn.learnedFull')}
+      >
+        {t('cnn.learned')}
+      </button>
+    </>
+  )
+}
+
+/** Sampling temperature for autoregressive generation. */
+function TempSlider() {
+  const t = useT()
+  const temp = useStore((s) => s.llmTemp)
+  const setLLMTemp = useStore((s) => s.setLLMTemp)
+  return (
+    <div className="temp-ctl" title={t('llm.tempTip')}>
+      <span>{t('llm.temp')}</span>
+      <input
+        type="range"
+        min={0.2}
+        max={1.4}
+        step={0.1}
+        value={temp}
+        onChange={(e) => setLLMTemp(parseFloat(e.target.value))}
+      />
+      <span className="num">{temp.toFixed(1)}</span>
     </div>
   )
 }

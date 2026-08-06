@@ -32,6 +32,21 @@ for (const scale of ['s', 'm', 'l'] as const) {
   if (mlpOk < 51 || cnnOk < 51) failures.push(`scale ${scale} accuracy too low`)
 }
 
+// --- learned conv kernels (end-to-end conv backprop)
+{
+  const t0 = Date.now()
+  const cnn = buildCNNTask('s', 'learned')
+  let ok = 0
+  for (let i = 0; i < 60; i++) {
+    const cls = i % cnn.classCount
+    const steps = forwardCNN(cnn.model, cnn.makeSample(cls, rng))
+    const last = steps[steps.length - 1]
+    if (last.kind === 'vector' && argmax(last.a) === cls) ok++
+  }
+  console.log(`CNN learned kernels (s): ${ok}/60 (train ${Date.now() - t0}ms)`)
+  if (ok < 51) failures.push('learned-kernel CNN accuracy too low')
+}
+
 // --- text language detector
 const textAcc = evalTextAccuracy(90)
 console.log(`TEXT language detector accuracy: ${(textAcc * 100).toFixed(1)}%`)

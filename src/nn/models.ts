@@ -5,8 +5,19 @@
 
 import { Rng, mulberry32, gaussian, clamp01 } from './rng'
 import { MLPModel, createMLP, trainMLP, TrainSample, forwardMLP, argmax } from './mlp'
-import { CNNModel, ConvLayerDef, Tensor3, convForward, poolForward, flattenTensor } from './cnn'
+import {
+  CNNModel,
+  CNNTrainSample,
+  ConvLayerDef,
+  Tensor3,
+  convForward,
+  flattenTensor,
+  poolForward,
+  trainCNNEndToEnd,
+} from './cnn'
 import { LLMTask, buildLLMTask } from './transformer'
+
+export type KernelMode = 'hand' | 'learned'
 
 export type Scale = 's' | 'm' | 'l'
 
@@ -146,27 +157,23 @@ const KERNEL_POOL: number[][][] = [
   scaleKernel([[1, 1, 1], [1, 1, 1], [1, 1, 1]], 1 / 9), // box blur (brightness)
 ]
 
-export function buildCNNTask(scale: Scale): CNNTask {
+export function buildCNNTask(scale: Scale, kernelMode: KernelMode = 'hand'): CNNTask {
   const cfg = CNN_SCALE_CFG[scale]
-  const rng = mulberry32(0xc44 + scale.charCodeAt(0))
+  const rng = mulberry32(0xc44 + scale.charCodeAt(0) + (kernelMode === 'learned' ? 977 : 0))
+  const learned = kernelMode === 'learned'
   const conv: ConvLayerDef = {
     type: 'conv',
-    kernels: KERNEL_POOL.slice(0, cfg.kernels).map((k) => [k]),
+    kernels: learned
+      ? Array.from({ length: cfg.kernels }, () => [
+          Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => gaussian(rng) * 0.35)),
+        ])
+      : KERNEL_POOL.slice(0, cfg.kernels).map((k) => [k]),
     biases: Array.from({ length: cfg.kernels }, () => 0),
   }
   const makeSample = (cls: number, r: Rng) => cnnSampleOfSize(cfg.n, cls, r)
-  const featuresOf = (input: Tensor3) => flattenTensor(poolForward(convForward(input, conv).out, 2))
 
   const flatSize = cfg.kernels * Math.floor((cfg.n - 2) / 2) ** 2
   const head = createMLP(rng, [flatSize, cfg.hidden, CNN_CLASS_COUNT], ['relu', 'softmax'])
-  const data: TrainSample[] = []
-  for (let c = 0; c < CNN_CLASS_COUNT; c++) {
-    for (let i = 0; i < cfg.perClass; i++) {
-      data.push({ x: featuresOf(makeSample(c, rng)), y: oneHot(CNN_CLASS_COUNT, c) })
-    }
-  }
-  trainMLP(head, data, { lr: 0.05, epochs: cfg.epochs, rng })
-
   const model: CNNModel = {
     inputShape: [1, cfg.n, cfg.n],
     layers: [
@@ -177,6 +184,28 @@ export function buildCNNTask(scale: Scale): CNNTask {
       { type: 'dense', layer: head.layers[1] },
     ],
   }
+
+  if (learned) {
+    // kernels start as noise and are trained end-to-end through conv backprop
+    const data: CNNTrainSample[] = []
+    for (let c = 0; c < CNN_CLASS_COUNT; c++) {
+      for (let i = 0; i < cfg.perClass; i++) {
+        data.push({ x: makeSample(c, rng), y: oneHot(CNN_CLASS_COUNT, c) })
+      }
+    }
+    trainCNNEndToEnd(model, data, { lr: 0.025, epochs: Math.min(50, cfg.epochs), rng })
+  } else {
+    // classic hand-crafted detectors; only the dense head is trained
+    const featuresOf = (input: Tensor3) => flattenTensor(poolForward(convForward(input, conv).out, 2))
+    const data: TrainSample[] = []
+    for (let c = 0; c < CNN_CLASS_COUNT; c++) {
+      for (let i = 0; i < cfg.perClass; i++) {
+        data.push({ x: featuresOf(makeSample(c, rng)), y: oneHot(CNN_CLASS_COUNT, c) })
+      }
+    }
+    trainMLP(head, data, { lr: 0.05, epochs: cfg.epochs, rng })
+  }
+
   return { model, classCount: CNN_CLASS_COUNT, makeSample }
 }
 
@@ -271,10 +300,10 @@ export let MODELS: Models = {
   llm: buildLLMTask(),
 }
 
-/** Rebuild + retrain one architecture at a new scale (text has a single size). */
-export function rebuildArch(arch: 'mlp' | 'cnn', scale: Scale): void {
+/** Rebuild + retrain one architecture at a new scale / kernel mode. */
+export function rebuildArch(arch: 'mlp' | 'cnn', scale: Scale, kernelMode: KernelMode = 'hand'): void {
   if (arch === 'mlp') MODELS = { ...MODELS, mlp: buildMLPTask(scale) }
-  else MODELS = { ...MODELS, cnn: buildCNNTask(scale) }
+  else MODELS = { ...MODELS, cnn: buildCNNTask(scale, kernelMode) }
 }
 
 /** Quick self-check used by scripts/sanity.ts. */

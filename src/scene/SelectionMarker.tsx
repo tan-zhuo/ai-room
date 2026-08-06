@@ -121,11 +121,14 @@ function llmSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
     return segs
   }
   if (sel.space === 'grid' && sel.layer === 4) {
-    // concat z cell (i,k) <- its head's attention row + V column k
-    const head = Math.floor(sel.col / dh)
+    // z cell (i,k): W_O mixes every head, so draw from both attention rows + V columns
+    for (let h = 0; h < heads; h++) {
+      for (let j = 0; j <= sel.row; j++) {
+        segs.push({ a: v(gridPos(slot(3), h, sel.row, j)), b: target, w: trace.A[h][sel.row][j], target: 0 })
+      }
+    }
     for (let j = 0; j <= sel.row; j++) {
-      segs.push({ a: v(gridPos(slot(3), head, sel.row, j)), b: target, w: trace.A[head][sel.row][j], target: 0 })
-      segs.push({ a: v(gridPos(slot(2), 2, j, sel.col)), b: target, w: trace.V[j][sel.col], target: 0 })
+      segs.push({ a: v(gridPos(slot(2), 2, j, Math.min(sel.col, d - 1))), b: target, w: trace.V[j][sel.col], target: 0 })
     }
     return segs
   }

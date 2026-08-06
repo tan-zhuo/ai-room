@@ -319,7 +319,7 @@ export function LLMScene() {
         sub={`${model.heads} × ${T}×${T} · softmax`}
         layer={3}
       />
-      <LayerLabel position={llmLabelAnchor(4)} title={t('layer.attnout')} sub={`${T}×${model.d}`} layer={4} />
+      <LayerLabel position={llmLabelAnchor(4)} title={t('layer.attnout')} sub="concat · W_O" layer={4} />
       <LayerLabel position={llmLabelAnchor(5)} title={t('layer.addnorm')} sub="LN(x + attn)" layer={5} />
       <LayerLabel position={llmLabelAnchor(6)} title={t('layer.ffn')} sub={`${model.dff} · ReLU`} layer={6} />
       <LayerLabel position={llmLabelAnchor(7)} title={t('layer.addnorm')} sub="LN(x + ffn)" layer={7} />

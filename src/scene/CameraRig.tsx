@@ -19,6 +19,7 @@ export function CameraRig() {
   const controls = useRef<OrbitControlsImpl>(null)
   const anim = useRef<CamAnim | null>(null)
   const focusNonce = useStore((s) => s.focusNonce)
+  const drawMode = useStore((s) => s.drawMode)
   const { camera } = useThree()
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export function CameraRig() {
     <OrbitControls
       ref={controls}
       makeDefault
+      enabled={!drawMode}
       enableDamping
       dampingFactor={0.08}
       minDistance={2}

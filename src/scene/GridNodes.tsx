@@ -10,15 +10,20 @@ interface Props {
   slot: GridSlot
   values: Tensor3
   scale: number
+  /** allow painting cells with the mouse while draw mode is on */
+  paintable?: boolean
 }
 
 /** A stack of feature-map sheets (or the input image) rendered as instanced cells. */
-export function GridNodes({ slot, values, scale }: Props) {
+export function GridNodes({ slot, values, scale, paintable = false }: Props) {
   const mesh = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const color = useMemo(() => new THREE.Color(), [])
   const select = useStore((s) => s.select)
   const setHover = useStore((s) => s.setHover)
+  const paintPixel = useStore((s) => s.paintPixel)
+  const drawMode = useStore((s) => s.drawMode)
+  const painting = paintable && drawMode
 
   const { channels, rows, cols, cell, layer } = slot
   const perCh = rows * cols
@@ -64,7 +69,14 @@ export function GridNodes({ slot, values, scale }: Props) {
   })
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > 5 || e.instanceId === undefined) return
+    if (e.instanceId === undefined) return
+    if (painting) {
+      e.stopPropagation()
+      const ref = toRef(e.instanceId)
+      if (ref.space === 'grid') paintPixel(ref.row, ref.col)
+      return
+    }
+    if (e.delta > 5) return
     e.stopPropagation()
     select(toRef(e.instanceId))
   }
@@ -72,9 +84,20 @@ export function GridNodes({ slot, values, scale }: Props) {
     if (e.instanceId === undefined) return
     e.stopPropagation()
     const ref = toRef(e.instanceId)
+    if (ref.space !== 'grid') return
+    if (painting && e.buttons === 1) {
+      paintPixel(ref.row, ref.col)
+      return
+    }
     const cur = useStore.getState().hoverInfo
     if (cur && sameRef(cur.ref, ref)) return
-    if (ref.space === 'grid') setHover({ ref, value: values[ref.channel][ref.row][ref.col] })
+    setHover({ ref, value: values[ref.channel][ref.row][ref.col] })
+  }
+  const onDown = (e: ThreeEvent<PointerEvent>) => {
+    if (!painting || e.instanceId === undefined) return
+    e.stopPropagation()
+    const ref = toRef(e.instanceId)
+    if (ref.space === 'grid') paintPixel(ref.row, ref.col)
   }
 
   return (
@@ -84,7 +107,8 @@ export function GridNodes({ slot, values, scale }: Props) {
       frustumCulled={false}
       onClick={onClick}
       onPointerMove={onMove}
-      onPointerOver={() => (document.body.style.cursor = 'pointer')}
+      onPointerDown={onDown}
+      onPointerOver={() => (document.body.style.cursor = painting ? 'crosshair' : 'pointer')}
       onPointerOut={() => {
         document.body.style.cursor = ''
         setHover(null)

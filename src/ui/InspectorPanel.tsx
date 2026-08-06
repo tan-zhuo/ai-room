@@ -581,28 +581,39 @@ function LLMDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
-  // concat z cell: Σ_j A_h[i][j] · V[j][k]
+  // attention output cell: per-head A·V concat, then the W_O projection
   if (sel.space === 'grid' && sel.layer === 4) {
     const i = sel.row
     const k = sel.col
-    const h = Math.floor(k / dh)
-    const aRow = trace.A[h][i].slice(0, i + 1)
-    const vCol = aRow.map((_, j) => trace.V[j][k])
+    const woCol = Array.from({ length: model.d }, (_, m) => model.Wo[m][k])
     return (
       <>
         <section>
           <h4>
-            {t('llm.head', { n: h + 1 })} · z[{i}][{k}] = Σ<sub>j</sub> A[{i}][j] · V[j][{k}]
+            z[{i}][{k}] = concat(heads)[{i}] · W<sub>O</sub>[:, {k}] + b
           </h4>
-          <ProductRows prev={aRow} prevLabel={(j) => `A[${i}][${j}]`} weights={vCol} weightHeader="V" />
+          <ProductRows
+            prev={trace.Zc[i]}
+            prevLabel={(m) => `${t('llm.head', { n: Math.floor(m / dh) + 1 })} · av[${m}]`}
+            weights={woCol}
+          />
         </section>
         <section>
           <h4>{t('panel.sum')}</h4>
           <div className="calc-chain">
             <span>
-              Σ = <b className="num accent">{fmt(trace.Z[i][k])}</b>
+              Σ = <b className="num">{fmt(trace.Z[i][k] - model.bo[k])}</b>
+            </span>
+            <span>
+              + b<sub>{k}</sub> <b className="num">{fmt(model.bo[k])}</b>
+            </span>
+            <span>
+              → <b className="num accent">{fmt(trace.Z[i][k])}</b>
             </span>
           </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+            av[m] = Σ<sub>j</sub> A<sub>h</sub>[{i}][j] · V[j][m]
+          </p>
         </section>
       </>
     )

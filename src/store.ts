@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import { MODELS, Scale, extractTextFeatures, rebuildArch } from './nn/models'
+import { KernelMode, MODELS, Scale, extractTextFeatures, rebuildArch } from './nn/models'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
+import { clamp01 } from './nn/rng'
 import { LLMTrace, encodeLLM, forwardLLM } from './nn/transformer'
 import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
@@ -50,7 +51,12 @@ interface AppState {
   arch: Arch
   lang: Lang
   scale: { mlp: Scale; cnn: Scale }
+  cnnKernels: KernelMode
   modelsVersion: number
+  menuOpen: boolean
+  /** paint-on-the-input mode for the CNN */
+  drawMode: boolean
+  llmTemp: number
   step: number
   playing: boolean
   transitioning: boolean
@@ -83,6 +89,12 @@ interface AppState {
 
   setArch: (a: Arch) => void
   setScale: (size: Scale) => void
+  setKernelMode: (mode: KernelMode) => void
+  toggleMenu: () => void
+  toggleDraw: () => void
+  paintPixel: (row: number, col: number) => void
+  clearCnnInput: () => void
+  setLLMTemp: (temp: number) => void
   togglePlay: () => void
   nextStep: () => void
   prevStep: () => void
@@ -140,7 +152,11 @@ export const useStore = create<AppState>((set, get) => ({
   arch: 'mlp',
   lang: detectLang(),
   scale: { mlp: 's', cnn: 's' },
+  cnnKernels: 'hand',
   modelsVersion: 0,
+  menuOpen: false,
+  drawMode: false,
+  llmTemp: 0.7,
   step: 0,
   playing: true,
   transitioning: false,
@@ -179,6 +195,8 @@ export const useStore = create<AppState>((set, get) => ({
       focusNonce: s.focusNonce + 1,
       llmGenerated: '',
       llmGenerating: false,
+      drawMode: false,
+      menuOpen: false,
     }))
   },
 
@@ -190,7 +208,7 @@ export const useStore = create<AppState>((set, get) => ({
     get().showToast('toast.training')
     // let the toast paint before the (synchronous) retraining burst
     setTimeout(() => {
-      rebuildArch(archKey, size)
+      rebuildArch(archKey, size, get().cnnKernels)
       // refreshLayout is imported lazily to keep layout.ts free of runtime store deps
       import('./scene/layout').then(({ refreshLayout }) => {
         refreshLayout()
@@ -209,6 +227,75 @@ export const useStore = create<AppState>((set, get) => ({
       })
     }, 60)
   },
+
+  setKernelMode: (mode) => {
+    const s = get()
+    if (s.arch !== 'cnn' || s.cnnKernels === mode) return
+    get().showToast('toast.training')
+    setTimeout(() => {
+      rebuildArch('cnn', get().scale.cnn, mode)
+      import('./scene/layout').then(({ refreshLayout }) => {
+        refreshLayout()
+        flow.phase = 0
+        flow.hold = 0
+        set((st) => ({
+          cnnKernels: mode,
+          modelsVersion: st.modelsVersion + 1,
+          ...makeInputs('cnn', get().cnnClass),
+          ...restart,
+          selected: null,
+          explain: null,
+          hoverInfo: null,
+        }))
+      })
+    }, 60)
+  },
+
+  toggleMenu: () => set((s) => ({ menuOpen: !s.menuOpen })),
+
+  toggleDraw: () => {
+    const s = get()
+    if (s.arch !== 'cnn') return
+    if (s.drawMode) {
+      set({ drawMode: false })
+      return
+    }
+    // entering draw mode: pause and reveal the whole network for live inference
+    set({ drawMode: true, playing: false, transitioning: false, step: totalSteps('cnn') })
+  },
+
+  paintPixel: (row, col) => {
+    const s = get()
+    if (s.arch !== 'cnn' || !s.drawMode) return
+    if (s.cnnInput[0][row][col] >= 0.9) return
+    const img = s.cnnInput.map((ch) => ch.map((r) => [...r]))
+    img[0][row][col] = clamp01(0.95)
+    set({
+      cnnInput: img,
+      cnnClass: -1,
+      cnnTrace: forwardCNN(MODELS.cnn.model, img),
+      step: totalSteps('cnn'),
+      playing: false,
+      transitioning: false,
+    })
+  },
+
+  clearCnnInput: () => {
+    const s = get()
+    if (s.arch !== 'cnn') return
+    const n = MODELS.cnn.model.inputShape[1]
+    const img: Tensor3 = [Array.from({ length: n }, () => Array.from({ length: n }, () => 0.05))]
+    set({
+      cnnInput: img,
+      cnnClass: -1,
+      cnnTrace: forwardCNN(MODELS.cnn.model, img),
+      step: totalSteps('cnn'),
+      playing: false,
+      transitioning: false,
+    })
+  },
+
+  setLLMTemp: (temp) => set({ llmTemp: temp }),
 
   togglePlay: () => {
     const s = get()
@@ -318,7 +405,7 @@ export const useStore = create<AppState>((set, get) => ({
     const s = get()
     const model = MODELS.llm.model
     // temperature sampling keeps the text lively without going random
-    const temp = 0.7
+    const temp = s.llmTemp
     const logits = s.llmTrace.probs.map((p) => Math.log(Math.max(p, 1e-9)) / temp)
     const m = Math.max(...logits)
     const exps = logits.map((v) => Math.exp(v - m))

@@ -26,6 +26,9 @@ export interface LLMModel {
   Wq: number[][]
   Wk: number[][]
   Wv: number[][]
+  /** multi-head output projection applied to the concatenated heads */
+  Wo: number[][]
+  bo: number[]
   /** FFN */
   W1: number[][]
   b1: number[]
@@ -55,7 +58,9 @@ export interface LLMTrace {
   S: number[][][]
   /** per-head attention weights [heads][T][T] */
   A: number[][][]
-  /** concatenated head outputs, [T][d] */
+  /** concatenated per-head weighted sums, [T][d] */
+  Zc: number[][]
+  /** attention output after the W_O projection: Z = Zc·Wo + bo */
   Z: number[][]
   /** residual sums and LayerNorm stats for both Add&Norm stages */
   res1: number[][]
@@ -145,7 +150,7 @@ export function forwardLLM(model: LLMModel, ids: number[]): LLMTrace {
   const scale = 1 / Math.sqrt(dh)
   const S: number[][][] = []
   const A: number[][][] = []
-  const Z = zeros(T, d)
+  const Zc = zeros(T, d)
   for (let h = 0; h < heads; h++) {
     const off = h * dh
     const Sh = zeros(T, T)
@@ -161,12 +166,13 @@ export function forwardLLM(model: LLMModel, ids: number[]): LLMTrace {
       const soft = softmaxRow(masked)
       for (let j = 0; j <= i; j++) Ah[i][j] = soft[j]
       for (let j = 0; j <= i; j++) {
-        for (let k = 0; k < dh; k++) Z[i][off + k] += Ah[i][j] * V[j][off + k]
+        for (let k = 0; k < dh; k++) Zc[i][off + k] += Ah[i][j] * V[j][off + k]
       }
     }
     S.push(Sh)
     A.push(Ah)
   }
+  const Z = matmul(Zc, model.Wo).map((row) => row.map((v, k) => v + model.bo[k]))
   const res1 = X.map((row, i) => row.map((v, k) => v + Z[i][k]))
   const mu1: number[] = []
   const sig1: number[] = []
@@ -199,6 +205,7 @@ export function forwardLLM(model: LLMModel, ids: number[]): LLMTrace {
     V,
     S,
     A,
+    Zc,
     Z,
     res1,
     mu1,
@@ -329,6 +336,22 @@ function trainStep(model: LLMModel, ids: number[], targets: number[], lr: number
   const dX = dRes1.map((row) => [...row]) // residual branch
   const dZ = dRes1
 
+  // W_O projection backward: Z = Zc·Wo + bo
+  const dWo = zeros(d, d)
+  const dbo = Array.from({ length: d }, () => 0)
+  const dZc = zeros(T, d)
+  for (let i = 0; i < T; i++) {
+    for (let k = 0; k < d; k++) {
+      const gr = dZ[i][k]
+      if (gr === 0) continue
+      dbo[k] += gr
+      for (let m = 0; m < d; m++) {
+        dWo[m][k] += tr.Zc[i][m] * gr
+        dZc[i][m] += gr * model.Wo[m][k]
+      }
+    }
+  }
+
   // multi-head attention backward
   const scale = 1 / Math.sqrt(dh)
   const dQ = zeros(T, d)
@@ -342,8 +365,8 @@ function trainStep(model: LLMModel, ids: number[], targets: number[], lr: number
       for (let j = 0; j <= i; j++) {
         let s = 0
         for (let m = 0; m < dh; m++) {
-          s += dZ[i][off + m] * tr.V[j][off + m]
-          dV[j][off + m] += Ah[i][j] * dZ[i][off + m]
+          s += dZc[i][off + m] * tr.V[j][off + m]
+          dV[j][off + m] += Ah[i][j] * dZc[i][off + m]
         }
         dA[i][j] = s
       }
@@ -382,9 +405,11 @@ function trainStep(model: LLMModel, ids: number[], targets: number[], lr: number
   addScaled(model.Wq, dWq, lr)
   addScaled(model.Wk, dWk, lr)
   addScaled(model.Wv, dWv, lr)
+  addScaled(model.Wo, dWo, lr)
   for (let j = 0; j < vocabN; j++) model.bout[j] -= lr * dbout[j]
   for (let j = 0; j < d; j++) {
     model.b2[j] -= lr * db2[j]
+    model.bo[j] -= lr * dbo[j]
     model.g1[j] -= lr * dg1[j]
     model.be1[j] -= lr * dbe1[j]
     model.g2[j] -= lr * dg2[j]
@@ -428,6 +453,8 @@ export function buildLLMTask(): LLMTask {
     Wq: randn(d, d, 0.28, rng),
     Wk: randn(d, d, 0.28, rng),
     Wv: randn(d, d, 0.28, rng),
+    Wo: randn(d, d, 0.28, rng),
+    bo: Array.from({ length: d }, () => 0),
     W1: randn(d, dff, 0.28, rng),
     b1: Array.from({ length: dff }, () => 0),
     W2: randn(dff, d, 0.28, rng),

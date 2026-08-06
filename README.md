@@ -16,7 +16,9 @@ Classifies 3 Gaussian clusters. Watch data-flow particles run through weighted c
 
 ### CNN — Convolutional Network · 卷积神经网络
 
-Hand-crafted Sobel edge kernels + a trained dense head classify patterns (vertical / horizontal / diagonal / ring). The receptive-field window slides across the input exactly in computation order; pooling windows animate the same way. Three sizes (S/M/L up to 16×16 input, 6 kernels) — switching **retrains the network live**.
+Classifies patterns (vertical / horizontal / diagonal / ring). The receptive-field window slides across the input exactly in computation order; pooling windows animate the same way. Three sizes (S/M/L up to 16×16 input, 6 kernels) — switching **retrains the network live**.
+
+Two kernel modes: **hand-crafted** Sobel-style edge detectors (interpretable, only the dense head trains) or **learned** — kernels start as random noise and are trained end-to-end through a hand-written conv backward pass. And a **Draw mode**: paint your own pattern on the input grid and watch the whole network classify it live, stroke by stroke.
 
 ![CNN convolution](docs/cnn.gif)
 
@@ -24,11 +26,11 @@ Hand-crafted Sobel edge kernels + a trained dense head classify patterns (vertic
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
 
-**Tokenizer → Embedding → Positional Encoding (sinusoidal) → Multi-Head Attention (2 heads, causal) → Residual + LayerNorm → Feed-Forward → Residual + LayerNorm → Output softmax**
+**Tokenizer → Embedding → Positional Encoding (sinusoidal) → Multi-Head Attention (2 heads, causal, with output projection W_O) → Residual + LayerNorm → Feed-Forward → Residual + LayerNorm → Output softmax**
 
 Both heads' 8×8 attention matrices light up row by row; residual skip connections are drawn when you inspect an Add & Norm cell — down to μ, σ, γ, β. Type a prompt, watch it predict: `"the ai r"` → `o` (room), `"attentio"` → `n` (58%).
 
-Hit **Generate · 连续生成** for true autoregressive decoding: the sampled character is appended to the context, the window slides, the whole pipeline re-runs — and the output streams onto the screen one character at a time, exactly how real LLMs write.
+Hit **Generate · 连续生成** for true autoregressive decoding: the sampled character is appended to the context, the window slides, the whole pipeline re-runs — and the output streams onto the screen one character at a time, exactly how real LLMs write. A **temperature slider** (0.2–1.4) controls the sampling distribution live.
 
 ![Tiny transformer](docs/llm.gif)
 
@@ -59,7 +61,11 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | Mouse drag / scroll / right-drag | Orbit / zoom / pan |
 | Click node · 点击节点 | Inspect its computation |
 | Click layer title · 点击层标题 | Module explanation + highlight |
-| Text box (TEXT / LLM) | Run the network on your own input |
+| ☰ menu | Switch between models and AI apps |
+| Text box (Lang ID / Transformer) | Run the network on your own input |
+| Draw mode (CNN) | Paint the input, classify live |
+| Kernel toggle (CNN) | Hand-crafted ↔ learned (end-to-end) kernels |
+| Temp slider (Transformer) | Sampling temperature for generation |
 | `Space` | Play / pause |
 | `←` `→` | Previous / next step |
 | `R` | Reset |
@@ -69,6 +75,15 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
 | `Esc` | Close panel / deselect |
+
+## Simplifications vs production models · 与生产级模型的差异
+
+Honest list of what is deliberately simplified — the math shown is real, the scale is not:
+
+- One transformer block, 2 heads, d=12, char-level tokens (production: dozens of blocks, subword BPE, d in the thousands); post-LN as in the original paper (modern LLMs mostly use pre-LN); no dropout or weight decay (datasets are tiny and synthetic).
+- Training is plain SGD, sample-by-sample (production: Adam, batches, schedulers).
+- CNN: single conv+pool stage, stride 1, no padding; datasets are procedurally generated patterns rather than photos.
+- Lang ID uses hand-crafted statistical features on purpose — it demonstrates the simplest form of text encoding, not modern embeddings.
 
 ## Development
 
