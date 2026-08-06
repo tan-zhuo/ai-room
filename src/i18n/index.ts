@@ -284,6 +284,7 @@ const en: Dict = {
   'overview.secProblems': 'Problems it solves',
   'overview.secDomains': 'Where it is used',
   'overview.secIndustries': 'Industries it powers',
+  'overview.secPapers': 'Key papers',
   'overview.tip':
     'Watch it run in 3D on the left — click any node for the exact math, or a layer title for a module guide.',
   'overview.mlp.intro':
@@ -772,6 +773,7 @@ const zh: Dict = {
   'overview.secProblems': '解决了什么问题',
   'overview.secDomains': '作用领域',
   'overview.secIndustries': '支持的行业',
+  'overview.secPapers': '经典论文',
   'overview.tip': '左侧就是它的 3D 实况——点击任意节点看具体算式，点击层标题看模块讲解。',
   'overview.mlp.intro':
     '多层感知机是最基础的神经网络：若干层全连接神经元堆叠，每层做"加权求和 + 非线性激活"。它体现了一个朴素的思想——把足够多的简单单元连接起来，就能逼近几乎任何函数（万能逼近定理）。所有更大的架构里都有它的身影。',
@@ -1253,6 +1255,7 @@ const ja: Dict = {
   'overview.secProblems': '解決する課題',
   'overview.secDomains': '主な用途',
   'overview.secIndustries': '支える産業',
+  'overview.secPapers': '主要論文',
   'overview.tip':
     '左に見えているのが 3D の実働です——ノードをクリックで実際の数式、層タイトルでモジュール解説。',
   'overview.mlp.intro':

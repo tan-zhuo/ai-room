@@ -260,6 +260,45 @@ kbd {
   margin-right: 7px;
 }
 
+.explain-section.papers {
+  border-color: #c39bd3;
+}
+
+.paper-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.paper-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.paper-link:hover {
+  border-color: var(--accent);
+  background: rgba(90, 200, 250, 0.06);
+}
+
+.paper-title {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.paper-meta {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
 /* ---------------------------------------------------------------- drawer */
 
 .drawer-backdrop {

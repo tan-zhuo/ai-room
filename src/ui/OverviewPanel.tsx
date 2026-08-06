@@ -1,4 +1,155 @@
-import { useStore, useT } from '../store'
+import { Arch, useStore, useT } from '../store'
+
+interface Paper {
+  title: string
+  authors: string
+  year: number
+  url: string
+  /** what this paper contributes to the arch shown (i18n key suffix, optional) */
+  note?: string
+}
+
+/** The canonical papers behind each architecture — language-independent. */
+const PAPERS: Record<Arch, Paper[]> = {
+  mlp: [
+    {
+      title: 'Learning Representations by Back-propagating Errors',
+      authors: 'Rumelhart, Hinton & Williams',
+      year: 1986,
+      url: 'https://www.nature.com/articles/323533a0',
+    },
+    {
+      title: 'The Perceptron: A Probabilistic Model for Information Storage and Organization in the Brain',
+      authors: 'Rosenblatt',
+      year: 1958,
+      url: 'https://psycnet.apa.org/doi/10.1037/h0042519',
+    },
+  ],
+  cnn: [
+    {
+      title: 'Gradient-Based Learning Applied to Document Recognition (LeNet)',
+      authors: 'LeCun, Bottou, Bengio & Haffner',
+      year: 1998,
+      url: 'https://ieeexplore.ieee.org/document/726791',
+    },
+    {
+      title: 'ImageNet Classification with Deep Convolutional Neural Networks (AlexNet)',
+      authors: 'Krizhevsky, Sutskever & Hinton',
+      year: 2012,
+      url: 'https://papers.nips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html',
+    },
+  ],
+  rnn: [
+    {
+      title: 'Finding Structure in Time',
+      authors: 'Elman',
+      year: 1990,
+      url: 'https://onlinelibrary.wiley.com/doi/10.1207/s15516709cog1402_1',
+    },
+    {
+      title: 'Learning Long-Term Dependencies with Gradient Descent is Difficult',
+      authors: 'Bengio, Simard & Frasconi',
+      year: 1994,
+      url: 'https://ieeexplore.ieee.org/document/279181',
+    },
+  ],
+  lstm: [
+    {
+      title: 'Long Short-Term Memory',
+      authors: 'Hochreiter & Schmidhuber',
+      year: 1997,
+      url: 'https://www.bioinf.jku.at/publications/older/2604.pdf',
+    },
+    {
+      title: 'LSTM: A Search Space Odyssey',
+      authors: 'Greff, Srivastava, Koutník, Steunebrink & Schmidhuber',
+      year: 2015,
+      url: 'https://arxiv.org/abs/1503.04069',
+    },
+  ],
+  llm: [
+    {
+      title: 'Attention Is All You Need',
+      authors: 'Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser & Polosukhin',
+      year: 2017,
+      url: 'https://arxiv.org/abs/1706.03762',
+    },
+    {
+      title: 'Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer',
+      authors: 'Shazeer, Mirhoseini, Maziarz, Davis, Le, Hinton & Dean',
+      year: 2017,
+      url: 'https://arxiv.org/abs/1701.06538',
+    },
+    {
+      title: 'Language Models are Few-Shot Learners (GPT-3)',
+      authors: 'Brown et al.',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2005.14165',
+    },
+  ],
+  ae: [
+    {
+      title: 'Reducing the Dimensionality of Data with Neural Networks',
+      authors: 'Hinton & Salakhutdinov',
+      year: 2006,
+      url: 'https://www.science.org/doi/10.1126/science.1127647',
+    },
+    {
+      title: 'Auto-Encoding Variational Bayes (VAE)',
+      authors: 'Kingma & Welling',
+      year: 2013,
+      url: 'https://arxiv.org/abs/1312.6114',
+    },
+  ],
+  diff: [
+    {
+      title: 'Denoising Diffusion Probabilistic Models (DDPM)',
+      authors: 'Ho, Jain & Abbeel',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2006.11239',
+    },
+    {
+      title: 'Deep Unsupervised Learning using Nonequilibrium Thermodynamics',
+      authors: 'Sohl-Dickstein, Weiss, Maheswaranathan & Ganguli',
+      year: 2015,
+      url: 'https://arxiv.org/abs/1503.03585',
+    },
+    {
+      title: 'High-Resolution Image Synthesis with Latent Diffusion Models (Stable Diffusion)',
+      authors: 'Rombach, Blattmann, Lorenz, Esser & Ommer',
+      year: 2021,
+      url: 'https://arxiv.org/abs/2112.10752',
+    },
+  ],
+  gan: [
+    {
+      title: 'Generative Adversarial Networks',
+      authors: 'Goodfellow, Pouget-Abadie, Mirza, Xu, Warde-Farley, Ozair, Courville & Bengio',
+      year: 2014,
+      url: 'https://arxiv.org/abs/1406.2661',
+    },
+    {
+      title: 'A Style-Based Generator Architecture for GANs (StyleGAN)',
+      authors: 'Karras, Laine & Aila',
+      year: 2018,
+      url: 'https://arxiv.org/abs/1812.04948',
+    },
+  ],
+  text: [
+    {
+      title: 'Learning Representations by Back-propagating Errors',
+      authors: 'Rumelhart, Hinton & Williams',
+      year: 1986,
+      url: 'https://www.nature.com/articles/323533a0',
+    },
+    {
+      title: 'N-Gram-Based Text Categorization',
+      authors: 'Cavnar & Trenkle',
+      year: 1994,
+      url: 'https://www.let.rug.nl/vannoord/TextCat/textcat.pdf',
+    },
+  ],
+}
 
 /** Whole-architecture overview: what it is, what problems it solves,
  *  where it is used and which industries it powers. */
@@ -43,6 +194,21 @@ export function OverviewPanel() {
         <section className="explain-section industries">
           <h4>{t('overview.secIndustries')}</h4>
           <ul className="overview-list">{bullets(`overview.${arch}.industries`)}</ul>
+        </section>
+        <section className="explain-section papers">
+          <h4>{t('overview.secPapers')}</h4>
+          <ul className="paper-list">
+            {PAPERS[arch].map((p) => (
+              <li key={p.url}>
+                <a href={p.url} target="_blank" rel="noreferrer" className="paper-link">
+                  <span className="paper-title">{p.title}</span>
+                  <span className="paper-meta">
+                    {p.authors} · {p.year} ↗
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
         <div className="explain-tip">{t('overview.tip')}</div>
       </div>

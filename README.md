@@ -103,6 +103,22 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `F` | Focus selected node / layer |
 | `Esc` | Close panel / deselect |
 
+## The papers behind each model · 每个模型对应的论文
+
+Every architecture's overview panel (ⓘ) links to its canonical papers. The full list:
+
+| Model | Papers |
+| --- | --- |
+| MLP | [Backpropagation — Rumelhart, Hinton & Williams 1986](https://www.nature.com/articles/323533a0) · [Perceptron — Rosenblatt 1958](https://psycnet.apa.org/doi/10.1037/h0042519) |
+| CNN | [LeNet — LeCun et al. 1998](https://ieeexplore.ieee.org/document/726791) · [AlexNet — Krizhevsky et al. 2012](https://papers.nips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html) |
+| RNN | [Finding Structure in Time — Elman 1990](https://onlinelibrary.wiley.com/doi/10.1207/s15516709cog1402_1) · [Long-term dependencies — Bengio et al. 1994](https://ieeexplore.ieee.org/document/279181) |
+| LSTM | [Long Short-Term Memory — Hochreiter & Schmidhuber 1997](https://www.bioinf.jku.at/publications/older/2604.pdf) · [Search Space Odyssey — Greff et al. 2015](https://arxiv.org/abs/1503.04069) |
+| Transformer | [Attention Is All You Need — Vaswani et al. 2017](https://arxiv.org/abs/1706.03762) · [Sparsely-Gated MoE — Shazeer et al. 2017](https://arxiv.org/abs/1701.06538) · [GPT-3 — Brown et al. 2020](https://arxiv.org/abs/2005.14165) |
+| Autoencoder | [Dimensionality Reduction — Hinton & Salakhutdinov 2006](https://www.science.org/doi/10.1126/science.1127647) · [VAE — Kingma & Welling 2013](https://arxiv.org/abs/1312.6114) |
+| Diffusion | [DDPM — Ho, Jain & Abbeel 2020](https://arxiv.org/abs/2006.11239) · [Nonequilibrium Thermodynamics — Sohl-Dickstein et al. 2015](https://arxiv.org/abs/1503.03585) · [Latent Diffusion — Rombach et al. 2021](https://arxiv.org/abs/2112.10752) |
+| GAN | [Generative Adversarial Networks — Goodfellow et al. 2014](https://arxiv.org/abs/1406.2661) · [StyleGAN — Karras et al. 2018](https://arxiv.org/abs/1812.04948) |
+| Lang ID | [Backpropagation — Rumelhart et al. 1986](https://www.nature.com/articles/323533a0) · [N-Gram Text Categorization — Cavnar & Trenkle 1994](https://www.let.rug.nl/vannoord/TextCat/textcat.pdf) |
+
 ## Simplifications vs production models · 与生产级模型的差异
 
 Honest list of what is deliberately simplified — the math shown is real, the scale is not:
