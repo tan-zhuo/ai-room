@@ -189,9 +189,8 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
   useFrame((state) => {
     const r = ring.current
     if (!r) return
-    const t = state.clock.elapsedTime
-    r.scale.setScalar(1 + 0.12 * Math.sin(t * 4))
-    r.rotation.y = t * 0.8
+    // fixed size — only a slow rotation so it reads as "selected", not alive
+    r.rotation.y = state.clock.elapsedTime * 0.8
   })
 
   return (
