@@ -2,7 +2,7 @@
 
 Interactive 3D environment for exploring **real** neural network computation node-by-node, running entirely in the browser. / 走进一个**正在真实运算**的神经网络的 3D 空间，全部在浏览器本地运行。
 
-**🔗 Live demo: [ai-room-phi.vercel.app](https://ai-room-phi.vercel.app/)**
+**🔗 Live: [airoom.run](https://www.airoom.run/)**
 
 by [tanzhuo](https://tanzhuo.xyz) · Blog: **[tanzhuo.xyz](https://tanzhuo.xyz)** · Source: **[github.com/tan-zhuo/ai-room](https://github.com/tan-zhuo/ai-room)** · License: MIT
 
