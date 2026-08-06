@@ -41,6 +41,39 @@ const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '7' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
+function FullscreenButton() {
+  const t = useT()
+  const [active, setActive] = useState(false)
+  const supported = typeof document !== 'undefined' && !!document.documentElement.requestFullscreen
+
+  useEffect(() => {
+    const fn = () => setActive(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', fn)
+    return () => document.removeEventListener('fullscreenchange', fn)
+  }, [])
+
+  if (!supported) return null
+  const toggle = () => {
+    if (document.fullscreenElement) document.exitFullscreen()
+    else document.documentElement.requestFullscreen()
+  }
+  return (
+    <button
+      className="tab round"
+      onClick={toggle}
+      title={active ? t('controls.exitFullscreen') : t('controls.fullscreen')}
+    >
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+        {active ? (
+          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+        ) : (
+          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+        )}
+      </svg>
+    </button>
+  )
+}
+
 function TopBar() {
   const t = useT()
   const arch = useStore((s) => s.arch)
@@ -82,13 +115,14 @@ function TopBar() {
             ))}
           </div>
         )}
-        <div className="seg">
+        <div className="seg lang-seg">
           {LANGS.map((l) => (
             <button key={l} className={`tab${lang === l ? ' active' : ''}`} onClick={() => setLang(l)}>
               {LANG_LABEL[l]}
             </button>
           ))}
         </div>
+        <FullscreenButton />
         <button className="tab round" onClick={toggleHelp} title={t('help.title')}>
           ?
         </button>
@@ -103,7 +137,9 @@ function Drawer() {
   const t = useT()
   const open = useStore((s) => s.menuOpen)
   const arch = useStore((s) => s.arch)
+  const lang = useStore((s) => s.lang)
   const setArch = useStore((s) => s.setArch)
+  const setLang = useStore((s) => s.setLang)
   const toggleMenu = useStore((s) => s.toggleMenu)
 
   const item = ({ arch: a, kbd }: { arch: Arch; kbd: string }) => (
@@ -140,6 +176,18 @@ function Drawer() {
         {MODEL_ARCHS.map(item)}
         <div className="drawer-section">{t('nav.apps')}</div>
         {APP_ARCHS.map(item)}
+        <div className="drawer-section">{t('nav.language')}</div>
+        <div className="drawer-langs">
+          {LANGS.map((l) => (
+            <button
+              key={l}
+              className={`chip${lang === l ? ' active' : ''}`}
+              onClick={() => setLang(l)}
+            >
+              {LANG_LABEL[l]}
+            </button>
+          ))}
+        </div>
         <p className="drawer-note">{t('nav.more')}</p>
         <ExternalLinks />
       </aside>
@@ -267,6 +315,7 @@ function BottomBar() {
 
   return (
     <div className="bottombar">
+      <div className="bottom-main">
       <div className="transport">
         <button className="icon-btn" onClick={reset} title={`${t('controls.reset')} (R)`}>
           <IconReset />
@@ -304,6 +353,7 @@ function BottomBar() {
             />
           ))}
         </div>
+      </div>
       </div>
 
       <div className="samples">

@@ -353,6 +353,27 @@ kbd {
   opacity: 0.75;
 }
 
+.drawer-langs {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+}
+
+.drawer-langs .chip {
+  border: 1px solid var(--border);
+  flex: 1;
+  justify-content: center;
+}
+
+.drawer-langs .chip.active {
+  border-color: var(--border-strong);
+}
+
+/* desktop: bottom-main is transparent to the flex layout */
+.bottom-main {
+  display: contents;
+}
+
 /* ---------------------------------------------------------------- hint */
 
 .hint {
@@ -1333,6 +1354,37 @@ kbd {
   .topbar {
     padding: 8px 10px;
     gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  /* language switching lives in the drawer on phones */
+  .lang-seg {
+    display: none;
+  }
+
+  .top-controls {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tagline {
+    display: none;
+  }
+
+  .bottom-main {
+    display: flex;
+    align-items: stretch;
+    gap: 7px;
+    width: 100%;
+  }
+
+  .bottom-main .transport {
+    flex-shrink: 0;
+  }
+
+  .bottom-main .progress {
+    flex: 1;
+    min-width: 0;
   }
 
   .brand {
@@ -1415,9 +1467,14 @@ kbd {
   }
 
   .chip {
-    padding: 5px 8px;
-    font-size: 11px;
+    padding: 7px 10px;
+    font-size: 11.5px;
     flex-shrink: 0;
+    min-height: 30px;
+  }
+
+  .samples {
+    width: 100%;
   }
 
   .samples-label {
