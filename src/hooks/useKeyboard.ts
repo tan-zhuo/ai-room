@@ -66,6 +66,7 @@ export function useKeyboard() {
         case 'Escape':
           if (s.helpOpen) s.toggleHelp()
           else if (s.menuOpen) s.toggleMenu()
+          else if (s.overviewOpen) s.toggleOverview()
           else if (s.drawMode) s.toggleDraw()
           else if (s.explain !== null) s.setExplain(null)
           else s.select(null)

@@ -4,6 +4,7 @@ import { MODELS, Scale } from '../nn/models'
 import { Arch, totalSteps, useStore, useT } from '../store'
 import { InspectorPanel } from './InspectorPanel'
 import { ExplainPanel } from './ExplainPanel'
+import { OverviewPanel } from './OverviewPanel'
 import { EmbeddingMap } from './EmbeddingMap'
 import { layerNameOf } from './layerName'
 import { IconNext, IconPause, IconPlay, IconPrev, IconReset, IconShuffle } from './icons'
@@ -20,6 +21,7 @@ export function Hud() {
       <FooterLinks />
       <InspectorPanel />
       <ExplainPanel />
+      <OverviewPanel />
       <Tooltip />
       <Toast />
       <HelpOverlay />
@@ -84,6 +86,7 @@ function TopBar() {
   const setLang = useStore((s) => s.setLang)
   const toggleHelp = useStore((s) => s.toggleHelp)
   const toggleMenu = useStore((s) => s.toggleMenu)
+  const toggleOverview = useStore((s) => s.toggleOverview)
 
   const scalable = arch === 'mlp' || arch === 'cnn'
 
@@ -99,6 +102,9 @@ function TopBar() {
         <h1>{t('app.title')}</h1>
         <button className="current-arch" onClick={toggleMenu} title={t(`arch.${arch}Full`)}>
           {t(`arch.${arch}`)} <span className="caret">▾</span>
+        </button>
+        <button className="info-btn" onClick={toggleOverview} title={t('overview.title')}>
+          ⓘ
         </button>
         <span className="tagline">{t('app.tagline')}</span>
       </div>

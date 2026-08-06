@@ -82,6 +82,8 @@ interface AppState {
   llmVariant: LLMVariant
   modelsVersion: number
   menuOpen: boolean
+  /** whole-architecture overview panel */
+  overviewOpen: boolean
   /** paint-on-the-input mode for the CNN */
   drawMode: boolean
   llmTemp: number
@@ -129,6 +131,7 @@ interface AppState {
   setKernelMode: (mode: KernelMode) => void
   setLLMVariant: (variant: LLMVariant) => void
   toggleMenu: () => void
+  toggleOverview: () => void
   toggleDraw: () => void
   paintPixel: (row: number, col: number) => void
   clearCnnInput: () => void
@@ -210,6 +213,7 @@ export const useStore = create<AppState>((set, get) => ({
   llmVariant: 'dense',
   modelsVersion: 0,
   menuOpen: false,
+  overviewOpen: false,
   drawMode: false,
   llmTemp: 0.7,
   step: 0,
@@ -255,6 +259,7 @@ export const useStore = create<AppState>((set, get) => ({
       llmGenerating: false,
       drawMode: false,
       menuOpen: false,
+      overviewOpen: false,
     }))
     syncUrl(a, get().lang)
   },
@@ -335,6 +340,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   toggleMenu: () => set((s) => ({ menuOpen: !s.menuOpen })),
+
+  toggleOverview: () =>
+    set((s) => ({
+      overviewOpen: !s.overviewOpen,
+      ...(s.overviewOpen ? {} : { selected: null, explain: null }),
+    })),
 
   toggleDraw: () => {
     const s = get()
@@ -450,8 +461,9 @@ export const useStore = create<AppState>((set, get) => ({
     set({ step: Math.min(total, s.step + 1), transitioning: false })
   },
 
-  select: (ref) => set({ selected: ref, ...(ref ? { explain: null } : {}) }),
-  setExplain: (layer) => set({ explain: layer, ...(layer !== null ? { selected: null } : {}) }),
+  select: (ref) => set({ selected: ref, ...(ref ? { explain: null, overviewOpen: false } : {}) }),
+  setExplain: (layer) =>
+    set({ explain: layer, ...(layer !== null ? { selected: null, overviewOpen: false } : {}) }),
   setHover: (h) => set({ hoverInfo: h }),
 
   setLang: (l) => {

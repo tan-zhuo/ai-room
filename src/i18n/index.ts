@@ -183,6 +183,68 @@ const en: Dict = {
     'PCA projection of the 28 learned character embeddings — characters the model treats similarly end up close together (vowels cyan, space/period orange).',
   'footer.blog': 'Author blog',
   'footer.source': 'Source code',
+  'overview.title': 'Model overview',
+  'overview.secIntro': 'What it is',
+  'overview.secProblems': 'Problems it solves',
+  'overview.secDomains': 'Where it is used',
+  'overview.secIndustries': 'Industries it powers',
+  'overview.tip':
+    'Watch it run in 3D on the left — click any node for the exact math, or a layer title for a module guide.',
+  'overview.mlp.intro':
+    'The multi-layer perceptron is the foundational neural network: stacked layers of fully-connected neurons, each doing "weighted sum + nonlinear activation". It embodies a simple idea — connect enough simple units and you can approximate almost any function (the universal approximation theorem). Every larger architecture contains MLPs as building blocks.',
+  'overview.mlp.problems':
+    'It answers "make a judgement from a set of numeric features": estimate health risk from checkup numbers, price a house from its attributes, predict churn from user stats. Anything you can put in a spreadsheet row, an MLP can learn from.',
+  'overview.mlp.domains':
+    'Classification & regression on tabular data\nScoring layers in recommender systems\nCredit & risk scoring\nThe FFN blocks inside every transformer\nSimple control and forecasting tasks',
+  'overview.mlp.industries':
+    'Finance — credit scoring, fraud detection\nInsurance — underwriting & pricing\nRetail — churn and demand prediction\nHealthcare — risk stratification\nInside virtually every deep model in production',
+  'overview.cnn.intro':
+    'The convolutional network slides small learned filters across an image, reusing the same weights everywhere. Translation invariance — "recognize the pattern wherever it appears" — is built into the architecture itself. CNNs (LeNet → AlexNet → ResNet) ignited the deep-learning revolution in vision.',
+  'overview.cnn.problems':
+    'It taught machines to see: recognizing objects in photos, finding lesions in X-rays, reading license plates and faces. Before CNNs these tasks needed hand-crafted features and worked poorly.',
+  'overview.cnn.domains':
+    'Image classification & object detection\nMedical image analysis\nFace recognition & security\nAutonomous-driving perception\nIndustrial quality inspection\nOCR text recognition',
+  'overview.cnn.industries':
+    'Medical imaging — cancer screening\nAutomotive — self-driving perception\nManufacturing — defect detection\nAgriculture — crop monitoring\nSmartphones — photo search, portrait mode\nSecurity & retail analytics',
+  'overview.rnn.intro':
+    'The recurrent network reads a sequence one element at a time, carrying a continuously-updated hidden state — its "memory of everything so far". The same weights are reused at every timestep, so it handles sequences of any length. It was the first successful answer to "make machines understand order".',
+  'overview.rnn.problems':
+    'It handles data where order is meaning: a sentence depends on word order, a stock price on its history, speech on the waveform through time. RNNs let a model read and remember at the same time.',
+  'overview.rnn.domains':
+    'Early machine translation & speech recognition\nTime-series forecasting\nText generation\nMusic generation\nSensor-stream analysis',
+  'overview.rnn.industries':
+    'Keyboards — next-word prediction (early era)\nFinance — time-series models\nIndustrial IoT — sensor anomaly detection\nVoice assistants — early acoustic models',
+  'overview.lstm.intro':
+    'The LSTM adds three learned gates (forget / input / output) and a cell-state "conveyor belt" to the RNN, fixing its fatal flaw: vanishing gradients that erase long-range memory. For nearly two decades before the Transformer, LSTMs ruled sequence modeling.',
+  'overview.lstm.problems':
+    'It solves long dependencies: the subject at the start of a sentence governs the verb at the end; context minutes ago shapes what a speech recognizer hears now. LSTM made long-term memory reliably trainable for the first time.',
+  'overview.lstm.domains':
+    'Speech recognition (the early core of Siri & Google Voice)\nMachine translation (pre-Transformer era)\nHandwriting recognition\nStock & demand forecasting\nVideo activity analysis',
+  'overview.lstm.industries':
+    'Smart speakers & voice assistants\nTranslation services\nQuantitative finance\nHealthcare — ECG / EEG analysis\nLogistics — demand forecasting',
+  'overview.ae.intro':
+    'The autoencoder forces data through a narrow bottleneck and asks it to rebuild itself — no labels anywhere. The network must discover the essential structure of the data on its own. It is the gateway to representation learning; the variational variant (VAE) turns the bottleneck into a samplable probability distribution, crossing from compression into generation.',
+  'overview.ae.problems':
+    'It solves "learning without labels" and "too many dimensions": compressing images, reducing data to a visualizable space, and flagging anomalies (whatever reconstructs badly is abnormal).',
+  'overview.ae.domains':
+    'Data compression & dimensionality reduction\nAnomaly detection\nImage denoising\nFeature learning for recommenders\nVAE: image generation & interpolation',
+  'overview.ae.industries':
+    'Industry — equipment anomaly detection\nCybersecurity — intrusion detection\nFinance — fraud identification\nPharma — molecule generation (VAE)\nRemote sensing — data compression',
+  'overview.llm.intro':
+    'The Transformer discards recurrence: self-attention lets every position look directly at every other, and with multi-head attention, residuals and LayerNorm it stacks extremely deep. It is the skeleton of every modern large language model — GPT, Claude, Gemini. The MoE variant (Mixtral, DeepSeek) extends capacity further with sparsely-routed experts.',
+  'overview.llm.problems':
+    "It cracked AI's central problem — understanding and generating human language: writing, translation, coding, question-answering. Attention's parallelism also solved the engineering bottleneck that kept RNNs from training at scale.",
+  'overview.llm.domains':
+    'Large language models (ChatGPT / Claude)\nMachine translation\nCode generation\nProtein structure prediction (AlphaFold)\nImage generation (DiT backbones)\nSpeech & music models',
+  'overview.llm.industries':
+    'Software — coding assistants\nEducation — personalized tutoring\nCustomer service — conversational agents\nLegal & finance — document analysis\nBiotech — drug discovery\nMedia — content creation',
+  'overview.text.intro':
+    'This is an "AI application" example: a real problem (which language is this text?) decomposed into feature engineering + a small model. It shows a path that quietly powers much of industry — not every problem needs a giant model.',
+  'overview.text.problems':
+    'It solves automatic language identification: the "Translate this page?" prompt in your browser, routing multilingual support tickets, indexing the web by language.',
+  'overview.text.domains':
+    'Browsers & input methods\nMultilingual content platforms\nSpam filtering (same features+classifier recipe)\nSearch engines',
+  'overview.text.industries': 'Internet platforms\nCross-border e-commerce\nLocalization services',
   'scale.s': 'S',
   'scale.m': 'M',
   'scale.l': 'L',
@@ -511,6 +573,67 @@ const zh: Dict = {
     '28 个学习到的字符嵌入的 PCA 投影——模型认为相似的字符会聚在一起（元音为青色，空格/句号为橙色）。',
   'footer.blog': '作者博客',
   'footer.source': '开源代码',
+  'overview.title': '模型简介',
+  'overview.secIntro': '这是什么',
+  'overview.secProblems': '解决了什么问题',
+  'overview.secDomains': '作用领域',
+  'overview.secIndustries': '支持的行业',
+  'overview.tip': '左侧就是它的 3D 实况——点击任意节点看具体算式，点击层标题看模块讲解。',
+  'overview.mlp.intro':
+    '多层感知机是最基础的神经网络：若干层全连接神经元堆叠，每层做"加权求和 + 非线性激活"。它体现了一个朴素的思想——把足够多的简单单元连接起来，就能逼近几乎任何函数（万能逼近定理）。所有更大的架构里都有它的身影。',
+  'overview.mlp.problems':
+    '解决"从一组数值特征做出判断"的问题：根据体检指标估计健康风险、根据房屋参数估价、根据用户属性预测流失。任何能整理成表格一行的数据，MLP 都能学。',
+  'overview.mlp.domains':
+    '表格数据的分类与回归\n推荐系统的打分层\n信用与风险评分\n每个 Transformer 内部的 FFN 模块\n简单的控制与预测任务',
+  'overview.mlp.industries':
+    '金融——信用评分、反欺诈\n保险——核保定价\n零售——流失与需求预测\n医疗——风险分层\n几乎所有生产环境的深度模型内部',
+  'overview.cnn.intro':
+    '卷积网络让小滤波器在图像上滑动扫描，同一组权重全图复用。"图案出现在哪里都认得"（平移不变性）被直接刻进了结构里。CNN（LeNet → AlexNet → ResNet）点燃了深度学习在视觉领域的革命。',
+  'overview.cnn.problems':
+    '它教会了机器"看"：认出照片里的物体、找出 X 光片上的病灶、识别车牌和人脸。在 CNN 之前，这些任务依赖人工设计特征，效果差且脆弱。',
+  'overview.cnn.domains':
+    '图像分类与目标检测\n医学影像分析\n人脸识别与安防\n自动驾驶感知\n工业质检\nOCR 文字识别',
+  'overview.cnn.industries':
+    '医疗影像——癌症筛查\n汽车——自动驾驶感知\n制造业——缺陷检测\n农业——作物监测\n手机——相册搜索、人像模式\n安防与零售分析',
+  'overview.rnn.intro':
+    '循环网络逐个读取序列元素，用一个不断更新的隐状态携带"到目前为止的记忆"。同一组权重在每个时间步复用，因此能处理任意长度的序列。它是"让机器理解顺序"的第一个成功答案。',
+  'overview.rnn.problems':
+    '解决"顺序即含义"的数据：一句话取决于词序，股价取决于历史，语音是时间上的波形。RNN 让模型第一次能一边读、一边记。',
+  'overview.rnn.domains':
+    '早期机器翻译与语音识别\n时间序列预测\n文本生成\n音乐生成\n传感器流分析',
+  'overview.rnn.industries':
+    '输入法——下一词联想（早期）\n金融——时序模型\n工业物联网——传感器异常检测\n语音助手——早期声学模型',
+  'overview.lstm.intro':
+    'LSTM 给循环网络装上三扇可学习的门（遗忘/输入/输出）和一条细胞状态"传送带"，修复了普通 RNN 的致命缺陷——梯度消失导致记不住长距离信息。在 Transformer 出现之前的近二十年里，LSTM 统治着整个序列建模领域。',
+  'overview.lstm.problems':
+    '解决"长依赖"问题：句首的主语决定句尾的动词形式，几分钟前的上下文影响此刻的语音识别。LSTM 让"长期记忆"第一次变得可靠可训练。',
+  'overview.lstm.domains':
+    '语音识别（Siri、Google 语音的早期核心）\n机器翻译（前 Transformer 时代）\n手写识别\n股价与销量预测\n视频行为分析',
+  'overview.lstm.industries':
+    '智能音箱与语音助手\n翻译服务\n量化金融\n医疗——心电/脑电时序分析\n物流——需求预测',
+  'overview.ae.intro':
+    '自编码器强迫数据穿过狭窄的瓶颈再重建自己——全程没有任何标签，网络必须自己发现数据的本质结构。它是表示学习的入口；变分自编码器（VAE）进一步把瓶颈变成可采样的概率分布，从"压缩"跨入"生成"。',
+  'overview.ae.problems':
+    '解决"没有标签也要学习"和"维度太高"的问题：压缩图像、把数据降维到可视化空间、发现异常样本（重建得差的就是不正常的）。',
+  'overview.ae.domains':
+    '数据压缩与降维\n异常检测\n图像去噪\n推荐系统的特征学习\nVAE：图像生成与插值',
+  'overview.ae.industries':
+    '工业——设备异常检测\n网络安全——入侵检测\n金融——欺诈识别\n医药——分子生成（VAE）\n遥感——数据压缩',
+  'overview.llm.intro':
+    'Transformer 抛弃了循环：自注意力让序列中每个位置直接"看到"所有其他位置，配合多头注意力、残差和 LayerNorm 可以堆得极深。它是 GPT、Claude、Gemini 等所有现代大语言模型的骨架；MoE 变体（Mixtral、DeepSeek）进一步用稀疏路由的专家扩展容量。',
+  'overview.llm.problems':
+    '攻克了 AI 的核心难题——理解和生成人类语言：写作、翻译、编程、问答。注意力的可并行性同时解决了 RNN 无法大规模训练的工程瓶颈。',
+  'overview.llm.domains':
+    '大语言模型（ChatGPT / Claude）\n机器翻译\n代码生成\n蛋白质结构预测（AlphaFold）\n图像生成（DiT 骨干）\n语音与音乐模型',
+  'overview.llm.industries':
+    '软件——编程助手\n教育——个性化辅导\n客服——对话机器人\n法律与金融——文书分析\n生物医药——药物发现\n媒体——内容创作',
+  'overview.text.intro':
+    '这是一个"AI 应用"示例：把真实问题（这段文字是什么语言？）拆解成"特征工程 + 小模型"。它展示了在工业界默默支撑大量场景的路径——不是所有问题都需要大模型。',
+  'overview.text.problems':
+    '解决文本语言自动识别：浏览器的"翻译此页？"提示、多语言客服工单的自动分流、搜索引擎按语言建索引。',
+  'overview.text.domains':
+    '浏览器与输入法\n多语言内容平台\n垃圾邮件过滤（同一"特征+分类器"配方）\n搜索引擎',
+  'overview.text.industries': '互联网平台\n跨境电商\n本地化服务',
   'scale.s': '小',
   'scale.m': '中',
   'scale.l': '大',
@@ -835,6 +958,68 @@ const ja: Dict = {
     '学習済み 28 文字埋め込みの PCA 射影——モデルが似ていると判断した文字は近くに集まります（母音は水色、空白/句点は橙色）。',
   'footer.blog': '作者ブログ',
   'footer.source': 'ソースコード',
+  'overview.title': 'モデル概要',
+  'overview.secIntro': 'これは何か',
+  'overview.secProblems': '解決する課題',
+  'overview.secDomains': '主な用途',
+  'overview.secIndustries': '支える産業',
+  'overview.tip':
+    '左に見えているのが 3D の実働です——ノードをクリックで実際の数式、層タイトルでモジュール解説。',
+  'overview.mlp.intro':
+    '多層パーセプトロンは最も基礎的なニューラルネットワークです：全結合ニューロンの層を積み重ね、各層で「加重和＋非線形活性化」を行います。単純なユニットを十分つなげばほぼ任意の関数を近似できる（万能近似定理）という素朴な思想の体現で、より大きなアーキテクチャの内部にも必ず存在します。',
+  'overview.mlp.problems':
+    '「数値特徴から判断を下す」問題を解きます：健診数値から健康リスクを推定、物件属性から価格を予測、ユーザー属性から解約を予測。表の 1 行にできるデータなら MLP は学習できます。',
+  'overview.mlp.domains':
+    '表形式データの分類・回帰\n推薦システムのスコアリング層\n信用・リスクスコアリング\nすべての Transformer 内部の FFN\n単純な制御・予測タスク',
+  'overview.mlp.industries':
+    '金融——信用スコア、不正検知\n保険——引受・価格設定\n小売——解約・需要予測\n医療——リスク層別化\n実運用のほぼ全ての深層モデルの内部',
+  'overview.cnn.intro':
+    '畳み込みネットワークは小さな学習フィルタを画像上でスライドさせ、同じ重みを全面で使い回します。「どこに現れても同じパターンを認識する」（平行移動不変性）が構造そのものに刻まれています。CNN（LeNet → AlexNet → ResNet）は視覚分野の深層学習革命の起点でした。',
+  'overview.cnn.problems':
+    '機械に「見る」ことを教えました：写真の物体認識、X 線画像の病変検出、ナンバープレートや顔の識別。CNN 以前は手作り特徴が必要で、性能は脆弱でした。',
+  'overview.cnn.domains':
+    '画像分類・物体検出\n医用画像解析\n顔認識・セキュリティ\n自動運転の知覚\n工業検査\nOCR 文字認識',
+  'overview.cnn.industries':
+    '医用画像——がんスクリーニング\n自動車——自動運転\n製造——欠陥検出\n農業——作物モニタリング\nスマホ——写真検索、ポートレート\n防犯・小売分析',
+  'overview.rnn.intro':
+    'リカレントネットワークは系列を 1 要素ずつ読み、更新され続ける隠れ状態に「ここまでの記憶」を載せて運びます。全時刻で同じ重みを使い回すため任意長の系列を扱えます。「機械に順序を理解させる」最初の成功でした。',
+  'overview.rnn.problems':
+    '順序が意味を持つデータを扱います：文は語順に、株価は履歴に、音声は時間波形に依存します。RNN は「読みながら覚える」ことを初めて可能にしました。',
+  'overview.rnn.domains':
+    '初期の機械翻訳・音声認識\n時系列予測\nテキスト生成\n音楽生成\nセンサーストリーム解析',
+  'overview.rnn.industries':
+    'キーボード——次語予測（初期）\n金融——時系列モデル\n産業 IoT——センサー異常検知\n音声アシスタント——初期の音響モデル',
+  'overview.lstm.intro':
+    'LSTM は RNN に 3 つの学習ゲート（忘却/入力/出力）とセル状態の「ベルトコンベア」を加え、長距離の記憶を消してしまう勾配消失という致命的欠陥を修復しました。Transformer 登場までの約 20 年、系列モデリングを支配しました。',
+  'overview.lstm.problems':
+    '長距離依存を解決します：文頭の主語が文末の動詞を決め、数分前の文脈が今の音声認識を左右します。LSTM は「長期記憶」を初めて安定して学習可能にしました。',
+  'overview.lstm.domains':
+    '音声認識（初期 Siri・Google 音声の中核）\n機械翻訳（Transformer 以前）\n手書き認識\n株価・需要予測\n映像行動解析',
+  'overview.lstm.industries':
+    'スマートスピーカー・音声アシスタント\n翻訳サービス\nクオンツ金融\n医療——心電/脳波解析\n物流——需要予測',
+  'overview.ae.intro':
+    'オートエンコーダはデータを狭いボトルネックに通して自分自身を再構成させます——ラベルは一切なく、ネットワークは自力でデータの本質構造を発見するしかありません。表現学習の入口であり、変分版（VAE）はボトルネックをサンプリング可能な確率分布に変え、「圧縮」から「生成」へ踏み出します。',
+  'overview.ae.problems':
+    '「ラベルなしで学ぶ」「次元が多すぎる」という課題を解きます：画像圧縮、可視化のための次元削減、再構成の悪いサンプル＝異常の検出。',
+  'overview.ae.domains':
+    'データ圧縮・次元削減\n異常検知\n画像ノイズ除去\n推薦の特徴学習\nVAE：画像生成・補間',
+  'overview.ae.industries':
+    '産業——設備異常検知\nサイバーセキュリティ——侵入検知\n金融——不正検出\n製薬——分子生成（VAE）\nリモートセンシング——データ圧縮',
+  'overview.llm.intro':
+    'Transformer は再帰を捨てました：自己注意により各位置が他の全位置を直接「見る」ことができ、マルチヘッド・残差・LayerNorm と組み合わせて極めて深く積めます。GPT、Claude、Gemini などすべての現代 LLM の骨格です。MoE 変種（Mixtral、DeepSeek）は疎にルーティングされた専門家で容量をさらに拡張します。',
+  'overview.llm.problems':
+    'AI の中心課題——人間の言語の理解と生成（執筆・翻訳・コーディング・質問応答）を解きました。注意機構の並列性は、RNN が大規模学習できなかった工学的ボトルネックも同時に解決しました。',
+  'overview.llm.domains':
+    '大規模言語モデル（ChatGPT / Claude）\n機械翻訳\nコード生成\nタンパク質構造予測（AlphaFold）\n画像生成（DiT）\n音声・音楽モデル',
+  'overview.llm.industries':
+    'ソフトウェア——コーディング支援\n教育——個別指導\nカスタマーサポート——対話エージェント\n法務・金融——文書解析\nバイオ——創薬\nメディア——コンテンツ制作',
+  'overview.text.intro':
+    'これは「AI アプリ」の例です：現実の問題（このテキストは何語？）を「特徴量エンジニアリング＋小さなモデル」に分解しています。巨大モデルを使わずとも産業の多くを静かに支えている道筋を示します。',
+  'overview.text.problems':
+    '言語の自動判定を解決します：ブラウザの「このページを翻訳？」表示、多言語サポートの自動振り分け、言語別のウェブ索引。',
+  'overview.text.domains':
+    'ブラウザ・入力メソッド\n多言語コンテンツ基盤\nスパムフィルタ（同じ特徴量＋分類器の定石）\n検索エンジン',
+  'overview.text.industries': 'インターネットプラットフォーム\n越境 EC\nローカライズサービス',
   'scale.s': '小',
   'scale.m': '中',
   'scale.l': '大',
