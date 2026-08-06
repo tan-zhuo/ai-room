@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MODELS } from '../nn/models'
 import { useT } from '../store'
 
@@ -36,10 +37,28 @@ function pca2(rows: number[][]): { x: number; y: number }[] {
 
 const VOWELS = 'aeiou'
 
-/** PCA scatter of the transformer's learned character embeddings. */
+/** PCA scatter of the transformer's learned character embeddings.
+ *  Rendered in a portal (true viewport centering) and draggable by its header. */
 export function EmbeddingMap({ onClose }: { onClose: () => void }) {
   const t = useT()
   const model = MODELS.llm.model
+  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const drag = useRef<{ px: number; py: number; ox: number; oy: number } | null>(null)
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      const d = drag.current
+      if (!d) return
+      setOffset({ x: d.ox + e.clientX - d.px, y: d.oy + e.clientY - d.py })
+    }
+    const up = () => (drag.current = null)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+  }, [])
 
   const points = useMemo(() => {
     const raw = pca2(model.E)
@@ -60,10 +79,19 @@ export function EmbeddingMap({ onClose }: { onClose: () => void }) {
     return '#d9e4f2'
   }
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal embed-modal" onClick={(e) => e.stopPropagation()}>
-        <header>
+  return createPortal(
+    <div className="modal-backdrop floating" onClick={onClose}>
+      <div
+        className="modal embed-modal"
+        style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header
+          className="drag-handle"
+          onPointerDown={(e) => {
+            drag.current = { px: e.clientX, py: e.clientY, ox: offset.x, oy: offset.y }
+          }}
+        >
           <h3>{t('llm.embedMap')}</h3>
           <button className="icon-btn" onClick={onClose}>
             ×
@@ -90,6 +118,7 @@ export function EmbeddingMap({ onClose }: { onClose: () => void }) {
         </svg>
         <p className="muted">{t('llm.embedMapNote')}</p>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

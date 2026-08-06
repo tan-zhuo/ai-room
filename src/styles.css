@@ -828,8 +828,23 @@ kbd {
 
 /* ---------------------------------------------------------------- embedding map */
 
+.modal-backdrop.floating {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  pointer-events: auto;
+}
+
 .embed-modal {
   width: min(380px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.drag-handle {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
 }
 
 .embed-svg {
