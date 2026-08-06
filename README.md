@@ -22,6 +22,18 @@ Two kernel modes: **hand-crafted** Sobel-style edge detectors (interpretable, on
 
 ![CNN convolution](docs/cnn.gif)
 
+### RNN — Recurrent Neural Network · 循环神经网络（Elman）
+
+Char-level next-character prediction on the same corpus as the transformer. The hidden-state sheet computes row by row — one timestep at a time, h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) — with the recurrence arcs drawn between consecutive rows. Trained with hand-written BPTT.
+
+### LSTM — Long Short-Term Memory · 长短期记忆网络
+
+The classic gated recurrent cell, fully visualized: four gate sheets (forget / input / candidate / output), the additive cell-state conveyor belt c = f⊙c′ + i⊙g, and the exposed hidden state h = o⊙tanh(c). Every gate cell opens to its exact math. Same task as the RNN — compare how the two learn.
+
+### Autoencoder · 自编码器
+
+Self-supervised: the 8×8 input is squeezed through a 6-number latent bottleneck and reconstructed, trained by MSE with no labels. Draw your own pattern and watch it survive (or not) the round trip; inspect any output pixel to compare original vs reconstructed values.
+
 ### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
@@ -69,8 +81,8 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `Space` | Play / pause |
 | `←` `→` | Previous / next step |
 | `R` | Reset |
-| `1` `2` `3` | Models: MLP / CNN / Transformer |
-| `4` | AI apps: Lang ID |
+| `1` – `6` | Models: MLP / CNN / RNN / LSTM / Autoencoder / Transformer |
+| `7` | AI apps: Lang ID |
 | `S / M / L` buttons | Network scale (retrains live) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
@@ -110,6 +122,8 @@ src/
 - **真实计算**：四个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
-- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航中模型架构（MLP/CNN/Transformer）与 AI 应用（语言识别）分为两组。
+- **RNN / LSTM**：字符级下一字符预测，手写 BPTT 训练；RNN 隐状态逐时间步计算并画出循环连线，LSTM 完整展示 f/i/g/o 四门、细胞状态传送带与 h = o⊙tanh(c)。
+- **自编码器**：8×8 图案压入 6 维潜向量再重建（MSE 自监督，无标签）；可手绘输入看重建效果，逐像素对比原值与重建值。
+- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航中模型（MLP/CNN/RNN/LSTM/自编码器/Transformer）与 AI 应用分为两组。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。

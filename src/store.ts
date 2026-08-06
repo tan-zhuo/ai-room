@@ -4,10 +4,11 @@ import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
 import { clamp01 } from './nn/rng'
 import { LLMTrace, encodeLLM, forwardLLM } from './nn/transformer'
+import { LSTMTrace, RNNTrace, encodeSeq, forwardLSTM, forwardRNN } from './nn/rnn'
 import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
 
-export type Arch = 'mlp' | 'cnn' | 'text' | 'llm'
+export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae'
 
 export type NodeRef =
   | { space: 'vector'; layer: number; index: number }
@@ -26,11 +27,12 @@ export const flow = { phase: 0, hold: 0 }
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const LLM_STEP_COUNT = 9
+const FIXED_STEPS: Partial<Record<Arch, number>> = { llm: 9, rnn: 3, lstm: 5, ae: 4 }
 
 export function totalSteps(arch: Arch): number {
-  if (arch === 'llm') return LLM_STEP_COUNT
-  return MODELS[arch].model.layers.length
+  const fixed = FIXED_STEPS[arch]
+  if (fixed !== undefined) return fixed
+  return (MODELS[arch as 'mlp' | 'cnn' | 'text'].model as { layers: unknown[] }).layers.length
 }
 
 export interface HoverInfo {
@@ -77,6 +79,15 @@ interface AppState {
   /** characters produced so far in autoregressive generation mode */
   llmGenerated: string
   llmGenerating: boolean
+  rnnText: string
+  rnnClass: number
+  rnnTrace: RNNTrace
+  lstmText: string
+  lstmClass: number
+  lstmTrace: LSTMTrace
+  aeInput: Tensor3
+  aeClass: number
+  aeTrace: DenseTrace[]
   selected: NodeRef | null
   /** layer index whose module explanation is open (-1 = input), for the current arch */
   explain: number | null
@@ -109,6 +120,8 @@ interface AppState {
   newSample: (cls?: number) => void
   setTextInput: (raw: string) => void
   setLLMInput: (raw: string) => void
+  setRNNInput: (raw: string) => void
+  setLSTMInput: (raw: string) => void
   toggleGenerate: () => void
   commitGeneratedChar: () => void
   requestFocus: (pos: [number, number, number] | null, distance?: number) => void
@@ -135,12 +148,26 @@ function makeInputs(arch: Arch, cls: number) {
       textTrace: forwardMLP(MODELS.text.model, features),
     }
   }
-  const raw = MODELS.llm.samples[cls % MODELS.llm.samples.length]
-  return { llmText: raw, llmClass: cls, llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(raw)) }
+  if (arch === 'llm') {
+    const raw = MODELS.llm.samples[cls % MODELS.llm.samples.length]
+    return { llmText: raw, llmClass: cls, llmTrace: forwardLLM(MODELS.llm.model, llmIdsFor(raw)) }
+  }
+  if (arch === 'rnn') {
+    const raw = MODELS.rnn.samples[cls % MODELS.rnn.samples.length]
+    const m = MODELS.rnn.model
+    return { rnnText: raw, rnnClass: cls, rnnTrace: forwardRNN(m, encodeSeq(m.vocab, m.T, raw)) }
+  }
+  if (arch === 'lstm') {
+    const raw = MODELS.lstm.samples[cls % MODELS.lstm.samples.length]
+    const m = MODELS.lstm.model
+    return { lstmText: raw, lstmClass: cls, lstmTrace: forwardLSTM(m, encodeSeq(m.vocab, m.T, raw)) }
+  }
+  const input = MODELS.ae.makeSample(cls, sampleRng)
+  return { aeInput: input, aeClass: cls, aeTrace: forwardMLP(MODELS.ae.model, input[0].flat()) }
 }
 
 function classCountOf(arch: Arch): number {
-  if (arch === 'llm') return MODELS.llm.samples.length
+  if (arch === 'llm' || arch === 'rnn' || arch === 'lstm') return MODELS[arch].samples.length
   return MODELS[arch].classCount
 }
 
@@ -172,6 +199,9 @@ export const useStore = create<AppState>((set, get) => ({
   ...(makeInputs('llm', 0) as { llmText: string; llmClass: number; llmTrace: LLMTrace }),
   llmGenerated: '',
   llmGenerating: false,
+  ...(makeInputs('rnn', 0) as { rnnText: string; rnnClass: number; rnnTrace: RNNTrace }),
+  ...(makeInputs('lstm', 0) as { lstmText: string; lstmClass: number; lstmTrace: LSTMTrace }),
+  ...(makeInputs('ae', 0) as { aeInput: Tensor3; aeClass: number; aeTrace: DenseTrace[] }),
   selected: null,
   explain: null,
   hoverInfo: null,
@@ -255,44 +285,74 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleDraw: () => {
     const s = get()
-    if (s.arch !== 'cnn') return
+    if (s.arch !== 'cnn' && s.arch !== 'ae') return
     if (s.drawMode) {
       set({ drawMode: false })
       return
     }
     // entering draw mode: pause and reveal the whole network for live inference
-    set({ drawMode: true, playing: false, transitioning: false, step: totalSteps('cnn') })
+    set({ drawMode: true, playing: false, transitioning: false, step: totalSteps(s.arch) })
   },
 
   paintPixel: (row, col) => {
     const s = get()
-    if (s.arch !== 'cnn' || !s.drawMode) return
-    if (s.cnnInput[0][row][col] >= 0.9) return
-    const img = s.cnnInput.map((ch) => ch.map((r) => [...r]))
-    img[0][row][col] = clamp01(0.95)
-    set({
-      cnnInput: img,
-      cnnClass: -1,
-      cnnTrace: forwardCNN(MODELS.cnn.model, img),
-      step: totalSteps('cnn'),
-      playing: false,
-      transitioning: false,
-    })
+    if (!s.drawMode) return
+    if (s.arch === 'cnn') {
+      if (s.cnnInput[0][row][col] >= 0.9) return
+      const img = s.cnnInput.map((ch) => ch.map((r) => [...r]))
+      img[0][row][col] = clamp01(0.95)
+      set({
+        cnnInput: img,
+        cnnClass: -1,
+        cnnTrace: forwardCNN(MODELS.cnn.model, img),
+        step: totalSteps('cnn'),
+        playing: false,
+        transitioning: false,
+      })
+      return
+    }
+    if (s.arch === 'ae') {
+      if (s.aeInput[0][row][col] >= 0.9) return
+      const img = s.aeInput.map((ch) => ch.map((r) => [...r]))
+      img[0][row][col] = clamp01(0.95)
+      set({
+        aeInput: img,
+        aeClass: -1,
+        aeTrace: forwardMLP(MODELS.ae.model, img[0].flat()),
+        step: totalSteps('ae'),
+        playing: false,
+        transitioning: false,
+      })
+    }
   },
 
   clearCnnInput: () => {
     const s = get()
-    if (s.arch !== 'cnn') return
-    const n = MODELS.cnn.model.inputShape[1]
-    const img: Tensor3 = [Array.from({ length: n }, () => Array.from({ length: n }, () => 0.05))]
-    set({
-      cnnInput: img,
-      cnnClass: -1,
-      cnnTrace: forwardCNN(MODELS.cnn.model, img),
-      step: totalSteps('cnn'),
-      playing: false,
-      transitioning: false,
-    })
+    if (s.arch === 'cnn') {
+      const n = MODELS.cnn.model.inputShape[1]
+      const img: Tensor3 = [Array.from({ length: n }, () => Array.from({ length: n }, () => 0.05))]
+      set({
+        cnnInput: img,
+        cnnClass: -1,
+        cnnTrace: forwardCNN(MODELS.cnn.model, img),
+        step: totalSteps('cnn'),
+        playing: false,
+        transitioning: false,
+      })
+      return
+    }
+    if (s.arch === 'ae') {
+      const n = MODELS.ae.n
+      const img: Tensor3 = [Array.from({ length: n }, () => Array.from({ length: n }, () => 0.05))]
+      set({
+        aeInput: img,
+        aeClass: -1,
+        aeTrace: forwardMLP(MODELS.ae.model, img[0].flat()),
+        step: totalSteps('ae'),
+        playing: false,
+        transitioning: false,
+      })
+    }
   },
 
   setLLMTemp: (temp) => set({ llmTemp: temp }),
@@ -382,6 +442,32 @@ export const useStore = create<AppState>((set, get) => ({
     })
   },
 
+  setRNNInput: (raw) => {
+    const m = MODELS.rnn.model
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      rnnText: raw,
+      rnnClass: -1,
+      rnnTrace: forwardRNN(m, encodeSeq(m.vocab, m.T, raw)),
+      ...restart,
+      selected: null,
+    })
+  },
+
+  setLSTMInput: (raw) => {
+    const m = MODELS.lstm.model
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      lstmText: raw,
+      lstmClass: -1,
+      lstmTrace: forwardLSTM(m, encodeSeq(m.vocab, m.T, raw)),
+      ...restart,
+      selected: null,
+    })
+  },
+
   toggleGenerate: () => {
     const s = get()
     if (s.llmGenerating) {
@@ -455,6 +541,9 @@ export function stepDuration(arch: Arch, step: number): number {
     const durations = [1.3, 1.3, 1.8, 3.0, 1.8, 1.5, 1.6, 1.5, 1.5]
     return durations[step] ?? 1.4
   }
+  if (arch === 'rnn') return [1.4, 3.4, 1.5][step] ?? 1.4
+  if (arch === 'lstm') return [1.4, 2.6, 2.2, 2.0, 1.5][step] ?? 1.4
+  if (arch === 'ae') return [1.5, 1.4, 1.5, 1.6][step] ?? 1.4
   const model = MODELS.cnn.model
   const def = model.layers[step]
   if (!def) return 1.2

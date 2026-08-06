@@ -4,6 +4,9 @@ import { useStore } from '../store'
 import { DenseScene } from './DenseScene'
 import { CNNScene } from './CNNScene'
 import { LLMScene } from './LLMScene'
+import { RNNScene } from './RNNScene'
+import { LSTMScene } from './LSTMScene'
+import { AEScene } from './AEScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -33,6 +36,9 @@ export function SceneRoot() {
       {(arch === 'mlp' || arch === 'text') && <DenseScene key={`${arch}${version}`} arch={arch} />}
       {arch === 'cnn' && <CNNScene key={`cnn${version}`} />}
       {arch === 'llm' && <LLMScene key={`llm${llmText}`} />}
+      {arch === 'rnn' && <RNNScene key="rnn" />}
+      {arch === 'lstm' && <LSTMScene key="lstm" />}
+      {arch === 'ae' && <AEScene key="ae" />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

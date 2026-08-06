@@ -31,10 +31,13 @@ export function Hud() {
 const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'mlp', kbd: '1' },
   { arch: 'cnn', kbd: '2' },
-  { arch: 'llm', kbd: '3' },
+  { arch: 'rnn', kbd: '3' },
+  { arch: 'lstm', kbd: '4' },
+  { arch: 'ae', kbd: '5' },
+  { arch: 'llm', kbd: '6' },
 ]
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '4' }]
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '7' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -151,9 +154,12 @@ function TextEntry() {
   const arch = useStore((s) => s.arch)
   const textRaw = useStore((s) => s.textRaw)
   const llmText = useStore((s) => s.llmText)
-  const setTextInput = useStore((s) => s.setTextInput)
-  const setLLMInput = useStore((s) => s.setLLMInput)
-  const stored = arch === 'text' ? textRaw : llmText
+  const rnnText = useStore((s) => s.rnnText)
+  const lstmText = useStore((s) => s.lstmText)
+  const { setTextInput, setLLMInput, setRNNInput, setLSTMInput } = useStore.getState()
+  const stored = { text: textRaw, llm: llmText, rnn: rnnText, lstm: lstmText }[
+    arch as 'text' | 'llm' | 'rnn' | 'lstm'
+  ]
   const [val, setVal] = useState(stored)
 
   useEffect(() => setVal(stored), [stored])
@@ -162,7 +168,9 @@ function TextEntry() {
     const trimmed = val.trim()
     if (!trimmed) return
     if (arch === 'text') setTextInput(trimmed)
-    else setLLMInput(trimmed)
+    else if (arch === 'llm') setLLMInput(trimmed)
+    else if (arch === 'rnn') setRNNInput(trimmed)
+    else setLSTMInput(trimmed)
   }
 
   return (
@@ -170,7 +178,7 @@ function TextEntry() {
       <input
         className="text-input"
         value={val}
-        maxLength={arch === 'llm' ? 24 : 60}
+        maxLength={arch === 'text' ? 60 : 24}
         placeholder={t('controls.typeText')}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => {
@@ -226,6 +234,9 @@ function BottomBar() {
   const cnnClass = useStore((s) => s.cnnClass)
   const textClass = useStore((s) => s.textClass)
   const llmClass = useStore((s) => s.llmClass)
+  const rnnClass = useStore((s) => s.rnnClass)
+  const lstmClass = useStore((s) => s.lstmClass)
+  const aeClass = useStore((s) => s.aeClass)
   const { togglePlay, nextStep, prevStep, reset, cycleSpeed, newSample } = useStore.getState()
 
   const total = totalSteps(arch)
@@ -236,11 +247,23 @@ function BottomBar() {
   else if (step === 0) statusText = t('step.inputLoaded')
   else statusText = layerNameOf(arch, step - 1, t)
 
-  const currentClass = { mlp: mlpClass, cnn: cnnClass, text: textClass, llm: llmClass }[arch]
-  const chips: string[] =
-    arch === 'llm'
-      ? MODELS.llm.samples.map((s) => `“${s}”`)
-      : Array.from({ length: MODELS[arch].classCount }, (_, i) => t(`class.${arch}.${i}`))
+  const currentClass = {
+    mlp: mlpClass,
+    cnn: cnnClass,
+    text: textClass,
+    llm: llmClass,
+    rnn: rnnClass,
+    lstm: lstmClass,
+    ae: aeClass,
+  }[arch]
+  const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
+  const chipArch = arch === 'ae' ? 'cnn' : arch
+  const chips: string[] = seq
+    ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
+    : Array.from(
+        { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae'].classCount },
+        (_, i) => t(`class.${chipArch}.${i}`),
+      )
 
   return (
     <div className="bottombar">
@@ -285,31 +308,32 @@ function BottomBar() {
 
       <div className="samples">
         <span className="samples-label">{t('controls.input')}</span>
-        {(arch === 'text' || arch === 'llm') && <TextEntry />}
+        {(arch === 'text' || seq) && <TextEntry />}
         {chips.map((label, i) => (
           <button
             key={i}
-            className={`chip${currentClass === i ? ' active' : ''}${arch === 'llm' ? ' mono' : ''}`}
+            className={`chip${currentClass === i ? ' active' : ''}${seq ? ' mono' : ''}`}
             onClick={() => newSample(i)}
           >
             {label}
           </button>
         ))}
-        {arch !== 'llm' && (
+        {!seq && (
           <button className="chip" onClick={() => newSample()} title={t('controls.randomize')}>
             <IconShuffle />
           </button>
         )}
-        {arch === 'cnn' && <CNNControls />}
+        {(arch === 'cnn' || arch === 'ae') && <CNNControls />}
         {arch === 'llm' && <TempSlider />}
       </div>
     </div>
   )
 }
 
-/** CNN extras: paint-your-own input + hand-crafted vs learned kernels. */
+/** CNN / AE extras: paint-your-own input; CNN also gets the kernel-mode toggle. */
 function CNNControls() {
   const t = useT()
+  const arch = useStore((s) => s.arch)
   const drawMode = useStore((s) => s.drawMode)
   const cnnKernels = useStore((s) => s.cnnKernels)
   const toggleDraw = useStore((s) => s.toggleDraw)
@@ -326,7 +350,24 @@ function CNNControls() {
           {t('controls.clear')}
         </button>
       )}
-      <span className="chip-divider" />
+      {arch !== 'cnn' ? null : <span className="chip-divider" />}
+      {arch !== 'cnn' ? null : (
+        <KernelChips cnnKernels={cnnKernels} setKernelMode={setKernelMode} />
+      )}
+    </>
+  )
+}
+
+function KernelChips({
+  cnnKernels,
+  setKernelMode,
+}: {
+  cnnKernels: string
+  setKernelMode: (m: 'hand' | 'learned') => void
+}) {
+  const t = useT()
+  return (
+    <>
       <button
         className={`chip${cnnKernels === 'hand' ? ' active' : ''}`}
         onClick={() => setKernelMode('hand')}
@@ -481,7 +522,7 @@ function HelpOverlay() {
     ['Space', t('help.space')],
     ['← →', t('help.arrows')],
     ['R', t('help.r')],
-    ['1 / 2 / 3 / 4', t('help.digits')],
+    ['1 – 7', t('help.digits')],
     ['L', t('help.l')],
     ['F', t('help.f')],
     ['Esc', t('help.esc')],

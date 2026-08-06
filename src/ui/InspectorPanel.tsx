@@ -33,6 +33,8 @@ export function InspectorPanel() {
     if (sel.layer === 2) chName = ['Q', 'K', 'V'][sel.channel] + ' · '
     else if (sel.layer === 3) chName = t('llm.head', { n: sel.channel + 1 }) + ' · '
     subtitle = `${chName}(${sel.row}, ${sel.col})`
+  } else if (arch === 'lstm' && sel.space === 'grid' && sel.layer === 1) {
+    subtitle = `${['f', 'i', 'g', 'o'][sel.channel]} · (${sel.row}, ${sel.col})`
   } else {
     subtitle = `${t('panel.channel')} ${sel.channel + 1} · (${sel.row}, ${sel.col})`
   }
@@ -55,6 +57,12 @@ export function InspectorPanel() {
           <CNNDetail sel={sel} />
         ) : arch === 'llm' ? (
           <LLMDetail sel={sel} />
+        ) : arch === 'rnn' ? (
+          <RNNDetail sel={sel} />
+        ) : arch === 'lstm' ? (
+          <LSTMDetail sel={sel} />
+        ) : arch === 'ae' ? (
+          <AEDetail sel={sel} />
         ) : (
           <DenseDetail arch={arch} sel={sel} />
         )}
@@ -370,6 +378,313 @@ function CNNDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
 
+  return null
+}
+
+// ---------------------------------------------------------------- RNN / LSTM / AE
+
+function TopChars({ probs, vocab }: { probs: number[]; vocab: string[] }) {
+  const t = useT()
+  const show = (c: string) => (c === ' ' ? '␣' : c)
+  const top = [...probs.keys()].sort((a, b) => probs[b] - probs[a]).slice(0, 6)
+  return (
+    <section>
+      <h4>{t('llm.topCandidates')}</h4>
+      <div className="prob-list">
+        {top.map((i) => (
+          <div className="prob-row" key={i}>
+            <span className="prob-name mono-char">‘{show(vocab[i])}’</span>
+            <span className="prob-bar">
+              <span style={{ width: `${Math.max(2, probs[i] * 100)}%` }} />
+            </span>
+            <span className="num">{(probs[i] * 100).toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RNNDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.rnnTrace)
+  const t = useT()
+  const model = MODELS.rnn.model
+  const show = (c: string) => (c === ' ' ? '␣' : c)
+
+  if (sel.space === 'grid' && sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          {t('panel.token')} #{sel.col + 1}
+        </h4>
+        <div className="big-value num">
+          ‘{show(trace.chars[sel.col])}’ <span className="muted">(id {trace.ids[sel.col]})</span>
+        </div>
+      </section>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 0) {
+    return (
+      <section>
+        <h4>
+          E[‘{show(trace.chars[sel.row])}’][{sel.col}]
+        </h4>
+        <div className="big-value num">{fmt(trace.X[sel.row][sel.col])}</div>
+      </section>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 1) {
+    const tstep = sel.row
+    const j = sel.col
+    const wx = Array.from({ length: model.d }, (_, i) => model.Wx[i][j])
+    const wh = Array.from({ length: model.h }, (_, i) => model.Wh[i][j])
+    const hPrev = tstep > 0 ? trace.H[tstep - 1] : Array.from({ length: model.h }, () => 0)
+    return (
+      <>
+        <section>
+          <h4>x{tstep} · Wx[:, {j}]</h4>
+          <ProductRows prev={trace.X[tstep]} prevLabel={(m) => `x[${m}]`} weights={wx} />
+        </section>
+        <section>
+          <h4>
+            h{tstep - 1} · Wh[:, {j}] {tstep === 0 && <span className="muted">(h₋₁ = 0)</span>}
+          </h4>
+          <ProductRows prev={hPrev} prevLabel={(m) => `h[${m}]`} weights={wh} />
+        </section>
+        <section>
+          <h4>{t('panel.activation')} · tanh</h4>
+          <div className="calc-chain">
+            <span>
+              Σ + b = <b className="num">{fmt(trace.Hpre[tstep][j])}</b>
+            </span>
+            <span>
+              tanh → <b className="num accent">{fmt(trace.H[tstep][j])}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer === 2) {
+    const T = trace.ids.length
+    const weights = Array.from({ length: model.h }, (_, jj) => model.Wy[jj][sel.index])
+    return (
+      <>
+        <DenseComputation
+          prev={trace.H[T - 1]}
+          prevLabel={(jj) => `h[${jj}]`}
+          weights={weights}
+          bias={model.by[sel.index]}
+          z={trace.U[sel.index]}
+          a={trace.probs[sel.index]}
+          activation="softmax"
+        />
+        <TopChars probs={trace.probs} vocab={model.vocab} />
+      </>
+    )
+  }
+  return null
+}
+
+function LSTMDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.lstmTrace)
+  const t = useT()
+  const model = MODELS.lstm.model
+  const show = (c: string) => (c === ' ' ? '␣' : c)
+  const { d, h } = model
+
+  if (sel.space === 'grid' && sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          {t('panel.token')} #{sel.col + 1}
+        </h4>
+        <div className="big-value num">
+          ‘{show(trace.chars[sel.col])}’ <span className="muted">(id {trace.ids[sel.col]})</span>
+        </div>
+      </section>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 0) {
+    return (
+      <section>
+        <h4>
+          E[‘{show(trace.chars[sel.row])}’][{sel.col}]
+        </h4>
+        <div className="big-value num">{fmt(trace.X[sel.row][sel.col])}</div>
+      </section>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 1) {
+    const tstep = sel.row
+    const j = sel.col
+    const gate = sel.channel
+    const name = ['f', 'i', 'g', 'o'][gate]
+    const act = gate === 2 ? 'tanh' : 'σ'
+    const W = [model.Wf, model.Wi, model.Wg, model.Wo][gate]
+    const b = [model.bf, model.bi, model.bg, model.bo][gate][j]
+    const hPrev = tstep > 0 ? trace.H[tstep - 1] : Array.from({ length: h }, () => 0)
+    const z = [...trace.X[tstep], ...hPrev]
+    const weights = Array.from({ length: d + h }, (_, k) => W[k][j])
+    const val = [trace.F, trace.I, trace.G, trace.O][gate][tstep][j]
+    return (
+      <>
+        <section>
+          <h4>
+            {name} = {act}([x{tstep}, h{tstep - 1}] · W{name}[:, {j}] + b)
+          </h4>
+          <ProductRows
+            prev={z}
+            prevLabel={(k) => (k < d ? `x[${k}]` : `h[${k - d}]`)}
+            weights={weights}
+          />
+        </section>
+        <section>
+          <h4>{t('panel.activation')}</h4>
+          <div className="calc-chain">
+            <span>
+              + b <b className="num">{fmt(b)}</b>
+            </span>
+            <span>
+              {act} → <b className="num accent">{fmt(val)}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 2) {
+    const tstep = sel.row
+    const j = sel.col
+    const cPrev = tstep > 0 ? trace.C[tstep - 1][j] : 0
+    const f = trace.F[tstep][j]
+    const i = trace.I[tstep][j]
+    const g = trace.G[tstep][j]
+    return (
+      <section>
+        <h4>c = f ⊙ c′ + i ⊙ g</h4>
+        <div className="calc-chain">
+          <span>
+            f({fmt(f)}) × c′({fmt(cPrev)}) = <b className="num">{fmt(f * cPrev)}</b>
+          </span>
+          <span>
+            i({fmt(i)}) × g({fmt(g)}) = <b className="num">{fmt(i * g)}</b>
+          </span>
+          <span>
+            → c = <b className="num accent">{fmt(trace.C[tstep][j])}</b>
+          </span>
+        </div>
+      </section>
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 3) {
+    const tstep = sel.row
+    const j = sel.col
+    return (
+      <section>
+        <h4>h = o ⊙ tanh(c)</h4>
+        <div className="calc-chain">
+          <span>
+            o = <b className="num">{fmt(trace.O[tstep][j])}</b>
+          </span>
+          <span>
+            tanh(c) = <b className="num">{fmt(trace.Ct[tstep][j])}</b>
+          </span>
+          <span>
+            → h = <b className="num accent">{fmt(trace.H[tstep][j])}</b>
+          </span>
+        </div>
+      </section>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer === 4) {
+    const T = trace.ids.length
+    const weights = Array.from({ length: h }, (_, jj) => model.Wy[jj][sel.index])
+    return (
+      <>
+        <DenseComputation
+          prev={trace.H[T - 1]}
+          prevLabel={(jj) => `h[${jj}]`}
+          weights={weights}
+          bias={model.by[sel.index]}
+          z={trace.U[sel.index]}
+          a={trace.probs[sel.index]}
+          activation="softmax"
+        />
+        <TopChars probs={trace.probs} vocab={model.vocab} />
+      </>
+    )
+  }
+  return null
+}
+
+function AEDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const input = useStore((s) => s.aeInput)
+  const trace = useStore((s) => s.aeTrace)
+  const t = useT()
+  const task = MODELS.ae
+  const model = task.model
+
+  if (sel.space === 'grid' && sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          {t('panel.pixel')} ({sel.row}, {sel.col})
+        </h4>
+        <div className="big-value num">{fmt(input[0][sel.row][sel.col])}</div>
+      </section>
+    )
+  }
+  if (sel.space === 'vector' && sel.layer >= 0 && sel.layer <= 2) {
+    const layer = model.layers[sel.layer]
+    const prev = sel.layer === 0 ? input[0].flat() : trace[sel.layer - 1].a
+    return (
+      <DenseComputation
+        prev={prev}
+        prevLabel={(i) =>
+          sel.layer === 0 ? `px(${Math.floor(i / task.n)},${i % task.n})` : `#${i + 1}`
+        }
+        weights={layer.weights[sel.index]}
+        bias={layer.biases[sel.index]}
+        z={trace[sel.layer].z[sel.index]}
+        a={trace[sel.layer].a[sel.index]}
+        activation={layer.activation}
+      />
+    )
+  }
+  if (sel.space === 'grid' && sel.layer === 3) {
+    const idx = sel.row * task.n + sel.col
+    const layer = model.layers[3]
+    const original = input[0][sel.row][sel.col]
+    const reconstructed = trace[3].a[idx]
+    return (
+      <>
+        <DenseComputation
+          prev={trace[2].a}
+          prevLabel={(i) => `#${i + 1}`}
+          weights={layer.weights[idx]}
+          bias={layer.biases[idx]}
+          z={trace[3].z[idx]}
+          a={reconstructed}
+          activation={layer.activation}
+        />
+        <section>
+          <h4>{t('ae.compare')}</h4>
+          <div className="calc-chain">
+            <span>
+              {t('ae.original')}: <b className="num">{fmt(original)}</b>
+            </span>
+            <span>
+              {t('ae.recon')}: <b className="num accent">{fmt(reconstructed)}</b>
+            </span>
+            <span>
+              Δ = <b className="num">{fmt(Math.abs(original - reconstructed))}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
   return null
 }
 

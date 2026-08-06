@@ -16,6 +16,8 @@ import {
   trainCNNEndToEnd,
 } from './cnn'
 import { LLMTask, buildLLMTask } from './transformer'
+import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
+import { trainMLPMSE } from './mlp'
 
 export type KernelMode = 'hand' | 'learned'
 
@@ -44,11 +46,24 @@ export interface TextTask {
   sampleText: (cls: number, rng: Rng) => string
 }
 
+export interface AETask {
+  /** dense autoencoder over flattened n×n patterns */
+  model: MLPModel
+  n: number
+  latent: number
+  classCount: number
+  makeSample: (cls: number, rng: Rng) => Tensor3
+  finalMSE: number
+}
+
 export interface Models {
   mlp: MLPTask
   cnn: CNNTask
   text: TextTask
   llm: LLMTask
+  rnn: RNNTask
+  lstm: LSTMTask
+  ae: AETask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -291,6 +306,26 @@ export function buildTextTask(): TextTask {
   return { model, classCount: TEXT_CLASS_COUNT, sampleText: sampleTextOf }
 }
 
+// ---------------------------------------------------------------- Autoencoder
+// Compress an 8×8 pattern through a 4-number bottleneck and reconstruct it.
+
+export function buildAETask(): AETask {
+  const rng = mulberry32(0xae0e)
+  const n = 8
+  const latent = 6
+  const model = createMLP(rng, [n * n, 24, latent, 24, n * n], ['relu', 'tanh', 'relu', 'sigmoid'])
+  const makeSample = (cls: number, r: Rng) => cnnSampleOfSize(n, cls, r)
+  const data: TrainSample[] = []
+  for (let c = 0; c < CNN_CLASS_COUNT; c++) {
+    for (let i = 0; i < 30; i++) {
+      const img = makeSample(c, rng)[0].flat()
+      data.push({ x: img, y: img })
+    }
+  }
+  const finalMSE = trainMLPMSE(model, data, { lr: 0.1, epochs: 80, rng })
+  return { model, n, latent, classCount: CNN_CLASS_COUNT, makeSample, finalMSE }
+}
+
 // ---------------------------------------------------------------- registry
 
 export let MODELS: Models = {
@@ -298,6 +333,9 @@ export let MODELS: Models = {
   cnn: buildCNNTask('s'),
   text: buildTextTask(),
   llm: buildLLMTask(),
+  rnn: buildRNNTask(),
+  lstm: buildLSTMTask(),
+  ae: buildAETask(),
 }
 
 /** Rebuild + retrain one architecture at a new scale / kernel mode. */

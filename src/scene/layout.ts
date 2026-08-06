@@ -165,15 +165,78 @@ function computeLlmSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ RNN slots
+// -1 tokens, 0 embeddings, 1 recurrent hidden states (row = timestep), 2 output.
+
+export const RNN_STEPS = 3
+
+function computeRnnSlots(): CNNSlot[] {
+  const m = MODELS.rnn.model
+  const { T, d, h } = m
+  const V = m.vocab.length
+  const xs = [-8.5, -4.6, 0.2, 5.4]
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.4, x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: h, cell: 0.4, x: xs[2], chGap: 0 },
+    { kind: 'vector', layer: 2, size: V, x: xs[3], gapY: Math.min(0.72, 12.5 / V) },
+  ]
+}
+
+// ------------------------------------------------------------------ LSTM slots
+// -1 tokens, 0 embeddings, 1 gates f/i/g/o (4 sheets), 2 cell state, 3 hidden, 4 output.
+
+export const LSTM_STEPS = 5
+
+function computeLstmSlots(): CNNSlot[] {
+  const m = MODELS.lstm.model
+  const { T, d, h } = m
+  const V = m.vocab.length
+  const xs = [-12, -8.4, -4, 0.6, 4.2, 8.6]
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: 0.7, x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: 0.38, x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 4, rows: T, cols: h, cell: 0.3, x: xs[2], chGap: 0.65 },
+    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: h, cell: 0.38, x: xs[3], chGap: 0 },
+    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: h, cell: 0.38, x: xs[4], chGap: 0 },
+    { kind: 'vector', layer: 4, size: V, x: xs[5], gapY: Math.min(0.72, 12.5 / V) },
+  ]
+}
+
+// ------------------------------------------------------------------ Autoencoder slots
+// -1 input image, 0 encoder, 1 latent bottleneck, 2 decoder, 3 reconstruction.
+
+export const AE_STEPS = 4
+
+function computeAeSlots(): CNNSlot[] {
+  const t = MODELS.ae
+  const enc = t.model.layers[0].biases.length
+  const dec = t.model.layers[2].biases.length
+  const xs = [-8, -3.6, 0, 3.6, 8]
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[0], chGap: 0 },
+    { kind: 'vector', layer: 0, size: enc, x: xs[1], gapY: Math.min(0.72, 13 / enc) },
+    { kind: 'vector', layer: 1, size: t.latent, x: xs[2], gapY: 1.15 },
+    { kind: 'vector', layer: 2, size: dec, x: xs[3], gapY: Math.min(0.72, 13 / dec) },
+    { kind: 'grid', layer: 3, channels: 1, rows: t.n, cols: t.n, cell: 0.5, x: xs[4], chGap: 0 },
+  ]
+}
+
 // ------------------------------------------------------------------ cached slot tables
 
 let cnnSlots = computeCnnSlots()
 let llmSlots = computeLlmSlots()
+let rnnSlots = computeRnnSlots()
+let lstmSlots = computeLstmSlots()
+let aeSlots = computeAeSlots()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
 export function refreshLayout(): void {
   cnnSlots = computeCnnSlots()
   llmSlots = computeLlmSlots()
+  rnnSlots = computeRnnSlots()
+  lstmSlots = computeLstmSlots()
+  aeSlots = computeAeSlots()
 }
 
 export function cnnSlot(layer: number): CNNSlot {
@@ -182,6 +245,34 @@ export function cnnSlot(layer: number): CNNSlot {
 
 export function llmSlot(layer: number): CNNSlot {
   return llmSlots[layer + 1]
+}
+
+export function rnnSlot(layer: number): CNNSlot {
+  return rnnSlots[layer + 1]
+}
+
+export function lstmSlot(layer: number): CNNSlot {
+  return lstmSlots[layer + 1]
+}
+
+export function aeSlot(layer: number): CNNSlot {
+  return aeSlots[layer + 1]
+}
+
+/** Slot lookup for every grid-based architecture. */
+export function slotFor(arch: Arch, layer: number): CNNSlot {
+  switch (arch) {
+    case 'cnn':
+      return cnnSlot(layer)
+    case 'llm':
+      return llmSlot(layer)
+    case 'rnn':
+      return rnnSlot(layer)
+    case 'lstm':
+      return lstmSlot(layer)
+    default:
+      return aeSlot(layer)
+  }
 }
 
 // ------------------------------------------------------------------ positions
@@ -242,9 +333,9 @@ export function positionOf(arch: Arch, ref: NodeRef): Vec3 {
   if (arch === 'mlp' || arch === 'text') {
     return densePos(arch, ref.layer, ref.space === 'vector' ? ref.index : 0)
   }
-  const posFn = arch === 'cnn' ? cnnPos : llmPos
-  if (ref.space === 'vector') return posFn(ref.layer, { index: ref.index })
-  return posFn(ref.layer, { channel: ref.channel, row: ref.row, col: ref.col })
+  const slot = slotFor(arch, ref.layer)
+  if (ref.space === 'vector') return slotPos(slot, { index: ref.index })
+  return slotPos(slot, { channel: ref.channel, row: ref.row, col: ref.col })
 }
 
 /** Axis-aligned bounds of all node centers in a layer (-1 = input). */
@@ -254,7 +345,7 @@ export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 }
     const n = denseSizes(arch)[layer + 1]
     for (let i = 0; i < n; i++) pts.push(densePos(arch, layer, i))
   } else {
-    const slot = arch === 'cnn' ? cnnSlot(layer) : llmSlot(layer)
+    const slot = slotFor(arch, layer)
     if (slot.kind === 'grid') {
       for (let ch = 0; ch < slot.channels; ch++) {
         pts.push(gridPos(slot, ch, 0, 0), gridPos(slot, ch, slot.rows - 1, slot.cols - 1))
@@ -281,4 +372,7 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   text: { position: [8, 4.5, 13], target: [0, 0, 0] },
   cnn: { position: [11, 6, 18], target: [0, 0, 0] },
   llm: { position: [14, 7, 24], target: [0, 0, 0] },
+  rnn: { position: [8.5, 5, 14], target: [0, 0, 0] },
+  lstm: { position: [12, 6.5, 20], target: [0, 0, 0] },
+  ae: { position: [9, 5, 15], target: [0, 0, 0] },
 }

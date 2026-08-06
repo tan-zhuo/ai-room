@@ -52,6 +52,13 @@ const textAcc = evalTextAccuracy(90)
 console.log(`TEXT language detector accuracy: ${(textAcc * 100).toFixed(1)}%`)
 if (textAcc < 0.85) failures.push('text accuracy too low')
 
+// --- RNN / LSTM / Autoencoder
+console.log(`RNN final loss: ${MODELS.rnn.finalLoss.toFixed(3)}, LSTM final loss: ${MODELS.lstm.finalLoss.toFixed(3)}`)
+if (MODELS.rnn.finalLoss > 2.0) failures.push('rnn did not learn')
+if (MODELS.lstm.finalLoss > 2.0) failures.push('lstm did not learn')
+console.log(`Autoencoder training MSE: ${MODELS.ae.finalMSE.toFixed(4)}`)
+if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poor')
+
 // --- tiny transformer
 const llm = MODELS.llm
 const llmAcc = evalLLMAccuracy(llm)

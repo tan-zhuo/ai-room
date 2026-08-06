@@ -34,9 +34,18 @@ export function useKeyboard() {
           s.setArch('cnn')
           break
         case 'Digit3':
-          s.setArch('llm')
+          s.setArch('rnn')
           break
         case 'Digit4':
+          s.setArch('lstm')
+          break
+        case 'Digit5':
+          s.setArch('ae')
+          break
+        case 'Digit6':
+          s.setArch('llm')
+          break
+        case 'Digit7':
           s.setArch('text')
           break
         case 'KeyL':

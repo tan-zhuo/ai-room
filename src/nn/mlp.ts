@@ -133,6 +133,54 @@ export function trainMLP(
   }
 }
 
+/** In-place SGD with mean-squared-error loss and a sigmoid output layer. */
+export function trainMLPMSE(
+  model: MLPModel,
+  data: TrainSample[],
+  opts: { lr: number; epochs: number; rng: Rng },
+): number {
+  const { lr, epochs, rng } = opts
+  const order = data.map((_, i) => i)
+  const L = model.layers.length
+  let mse = 0
+  for (let e = 0; e < epochs; e++) {
+    shuffleInPlace(order, rng)
+    mse = 0
+    for (const idx of order) {
+      const { x, y } = data[idx]
+      const traces = forwardMLP(model, x)
+      const out = traces[L - 1]
+      mse += out.a.reduce((s, v, j) => s + (v - y[j]) ** 2, 0) / y.length
+      // sigmoid output: delta = (a - y) ⊙ a(1 - a)
+      let delta = out.a.map((v, j) => (v - y[j]) * v * (1 - v))
+      for (let k = L - 1; k >= 0; k--) {
+        const layer = model.layers[k]
+        const aPrev = k === 0 ? x : traces[k - 1].a
+        const prevDelta =
+          k > 0
+            ? aPrev.map((_, i) => layer.weights.reduce((s, row, j) => s + row[i] * delta[j], 0))
+            : null
+        for (let j = 0; j < layer.weights.length; j++) {
+          const row = layer.weights[j]
+          const d = lr * delta[j]
+          for (let i = 0; i < aPrev.length; i++) row[i] -= d * aPrev[i]
+          layer.biases[j] -= d
+        }
+        if (k > 0 && prevDelta) {
+          const prevLayer = model.layers[k - 1]
+          const zPrev = traces[k - 1].z
+          const aPrevTrace = traces[k - 1].a
+          delta = prevDelta.map((d, i) =>
+            d * activationDeriv(prevLayer.activation, zPrev[i], aPrevTrace[i]),
+          )
+        }
+      }
+    }
+    mse /= data.length
+  }
+  return mse
+}
+
 export function argmax(arr: number[]): number {
   let best = 0
   for (let i = 1; i < arr.length; i++) if (arr[i] > arr[best]) best = i

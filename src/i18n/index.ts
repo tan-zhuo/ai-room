@@ -243,6 +243,71 @@ const en: Dict = {
     'Language modeling is just "predict the next symbol" — sampling from this distribution over and over is how LLMs write text.',
   'explain.llmOutput.simple':
     'The model finishes your sentence: one letter at a time, by voting over the alphabet.',
+  'arch.rnn': 'RNN',
+  'arch.rnnFull': 'Recurrent Neural Network (Elman)',
+  'arch.lstm': 'LSTM',
+  'arch.lstmFull': 'Long Short-Term Memory',
+  'arch.ae': 'Autoencoder',
+  'arch.aeFull': 'Autoencoder — compress & reconstruct',
+  'layer.rnnHidden': 'Hidden state',
+  'layer.gates': 'Gates f · i · g · o',
+  'layer.cell': 'Cell state',
+  'layer.encoder': 'Encoder',
+  'layer.latent': 'Latent code',
+  'layer.decoder': 'Decoder',
+  'layer.recon': 'Reconstruction',
+  'ae.compare': 'Original vs reconstruction',
+  'ae.original': 'original',
+  'ae.recon': 'reconstructed',
+  'explain.rnnHidden.what':
+    'The sheet is read row by row: at each timestep the hidden state is recomputed as h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) — the same two weight matrices reused at every step.',
+  'explain.rnnHidden.why':
+    'h_{t-1} feeding back in is what gives the network memory: information from earlier characters survives inside the hidden vector. Weight sharing across time keeps the model small.',
+  'explain.rnnHidden.simple':
+    'Reading a sentence while keeping a single running note that you update after every word.',
+  'explain.gates.what':
+    'Four small networks read [x_t, h_{t-1}] in parallel: forget gate f and input gate i (sigmoid, 0–1), candidate g (tanh) and output gate o (sigmoid).',
+  'explain.gates.why':
+    'Plain RNNs forget quickly — gradients vanish over long spans. Gates let the network explicitly decide what to erase, what to write and what to reveal, which is the LSTM fix.',
+  'explain.gates.simple':
+    'Four dials on a memory box: how much to wipe, how much to write, what to write, and how much to show.',
+  'explain.cellstate.what':
+    'The long-term memory: c_t = f⊙c_{t-1} + i⊙g. Old content is scaled by the forget gate, new content is added through the input gate.',
+  'explain.cellstate.why':
+    'Because updates are additive, gradients flow along the cell state almost unchanged — the "conveyor belt" that lets LSTMs remember across many steps.',
+  'explain.cellstate.simple': 'A notebook that is partially erased and appended to at every word.',
+  'explain.lstmHidden.what':
+    'The public face of the memory: h_t = o⊙tanh(c_t). The output gate chooses how much of the cell state is shown to the next layer and the next timestep.',
+  'explain.lstmHidden.why':
+    'Keeping the internal memory (c) separate from what is exposed (h) lets the network store things it does not want to act on yet.',
+  'explain.lstmHidden.simple': 'What you say out loud, versus everything you keep in your head.',
+  'explain.aeInput.what':
+    'An 8×8 image, flattened into 64 numbers. No labels exist anywhere in this architecture — the input itself is also the training target.',
+  'explain.aeInput.why':
+    'Autoencoders learn without labels (self-supervised): the task "reproduce your input" forces the network to discover the structure of the data on its own.',
+  'explain.aeInput.simple': 'The exam question and the answer sheet are the same picture.',
+  'explain.encoder.what':
+    'Dense layers that squeeze the 64 input numbers down step by step. Everything the network keeps must fit through here.',
+  'explain.encoder.why':
+    'Compression forces abstraction: to reconstruct well through a tiny bottleneck, the encoder must keep the essence (which pattern? where?) and drop pixel noise.',
+  'explain.encoder.simple': 'Summarizing a picture in a few words before handing it over.',
+  'explain.latent.what':
+    'The bottleneck: the whole image is now just these few numbers (a 6-dimensional code, tanh-bounded).',
+  'explain.latent.why':
+    'This is the learned representation — similar inputs land on nearby codes. The same idea powers image compression and generative models, which sample new codes here.',
+  'explain.latent.simple':
+    "The picture's DNA: a handful of numbers that describe everything worth keeping.",
+  'explain.decoder.what':
+    'Dense layers that expand the latent code back to 64 numbers, ending in a sigmoid so every reconstructed pixel lands in 0–1.',
+  'explain.decoder.why':
+    'The decoder proves the code was meaningful: if 6 numbers suffice to redraw the image, the encoder truly captured its structure.',
+  'explain.decoder.simple': 'Redrawing the picture from the few words of the summary.',
+  'explain.recon.what':
+    'The reconstructed image. Training minimizes the mean squared error between this and the input — compare them side by side.',
+  'explain.recon.why':
+    'Reconstruction error is the whole training signal — no labels needed. Inputs unlike the training data reconstruct badly, which is why autoencoders also detect anomalies.',
+  'explain.recon.simple':
+    'The picture after a round trip through the bottleneck — close, but never pixel-perfect.',
 }
 
 const zh: Dict = {
@@ -467,6 +532,64 @@ const zh: Dict = {
   'explain.llmOutput.why':
     '语言建模就是"预测下一个符号"——反复从这个分布中采样，LLM 就是这样写出文字的。',
   'explain.llmOutput.simple': '模型接着写你的句子：对字母表投票，一次写一个字母。',
+  'arch.rnn': 'RNN',
+  'arch.rnnFull': '循环神经网络（Elman）',
+  'arch.lstm': 'LSTM',
+  'arch.lstmFull': '长短期记忆网络',
+  'arch.ae': '自编码器',
+  'arch.aeFull': '自编码器——压缩与重建',
+  'layer.rnnHidden': '隐状态',
+  'layer.gates': '门控 f · i · g · o',
+  'layer.cell': '细胞状态',
+  'layer.encoder': '编码器',
+  'layer.latent': '潜向量',
+  'layer.decoder': '解码器',
+  'layer.recon': '重建输出',
+  'ae.compare': '原图 vs 重建',
+  'ae.original': '原始值',
+  'ae.recon': '重建值',
+  'explain.rnnHidden.what':
+    '这张表逐行计算：每个时间步的隐状态由 h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) 重新算出——每一步复用同样的两个权重矩阵。',
+  'explain.rnnHidden.why':
+    'h_{t-1} 的回流就是网络的记忆：更早字符的信息保存在隐向量里向后传递。跨时间共享权重也让模型保持小巧。',
+  'explain.rnnHidden.simple': '像一边读句子一边只记一张便签，每读一个词就更新一次。',
+  'explain.gates.what':
+    '四个小网络并行读取 [x_t, h_{t-1}]：遗忘门 f 和输入门 i（sigmoid，0–1），候选值 g（tanh），输出门 o（sigmoid）。',
+  'explain.gates.why':
+    '普通 RNN 忘得快——梯度在长跨度上会消失。门控让网络明确决定擦什么、写什么、露什么，这正是 LSTM 的解法。',
+  'explain.gates.simple': '记忆盒上的四个旋钮：擦多少、写多少、写什么、给别人看多少。',
+  'explain.cellstate.what':
+    '长期记忆：c_t = f⊙c_{t-1} + i⊙g。旧内容被遗忘门缩放，新内容经输入门加入。',
+  'explain.cellstate.why':
+    '因为更新是加法式的，梯度沿细胞状态几乎无损流动——这条"传送带"让 LSTM 能记住很多步之前的信息。',
+  'explain.cellstate.simple': '一本每读一个词就擦掉一部分、再补写几行的笔记本。',
+  'explain.lstmHidden.what':
+    '记忆的公开面孔：h_t = o⊙tanh(c_t)。输出门决定细胞状态里有多少展示给下一层和下一步。',
+  'explain.lstmHidden.why':
+    '把内部记忆（c）和对外输出（h）分开，网络就能存住暂时不想拿出来用的信息。',
+  'explain.lstmHidden.simple': '你说出口的话，和你脑子里记着的全部内容，是两回事。',
+  'explain.aeInput.what':
+    '一张 8×8 图片，展平成 64 个数。整个架构里没有任何标签——输入本身就是训练目标。',
+  'explain.aeInput.why':
+    '自编码器无需标签（自监督）："复原你的输入"这个任务逼着网络自己发现数据的结构。',
+  'explain.aeInput.simple': '考题和标准答案是同一张图。',
+  'explain.encoder.what': '全连接层把 64 个输入数字逐步压缩。网络想保留的一切都必须从这里挤过去。',
+  'explain.encoder.why':
+    '压缩迫使抽象：要想经过狭窄的瓶颈还能重建，编码器必须保留本质（什么图案？在哪里？），丢掉像素噪声。',
+  'explain.encoder.simple': '把一张图先总结成几句话，再交出去。',
+  'explain.latent.what': '瓶颈：整张图现在只剩这几个数（6 维编码，tanh 约束在 ±1 内）。',
+  'explain.latent.why':
+    '这就是学到的表示——相似的输入落在相近的编码上。图像压缩和生成模型用的正是同一个思想：生成模型就是在这里采样新编码。',
+  'explain.latent.simple': '这张图的 DNA：几个数字描述了所有值得保留的东西。',
+  'explain.decoder.what':
+    '全连接层把潜向量展开回 64 个数，最后用 sigmoid 让每个重建像素都落在 0–1。',
+  'explain.decoder.why':
+    '解码器证明编码是有意义的：如果 6 个数就够重画整张图，说明编码器真的抓住了结构。',
+  'explain.decoder.simple': '凭那几句话的总结，把图重新画出来。',
+  'explain.recon.what': '重建出的图片。训练就是最小化它与输入之间的均方误差——可以并排对比。',
+  'explain.recon.why':
+    '重建误差就是全部训练信号——不需要标签。与训练数据不像的输入会重建得很差，所以自编码器也常用来做异常检测。',
+  'explain.recon.simple': '穿过瓶颈走了一个来回的图片——很接近，但永远不会逐像素一模一样。',
 }
 
 const ja: Dict = {
@@ -704,6 +827,70 @@ const ja: Dict = {
   'explain.llmOutput.why':
     '言語モデリングとは「次の記号を予測する」こと——この分布から繰り返しサンプリングして LLM は文章を書きます。',
   'explain.llmOutput.simple': 'モデルがあなたの文を続きから書きます：アルファベットへの投票で 1 文字ずつ。',
+  'arch.rnn': 'RNN',
+  'arch.rnnFull': 'リカレントNN（Elman）',
+  'arch.lstm': 'LSTM',
+  'arch.lstmFull': '長・短期記憶ネットワーク',
+  'arch.ae': 'オートエンコーダ',
+  'arch.aeFull': 'オートエンコーダ——圧縮と再構成',
+  'layer.rnnHidden': '隠れ状態',
+  'layer.gates': 'ゲート f · i · g · o',
+  'layer.cell': 'セル状態',
+  'layer.encoder': 'エンコーダ',
+  'layer.latent': '潜在コード',
+  'layer.decoder': 'デコーダ',
+  'layer.recon': '再構成',
+  'ae.compare': '元画像 vs 再構成',
+  'ae.original': '元の値',
+  'ae.recon': '再構成値',
+  'explain.rnnHidden.what':
+    'このシートは行ごとに計算されます：各時刻の隠れ状態は h_t = tanh(Wx·x_t + Wh·h_{t-1} + b) で更新され、どの時刻でも同じ 2 つの重み行列を使い回します。',
+  'explain.rnnHidden.why':
+    'h_{t-1} が戻ってくることがネットワークの記憶です：過去の文字の情報が隠れベクトルの中で生き続けます。時間方向の重み共有でモデルも小さく保てます。',
+  'explain.rnnHidden.simple':
+    '文章を読みながら 1 枚のメモだけを持ち、単語を読むたびに書き換えるイメージ。',
+  'explain.gates.what':
+    '4 つの小さなネットワークが [x_t, h_{t-1}] を並行して読みます：忘却ゲート f と入力ゲート i（sigmoid、0–1）、候補値 g（tanh）、出力ゲート o（sigmoid）。',
+  'explain.gates.why':
+    '素朴な RNN はすぐ忘れます——長い区間で勾配が消えるためです。ゲートは何を消し、何を書き、何を見せるかを明示的に決めさせる、LSTM の解決策です。',
+  'explain.gates.simple':
+    '記憶箱の 4 つのダイヤル：どれだけ消すか、どれだけ書くか、何を書くか、どれだけ見せるか。',
+  'explain.cellstate.what':
+    '長期記憶：c_t = f⊙c_{t-1} + i⊙g。古い内容は忘却ゲートで薄められ、新しい内容が入力ゲート経由で加わります。',
+  'explain.cellstate.why':
+    '更新が加算的なので、勾配はセル状態に沿ってほぼ減衰せずに流れます——LSTM が多くのステップを記憶できる「ベルトコンベア」です。',
+  'explain.cellstate.simple': '単語を読むたびに一部を消して書き足すノート。',
+  'explain.lstmHidden.what':
+    '記憶の公開面：h_t = o⊙tanh(c_t)。出力ゲートが、セル状態のどれだけを次の層と次の時刻に見せるかを決めます。',
+  'explain.lstmHidden.why':
+    '内部記憶（c）と外に出す情報（h）を分けることで、まだ使いたくない情報も貯めておけます。',
+  'explain.lstmHidden.simple': '口に出す言葉と、頭の中の全部は別物です。',
+  'explain.aeInput.what':
+    '8×8 の画像を 64 個の数に平坦化したもの。このアーキテクチャにはラベルが一切なく、入力そのものが学習目標です。',
+  'explain.aeInput.why':
+    'オートエンコーダはラベルなし（自己教師あり）で学びます：「入力を再現せよ」という課題が、データの構造を自力で発見させます。',
+  'explain.aeInput.simple': '試験問題と模範解答が同じ 1 枚の絵。',
+  'explain.encoder.what':
+    '全結合層が 64 個の入力数値を段階的に圧縮します。残したい情報はすべてここを通り抜けなければなりません。',
+  'explain.encoder.why':
+    '圧縮は抽象化を強制します：狭いボトルネックを通って再構成するには、本質（どの模様？どこ？）を残しノイズを捨てるしかありません。',
+  'explain.encoder.simple': '絵を数語に要約してから手渡すイメージ。',
+  'explain.latent.what':
+    'ボトルネック：画像全体がこの数個の数（6 次元、tanh で ±1 に制限）になります。',
+  'explain.latent.why':
+    'これが学習された表現です——似た入力は近いコードに落ちます。画像圧縮も生成モデルも同じ考え方で、生成モデルはここで新しいコードをサンプリングします。',
+  'explain.latent.simple': 'この絵の DNA：残す価値のあるすべてを数個の数字で。',
+  'explain.decoder.what':
+    '全結合層が潜在コードを 64 個の数に展開し、最後に sigmoid で各画素を 0–1 に収めます。',
+  'explain.decoder.why':
+    'デコーダはコードの意味を証明します：6 個の数で絵を描き直せるなら、エンコーダは本当に構造を捉えています。',
+  'explain.decoder.simple': '数語の要約から絵を描き直す作業。',
+  'explain.recon.what':
+    '再構成された画像。学習は入力との平均二乗誤差を最小化します——並べて見比べてください。',
+  'explain.recon.why':
+    '再構成誤差が学習信号のすべてで、ラベルは不要です。学習データに似ていない入力はうまく再構成されないため、異常検知にも使われます。',
+  'explain.recon.simple':
+    'ボトルネックを往復してきた絵——よく似ていますが、画素単位では決して同じになりません。',
 }
 
 const dicts: Record<Lang, Dict> = { en, zh, ja }
