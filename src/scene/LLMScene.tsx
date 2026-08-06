@@ -21,39 +21,54 @@ function tensorMax(t: Tensor3): number {
   return m || 1
 }
 
+const FLOW_COUNT = 7
+
 /**
- * The autoregressive feedback loop, made visible: a return wire from the
- * output column back to the token row. Each generated character flies along
- * it before the next forward pass starts — output becomes input.
+ * The autoregressive feedback loop, made visible: a return wire with
+ * direction-flow particles and an arrowhead, a loop label, the committed
+ * character flying back, and a landing flash on the token queue.
  */
 function FeedbackLoop() {
+  const t = useT()
   const generating = useStore((s) => s.llmGenerating)
   const generated = useStore((s) => s.llmGenerated)
   const model = MODELS.llm.model
   const tokSlot = llmSlot(-1) as GridSlot
   const outSlot = llmSlot(LLM_STEPS - 1) as VecSlot
   const flyer = useRef<THREE.Group>(null)
+  const flowMesh = useRef<THREE.InstancedMesh>(null)
+  const flash = useRef<THREE.Mesh>(null)
   const anim = useRef<{ curve: THREE.CubicBezierCurve3; t: number } | null>(null)
+  const flashT = useRef(-1)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
 
   const lastTokenPos = useMemo(
     () => new THREE.Vector3(...gridPos(tokSlot, 0, 0, tokSlot.cols - 1)),
     [tokSlot],
   )
 
-  // the permanent return wire
-  const wire = useMemo(() => {
+  // the permanent return wire (kept together with its curve for the flow particles)
+  const { wire, curve, arrowPos, arrowQuat, labelPos } = useMemo(() => {
     const from = new THREE.Vector3(outSlot.x, -((outSlot.size - 1) / 2) * outSlot.gapY - 1, 0)
     const to = lastTokenPos.clone().add(new THREE.Vector3(0, -0.7, 0))
-    const curve = new THREE.CubicBezierCurve3(
+    const c = new THREE.CubicBezierCurve3(
       from,
       new THREE.Vector3(outSlot.x * 0.55, -8.5, 6),
       new THREE.Vector3(tokSlot.x * 0.55, -8.5, 6),
       to,
     )
-    const geom = new THREE.BufferGeometry().setFromPoints(curve.getPoints(72))
+    const geom = new THREE.BufferGeometry().setFromPoints(c.getPoints(72))
     const mat = new THREE.LineBasicMaterial({ color: '#38d6ff', transparent: true, opacity: 0.15 })
     mat.toneMapped = false
-    return new THREE.Line(geom, mat)
+    const tangent = c.getTangent(0.99)
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent)
+    return {
+      wire: new THREE.Line(geom, mat),
+      curve: c,
+      arrowPos: c.getPoint(0.985),
+      arrowQuat: quat,
+      labelPos: c.getPoint(0.5).add(new THREE.Vector3(0, 1.4, 0)),
+    }
   }, [outSlot, tokSlot, lastTokenPos])
 
   // launch a flight whenever a character is committed
@@ -76,29 +91,101 @@ function FeedbackLoop() {
     }
   }, [generated, model, outSlot, tokSlot, lastTokenPos])
 
-  useFrame((_, dt) => {
-    ;(wire.material as THREE.LineBasicMaterial).opacity = generating ? 0.45 : 0.15
+  useFrame((state, dt) => {
+    ;(wire.material as THREE.LineBasicMaterial).opacity = generating ? 0.5 : 0.15
+
+    // continuous direction-flow particles while generating
+    const fm = flowMesh.current
+    if (fm) {
+      fm.visible = generating
+      if (generating) {
+        for (let i = 0; i < FLOW_COUNT; i++) {
+          const tt = (state.clock.elapsedTime * 0.16 + i / FLOW_COUNT) % 1
+          dummy.position.copy(curve.getPoint(tt))
+          dummy.scale.setScalar(0.06 * (0.6 + 0.4 * Math.sin(tt * Math.PI)))
+          dummy.updateMatrix()
+          fm.setMatrixAt(i, dummy.matrix)
+        }
+        fm.instanceMatrix.needsUpdate = true
+      }
+    }
+
+    // committed character flying home
     const g = flyer.current
-    if (!g) return
-    const a = anim.current
-    if (!a) {
-      g.visible = false
-      return
+    if (g) {
+      const a = anim.current
+      if (!a) {
+        g.visible = false
+      } else {
+        a.t += dt / 0.55
+        if (a.t >= 1) {
+          anim.current = null
+          g.visible = false
+          flashT.current = 0 // landed: flash the queue tail
+        } else {
+          g.visible = true
+          g.position.copy(a.curve.getPoint(ease(a.t)))
+        }
+      }
     }
-    a.t += dt / 0.55
-    if (a.t >= 1) {
-      anim.current = null
-      g.visible = false
-      return
+
+    // landing flash
+    const fl = flash.current
+    if (fl) {
+      if (flashT.current >= 0) {
+        flashT.current += dt
+        const k = flashT.current / 0.4
+        if (k >= 1) {
+          flashT.current = -1
+          fl.visible = false
+        } else {
+          fl.visible = true
+          fl.position.copy(lastTokenPos)
+          fl.scale.setScalar(tokSlot.cell * (0.8 + k * 1.6))
+          ;(fl.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - k)
+        }
+      } else {
+        fl.visible = false
+      }
     }
-    g.visible = true
-    g.position.copy(a.curve.getPoint(ease(a.t)))
   })
 
   const lastChar = generated ? generated[generated.length - 1] : ''
   return (
     <group>
       <primitive object={wire} />
+      {/* direction arrowhead where the wire re-enters the token queue */}
+      <mesh position={arrowPos} quaternion={arrowQuat}>
+        <coneGeometry args={[0.14, 0.4, 8]} />
+        <meshBasicMaterial color="#38d6ff" transparent opacity={0.7} toneMapped={false} />
+      </mesh>
+      <instancedMesh ref={flowMesh} args={[undefined, undefined, FLOW_COUNT]} frustumCulled={false} visible={false}>
+        <sphereGeometry args={[1, 8, 8]} />
+        <meshBasicMaterial
+          color="#7fe3ff"
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </instancedMesh>
+      {generating && (
+        <Html position={labelPos} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+          <div className="loop-label">{t('llm.loop')}</div>
+        </Html>
+      )}
+      <mesh ref={flash} visible={false}>
+        <sphereGeometry args={[1, 12, 12]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
       <group ref={flyer} visible={false}>
         <mesh>
           <sphereGeometry args={[0.16, 12, 12]} />
@@ -154,8 +241,16 @@ function sheetFlow(
 export function LLMScene() {
   const trace = useStore((s) => s.llmTrace)
   const step = useStore((s) => s.step)
+  const generated = useStore((s) => s.llmGenerated)
   const t = useT()
   const model = MODELS.llm.model
+
+  // conveyor effect: when a char is committed the whole token queue slides one tile
+  const tokGroup = useRef<THREE.Group>(null)
+  const slideT = useRef(1)
+  useEffect(() => {
+    if (generated) slideT.current = 0
+  }, [generated])
 
   const slots = useMemo(
     () => Array.from({ length: LLM_STEPS + 1 }, (_, i) => llmSlot(i - 1)),
@@ -250,9 +345,36 @@ export function LLMScene() {
   const topIdx = [...trace.probs.keys()].sort((a, b) => trace.probs[b] - trace.probs[a]).slice(0, 5)
   const showChar = (c: string) => (c === ' ' ? '␣' : c)
 
+  useFrame((_, dt) => {
+    const g = tokGroup.current
+    if (!g) return
+    if (slideT.current < 1) {
+      slideT.current = Math.min(1, slideT.current + dt / 0.35)
+      g.position.z = (1 - ease(slideT.current)) * tokSlot.cell
+    } else {
+      g.position.z = 0
+    }
+  })
+
   return (
     <group>
-      <GridNodes slot={tokSlot} values={tokVals} scale={1} />
+      <group ref={tokGroup}>
+        <GridNodes slot={tokSlot} values={tokVals} scale={1} />
+        {trace.chars.map((ch, i) => {
+          const p = gridPos(tokSlot, 0, 0, i)
+          return (
+            <Html
+              key={`tk${i}`}
+              position={[p[0], p[1], p[2]]}
+              center
+              zIndexRange={[20, 0]}
+              style={{ pointerEvents: 'none' }}
+            >
+              <div className="token-char">{showChar(ch)}</div>
+            </Html>
+          )
+        })}
+      </group>
       {sheets.map((sh) => (
         <GridNodes key={sh.layer} slot={grid(sh.layer)} values={sh.values} scale={tensorMax(sh.values)} />
       ))}
@@ -268,16 +390,6 @@ export function LLMScene() {
       {flows.map((segs, k) => (
         <FlowParticles key={`p${k}`} segments={segs} layerIndex={k} size={0.06} />
       ))}
-
-      {/* token characters on the input tiles */}
-      {trace.chars.map((ch, i) => {
-        const p = gridPos(tokSlot, 0, 0, i)
-        return (
-          <Html key={`tk${i}`} position={[p[0], p[1], p[2]]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
-            <div className="token-char">{showChar(ch)}</div>
-          </Html>
-        )
-      })}
 
       {/* every vocab character labels its node; top candidates also show their probability */}
       {outPositions.map((p, i) => {
