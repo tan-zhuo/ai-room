@@ -126,9 +126,26 @@ function LayerStack({ x }: { x: number }) {
 
 const STACK_H = 13
 const JOURNEY_STAGES = [0, 0.15, 0.4, 0.7, 1] as const
-const STAGE_EMOJI = ['🙂', '📐', '🍎', '🧭', '✨']
+const TOK_CASES = 3
 const LOOP_RISE = 16 // seconds to climb the stack
-const LOOP_HOLD = 3.5 // pause at the top before restarting
+const LOOP_HOLD = 4.5 // pause at the top before the next case starts
+
+interface TokSeg {
+  text: string
+  token: boolean
+  /** milestone stages at which this context word gets absorbed */
+  stages: number[]
+}
+
+/** Sentence encoding: segments split by '|', '[word]' marks the token itself,
+ *  'text*1,3' marks context absorbed at stages 1 and 3. */
+function parseTokSentence(raw: string): TokSeg[] {
+  return raw.split('|').map((seg) => {
+    const token = seg.startsWith('[')
+    const [text, st] = seg.replace(/[[\]]/g, '').split('*')
+    return { text, token, stages: st ? st.split(',').map(Number) : [] }
+  })
+}
 
 function TokenJourney({ x }: { x: number }) {
   const sel = useStore((s) => s.giantSel)
@@ -142,10 +159,14 @@ function TokenJourney({ x }: { x: number }) {
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const [stage, setStage] = useState(0)
   const [layerNow, setLayerNow] = useState(1)
+  const [caseIdx, setCaseIdx] = useState(0)
   const SAT_MAX = 22
 
   useFrame((state) => {
-    const tt = state.clock.elapsedTime % (LOOP_RISE + LOOP_HOLD)
+    const loop = LOOP_RISE + LOOP_HOLD
+    const ci = Math.floor(state.clock.elapsedTime / loop) % TOK_CASES
+    if (ci !== caseIdx) setCaseIdx(ci)
+    const tt = state.clock.elapsedTime % loop
     const p = Math.min(1, tt / LOOP_RISE)
     const y = 0.4 + p * (STACK_H - 0.4)
     const o = orb.current
@@ -223,21 +244,40 @@ function TokenJourney({ x }: { x: number }) {
 
       {/* journey caption card */}
       <Html position={[x + 1.5, STACK_H + 3.4, 0]} center zIndexRange={[22, 0]} style={{ pointerEvents: 'none' }}>
-        <div className="tok-card" key={stage}>
+        <div className="tok-card" key={`${caseIdx}:${stage}`}>
           <div className="tok-head">
-            <span className="tok-word">{t('giant.tok.word')}</span>
-            <span className="tok-emoji">{STAGE_EMOJI[stage]}</span>
+            <span className="tok-word">{t(`giant.tok.case${caseIdx}.word`)}</span>
+            <span className="tok-emoji">{t(`giant.tok.case${caseIdx}.emoji`).split('|')[stage]}</span>
             <span className="tok-layer">
               Layer {stage === 4 ? N : layerNow} / {N}
             </span>
           </div>
-          <p className="tok-text">{t(`giant.tok.stage${stage}`)}</p>
+          {/* the sentence: context words LIGHT UP as they are absorbed, and stay lit */}
+          <p className="tok-sentence-live">
+            {parseTokSentence(t(`giant.tok.case${caseIdx}.sentence`)).map((seg, i) => {
+              const absorbedNow = seg.stages.includes(stage) || (stage === 4 && !seg.token)
+              const absorbedBefore = seg.stages.some((s) => s < stage)
+              const cls = seg.token
+                ? 'tok-self'
+                : absorbedNow
+                  ? 'tok-ctx now'
+                  : absorbedBefore
+                    ? 'tok-ctx on'
+                    : 'tok-ctx'
+              return (
+                <span key={i} className={cls}>
+                  {seg.text}
+                </span>
+              )
+            })}
+          </p>
+          <p className="tok-text">{t(`giant.tok.case${caseIdx}.s${stage}`)}</p>
           <div className="tok-milestones">
             {JOURNEY_STAGES.map((f, i) => (
               <span key={i} className={`tok-dot${i <= stage ? ' on' : ''}`} title={`L${milestoneLayer(f)}`} />
             ))}
           </div>
-          <p className="tok-sentence">{t('giant.tok.sentence')}</p>
+          <p className="tok-sentence">{t('giant.tok.caseNote', { c: caseIdx + 1, n: TOK_CASES })}</p>
         </div>
       </Html>
     </group>

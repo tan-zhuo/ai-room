@@ -1246,6 +1246,35 @@ kbd {
   color: var(--text);
 }
 
+.tok-sentence-live {
+  margin-top: 8px;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.tok-self {
+  color: #ffd166;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 209, 102, 0.55);
+}
+
+.tok-ctx {
+  color: var(--muted);
+  opacity: 0.45;
+  transition: color 0.4s, opacity 0.4s, text-shadow 0.4s;
+}
+
+.tok-ctx.on {
+  color: var(--text);
+  opacity: 0.95;
+}
+
+.tok-ctx.now {
+  color: var(--accent);
+  opacity: 1;
+  text-shadow: 0 0 9px rgba(56, 214, 255, 0.65);
+}
+
 .tok-milestones {
   display: flex;
   gap: 6px;
