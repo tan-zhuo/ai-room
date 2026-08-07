@@ -279,6 +279,48 @@ const en: Dict = {
     'Image synthesis (StyleGAN)\nImage-to-image translation (pix2pix / CycleGAN)\nSuper-resolution & photo restoration\nData augmentation\nDeepfake generation & detection',
   'overview.gan.industries':
     'Games & film — asset & face generation\nPhotography — enhancement, restoration\nMedicine — synthetic training data\nSecurity — deepfake detection\nFashion — virtual try-on & design',
+  'arch.gnn': 'GNN',
+  'arch.gnnFull': 'Graph neural network (GCN)',
+  'layer.graphIn': 'Input graph',
+  'layer.msgpass1': 'Message passing ①',
+  'layer.msgpass2': 'Message passing ②',
+  'layer.nodeCls': 'Node classification',
+  'gnn.accBadge': 'Node accuracy',
+  'gnn.community': 'Community',
+  'gnn.nodeTitle': 'Node',
+  'gnn.self': 'self',
+  'gnn.degree': 'Neighbours',
+  'gnn.aggTitle': 'Neighbour aggregation Σ Â·h',
+  'gnn.aggNote':
+    'Every neighbour (and the node itself, via the self-loop) contributes its vector, weighted by the normalized adjacency Â = D^-1/2 (A+I) D^-1/2.',
+  'gnn.featNote':
+    'The node’s raw feature vector: its community prototype plus noise. The colour shows the TRUE community — watch whether the network recovers it on the right.',
+  'gnn.verdict': 'Prediction vs truth',
+  'gnn.predIs': 'Predicted:',
+  'gnn.truthIs': 'True:',
+  'explain.graphIn.what':
+    'A random community graph: nodes carry small feature vectors, edges connect mostly within communities. Node colour shows the TRUE community. A fresh graph is sampled every run — the trained weights have never seen it.',
+  'explain.graphIn.why':
+    'Graphs are data with structure but no grid: molecules, social networks, citation webs. The connectivity itself carries the signal a GNN exploits.',
+  'explain.graphIn.simple': 'A map of friend groups — who talks to whom.',
+  'explain.msgpass.what':
+    'One graph-convolution layer: every node averages its neighbours’ vectors (weighted by Â, self-loop included), then applies a shared linear map and ReLU: H′ = ReLU(Â H W).',
+  'explain.msgpass.why':
+    'Message passing is THE core idea of GNNs: information flows along edges, so after k layers a node has seen its k-hop neighbourhood. Noisy individual features average into a clean community signal.',
+  'explain.msgpass.simple': 'Everyone updates their opinion by polling their friends.',
+  'explain.nodeCls.what':
+    'A softmax over the final node vectors assigns each node a community. Colour = predicted community, brightness = confidence.',
+  'explain.nodeCls.why':
+    'Compare against the input colours: nodes are classified correctly because their neighbourhoods vote — even a node with atypical features gets pulled to its community.',
+  'explain.nodeCls.simple': 'You are judged by the company you keep.',
+  'overview.gnn.intro':
+    'The graph neural network generalizes deep learning to graph-shaped data — molecules, social networks, road maps, knowledge graphs. Its core operation, message passing, lets every node aggregate its neighbours’ features through learned weights; stacking layers spreads information across hops. This demo is a 2-layer GCN (Kipf & Welling 2017) classifying nodes into communities on graphs it has never seen.',
+  'overview.gnn.problems':
+    'It solved learning on irregular structures where CNNs/RNNs don’t fit: predicting molecule properties, recommending friends, detecting fraud rings, routing traffic — anywhere the RELATIONS carry the signal.',
+  'overview.gnn.domains':
+    'Molecular property prediction & drug discovery\nRecommendation systems (social / e-commerce)\nFraud & anomaly detection in transaction graphs\nTraffic & logistics networks\nKnowledge graphs & question answering\nAlphaFold-style structure reasoning',
+  'overview.gnn.industries':
+    'Pharma — drug screening (GNNs read molecules)\nSocial platforms — feeds & friend suggestions\nFinance — anti-fraud on transaction networks\nMaps & ride-hailing — ETA prediction\nChip design — placement & routing',
   'overview.title': 'Model overview',
   'overview.secIntro': 'What it is',
   'overview.secProblems': 'Problems it solves',
@@ -768,6 +810,46 @@ const zh: Dict = {
     '图像合成（StyleGAN）\n图像到图像翻译（pix2pix / CycleGAN）\n超分辨率与老照片修复\n数据增强\n深度伪造生成与检测',
   'overview.gan.industries':
     '游戏与影视——素材与人脸生成\n摄影——画质增强、修复\n医疗——合成训练数据\n安全——深伪检测\n时尚——虚拟试穿与设计',
+  'arch.gnn': 'GNN',
+  'arch.gnnFull': '图神经网络（GCN）',
+  'layer.graphIn': '输入图',
+  'layer.msgpass1': '消息传递 ①',
+  'layer.msgpass2': '消息传递 ②',
+  'layer.nodeCls': '节点分类',
+  'gnn.accBadge': '节点准确率',
+  'gnn.community': '社区',
+  'gnn.nodeTitle': '节点',
+  'gnn.self': '自身',
+  'gnn.degree': '邻居数',
+  'gnn.aggTitle': '邻居聚合 Σ Â·h',
+  'gnn.aggNote': '每个邻居（以及经自环的节点自身）都按归一化邻接矩阵 Â = D^-1/2 (A+I) D^-1/2 的权重贡献自己的向量。',
+  'gnn.featNote': '该节点的原始特征向量：社区原型 + 噪声。颜色是「真实」社区——看看右侧网络能否把它找回来。',
+  'gnn.verdict': '预测 vs 真实',
+  'gnn.predIs': '预测：',
+  'gnn.truthIs': '真实：',
+  'explain.graphIn.what':
+    '一张随机社区图：节点带小特征向量，边主要连在社区内部。节点颜色是「真实」社区。每次运行都重新采样一张全新的图——训练好的权重从没见过它。',
+  'explain.graphIn.why':
+    '图是有结构但没有网格的数据：分子、社交网络、引用关系。连接方式本身就携带信号，这正是 GNN 要利用的。',
+  'explain.graphIn.simple': '一张朋友圈地图——谁和谁说话。',
+  'explain.msgpass.what':
+    '一层图卷积：每个节点把邻居的向量按 Â 加权平均（含自环），再经过共享的线性映射和 ReLU：H′ = ReLU(Â H W)。',
+  'explain.msgpass.why':
+    '消息传递是 GNN 的核心思想：信息沿边流动，叠 k 层后每个节点就「看到」了 k 跳邻域。个体的噪声特征在平均中变成干净的社区信号。',
+  'explain.msgpass.simple': '每个人问一圈朋友的意见，然后更新自己的看法。',
+  'explain.nodeCls.what':
+    '对最终节点向量做 softmax，给每个节点分配社区。颜色 = 预测的社区，亮度 = 置信度。',
+  'explain.nodeCls.why':
+    '对照输入端的颜色：节点能被分对，是因为邻域在「投票」——即使某个节点特征反常，也会被它的社区拉回来。',
+  'explain.nodeCls.simple': '物以类聚，人以群分。',
+  'overview.gnn.intro':
+    '图神经网络把深度学习推广到图结构数据——分子、社交网络、路网、知识图谱。核心操作「消息传递」让每个节点通过可学习的权重聚合邻居特征；层数叠加，信息就能跨越多跳传播。本演示是一个两层 GCN（Kipf & Welling 2017），在从未见过的随机图上做节点社区分类。',
+  'overview.gnn.problems':
+    '它解决了 CNN/RNN 无法处理的不规则结构学习：预测分子性质、好友推荐、识别欺诈团伙、交通调度——凡是「关系」本身携带信号的地方。',
+  'overview.gnn.domains':
+    '分子性质预测与药物发现\n推荐系统（社交 / 电商）\n交易图上的欺诈与异常检测\n交通与物流网络\n知识图谱与问答\nAlphaFold 式结构推理',
+  'overview.gnn.industries':
+    '医药——药物筛选（GNN 读分子）\n社交平台——信息流与好友推荐\n金融——交易网络反欺诈\n地图与出行——到达时间预测\n芯片设计——布局布线',
   'overview.title': '模型简介',
   'overview.secIntro': '这是什么',
   'overview.secProblems': '解决了什么问题',
@@ -1250,6 +1332,46 @@ const ja: Dict = {
     '画像合成（StyleGAN）\n画像から画像への変換（pix2pix / CycleGAN）\n超解像・写真修復\nデータ拡張\nディープフェイク生成と検出',
   'overview.gan.industries':
     'ゲーム・映像——素材と顔の生成\n写真——高画質化・修復\n医療——合成訓練データ\nセキュリティ——ディープフェイク検出\nファッション——バーチャル試着とデザイン',
+  'arch.gnn': 'GNN',
+  'arch.gnnFull': 'グラフニューラルネットワーク（GCN）',
+  'layer.graphIn': '入力グラフ',
+  'layer.msgpass1': 'メッセージパッシング ①',
+  'layer.msgpass2': 'メッセージパッシング ②',
+  'layer.nodeCls': 'ノード分類',
+  'gnn.accBadge': 'ノード精度',
+  'gnn.community': 'コミュニティ',
+  'gnn.nodeTitle': 'ノード',
+  'gnn.self': '自身',
+  'gnn.degree': '隣接ノード数',
+  'gnn.aggTitle': '近傍集約 Σ Â·h',
+  'gnn.aggNote': '各隣接ノード（自己ループ経由の自身も含む）が、正規化隣接行列 Â = D^-1/2 (A+I) D^-1/2 の重みでベクトルを持ち寄る。',
+  'gnn.featNote': 'ノードの生の特徴ベクトル：コミュニティの原型 + ノイズ。色は「真の」コミュニティ——右側でネットワークがそれを言い当てられるか見てみよう。',
+  'gnn.verdict': '予測 vs 真実',
+  'gnn.predIs': '予測：',
+  'gnn.truthIs': '真実：',
+  'explain.graphIn.what':
+    'ランダムなコミュニティグラフ。ノードは小さな特徴ベクトルを持ち、辺は主にコミュニティ内部を結ぶ。色は「真の」コミュニティ。実行のたびに新しいグラフが生成される——学習済みの重みは一度も見たことがない。',
+  'explain.graphIn.why':
+    'グラフは構造はあるが格子のないデータ：分子、SNS、引用ネットワーク。つながり方そのものが信号を運び、GNN はそれを利用する。',
+  'explain.graphIn.simple': '誰が誰と話すかを描いた友人関係の地図。',
+  'explain.msgpass.what':
+    '1 層のグラフ畳み込み：各ノードが隣接ノードのベクトルを Â の重みで平均し（自己ループ込み）、共有の線形変換と ReLU を通す：H′ = ReLU(Â H W)。',
+  'explain.msgpass.why':
+    'メッセージパッシングこそ GNN の核心。情報が辺に沿って流れ、k 層重ねればノードは k ホップ先まで「見える」。個々のノイズだらけの特徴も、平均されてきれいなコミュニティ信号になる。',
+  'explain.msgpass.simple': 'みんなが友達に意見を聞いてまわり、自分の考えを更新する。',
+  'explain.nodeCls.what':
+    '最終的なノードベクトルに softmax をかけ、各ノードにコミュニティを割り当てる。色 = 予測コミュニティ、明るさ = 確信度。',
+  'explain.nodeCls.why':
+    '入力側の色と見比べてほしい。ノードが正しく分類されるのは近傍が「投票」するから——特徴が変わり者のノードも、コミュニティに引き戻される。',
+  'explain.nodeCls.simple': '人は付き合う仲間で決まる。',
+  'overview.gnn.intro':
+    'グラフニューラルネットワークは深層学習をグラフ構造データへ一般化する——分子、SNS、道路網、知識グラフ。核心操作のメッセージパッシングにより、各ノードは学習可能な重みで隣接ノードの特徴を集約し、層を重ねるほど情報は多ホップ先へ広がる。本デモは 2 層 GCN（Kipf & Welling 2017）で、初見のランダムグラフ上のノードをコミュニティ分類する。',
+  'overview.gnn.problems':
+    'CNN/RNN が扱えない不規則構造の学習を解決した：分子の性質予測、友達推薦、不正グループの検出、交通の最適化——「関係」自体が信号を持つあらゆる場面。',
+  'overview.gnn.domains':
+    '分子の性質予測・創薬\n推薦システム（SNS / EC）\n取引グラフの不正・異常検出\n交通・物流ネットワーク\n知識グラフと質問応答\nAlphaFold 型の構造推論',
+  'overview.gnn.industries':
+    '製薬——薬剤スクリーニング（GNN が分子を読む）\nSNS——フィードと友達推薦\n金融——取引ネットワークの不正対策\n地図・配車——到着時間予測\n半導体設計——配置配線',
   'overview.title': 'モデル概要',
   'overview.secIntro': 'これは何か',
   'overview.secProblems': '解決する課題',

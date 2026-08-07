@@ -64,6 +64,8 @@ export function InspectorPanel() {
           <DiffDetail sel={sel} />
         ) : arch === 'gan' ? (
           <GanDetail sel={sel} />
+        ) : arch === 'gnn' ? (
+          <GnnDetail sel={sel} />
         ) : arch === 'rnn' ? (
           <RNNDetail sel={sel} />
         ) : arch === 'lstm' ? (
@@ -923,6 +925,120 @@ function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
     )
   }
   return null
+}
+
+// ---------------------------------------------------------------- GNN
+
+function GnnDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.gnnTrace)
+  const t = useT()
+  const g = trace.graph
+  if (sel.space !== 'vector') return null
+  const i = sel.index
+  const cls = (c: number) => `${t('gnn.community')} ${['A', 'B', 'C'][c]}`
+
+  const neighbours = g.ahat[i]
+    .map((w, j) => ({ j, w }))
+    .filter(({ w }) => w > 0)
+
+  const aggTable = (source: number[][], label: string) => (
+    <section>
+      <h4>{t('gnn.aggTitle')}</h4>
+      <p className="explain-text">{t('gnn.aggNote')}</p>
+      <div className="dense-table" style={{ marginTop: 6 }}>
+        <div className="dense-row dense-head">
+          <span />
+          <span>Â</span>
+          <span>{label}</span>
+        </div>
+        <div className="dense-rows">
+          {neighbours.map(({ j, w }) => (
+            <div className="dense-row" key={j}>
+              <span className="dense-label">{j === i ? `${t('gnn.self')} #${j + 1}` : `#${j + 1}`}</span>
+              <span className="num" style={cellStyle(w, 1)}>
+                {fmt(w)}
+              </span>
+              <span className="num">{fmt(meanRow(source[j]))}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+
+  if (sel.layer === -1) {
+    return (
+      <>
+        <section>
+          <h4>
+            {t('gnn.nodeTitle')} #{i + 1} · {cls(g.labels[i])}
+          </h4>
+          <p className="explain-text">{t('gnn.featNote')}</p>
+          <NumGrid values={[g.X[i]]} scale={Math.max(...g.X[i].map(Math.abs), 1)} />
+        </section>
+        <section>
+          <h4>{t('gnn.degree')}</h4>
+          <div className="big-value num">{neighbours.length - 1}</div>
+        </section>
+      </>
+    )
+  }
+  if (sel.layer === 0) {
+    return (
+      <>
+        {aggTable(g.X.map((r) => r), 'x̄')}
+        <section>
+          <h4>agg = Σ Â·x → z₁ = agg·W₁+b₁ → ReLU</h4>
+          <NumGrid values={[trace.agg1[i]]} scale={Math.max(...trace.agg1[i].map(Math.abs), 1)} />
+          <div style={{ height: 6 }} />
+          <NumGrid values={[trace.H1[i]]} scale={Math.max(...trace.H1[i].map(Math.abs), 1)} />
+        </section>
+      </>
+    )
+  }
+  if (sel.layer === 1) {
+    return (
+      <>
+        {aggTable(trace.H1, 'h̄')}
+        <section>
+          <h4>agg = Σ Â·h → Z = agg·W₂+b₂</h4>
+          <NumGrid values={[trace.agg2[i]]} scale={Math.max(...trace.agg2[i].map(Math.abs), 1)} />
+          <div style={{ height: 6 }} />
+          <NumGrid values={[trace.logits[i]]} scale={Math.max(...trace.logits[i].map(Math.abs), 1)} />
+        </section>
+      </>
+    )
+  }
+  const correct = trace.pred[i] === g.labels[i]
+  return (
+    <>
+      <section>
+        <h4>{t('panel.probabilities')}</h4>
+        <div className="prob-list">
+          {trace.probs[i].map((p, c) => (
+            <div className="prob-row" key={c}>
+              <span className="prob-name">{cls(c)}</span>
+              <span className="prob-bar">
+                <span style={{ width: `${Math.max(2, p * 100)}%` }} />
+              </span>
+              <span className="num">{(p * 100).toFixed(1)}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section>
+        <h4>{t('gnn.verdict')}</h4>
+        <p className="explain-text">
+          {t('gnn.predIs')} <b>{cls(trace.pred[i])}</b> · {t('gnn.truthIs')} <b>{cls(g.labels[i])}</b> —{' '}
+          {correct ? '✓' : '✗'}
+        </p>
+      </section>
+    </>
+  )
+}
+
+function meanRow(row: number[]): number {
+  return row.reduce((s, v) => s + v, 0) / row.length
 }
 
 // ---------------------------------------------------------------- GAN

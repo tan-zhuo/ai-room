@@ -37,15 +37,16 @@ const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'rnn', kbd: '3' },
   { arch: 'lstm', kbd: '4' },
   { arch: 'llm', kbd: '5' },
+  { arch: 'gnn', kbd: '6' },
 ]
 
 const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
-  { arch: 'ae', kbd: '6' },
-  { arch: 'diff', kbd: '7' },
-  { arch: 'gan', kbd: '8' },
+  { arch: 'ae', kbd: '7' },
+  { arch: 'diff', kbd: '8' },
+  { arch: 'gan', kbd: '9' },
 ]
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '9' }]
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '0' }]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -319,12 +320,13 @@ function BottomBar() {
     ae: aeClass,
     diff: -1,
     gan: -1,
+    gnn: -1,
   }[arch]
   const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
   const chipArch = arch === 'ae' ? 'cnn' : arch
   const chips: string[] = seq
     ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
-    : arch === 'diff' || arch === 'gan'
+    : arch === 'diff' || arch === 'gan' || arch === 'gnn'
       ? []
       : Array.from(
         { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae'].classCount },
@@ -663,7 +665,7 @@ function HelpOverlay() {
     ['Space', t('help.space')],
     ['← →', t('help.arrows')],
     ['R', t('help.r')],
-    ['1 – 9', t('help.digits')],
+    ['1 – 0', t('help.digits')],
     ['L', t('help.l')],
     ['F', t('help.f')],
     ['Esc', t('help.esc')],

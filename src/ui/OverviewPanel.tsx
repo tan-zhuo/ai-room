@@ -121,6 +121,26 @@ const PAPERS: Record<Arch, Paper[]> = {
       url: 'https://arxiv.org/abs/2112.10752',
     },
   ],
+  gnn: [
+    {
+      title: 'Semi-Supervised Classification with Graph Convolutional Networks (GCN)',
+      authors: 'Kipf & Welling',
+      year: 2016,
+      url: 'https://arxiv.org/abs/1609.02907',
+    },
+    {
+      title: 'The Graph Neural Network Model',
+      authors: 'Scarselli, Gori, Tsoi, Hagenbuchner & Monfardini',
+      year: 2009,
+      url: 'https://ieeexplore.ieee.org/document/4700287',
+    },
+    {
+      title: 'Graph Attention Networks (GAT)',
+      authors: 'Veličković, Cucurull, Casanova, Romero, Liò & Bengio',
+      year: 2017,
+      url: 'https://arxiv.org/abs/1710.10903',
+    },
+  ],
   gan: [
     {
       title: 'Generative Adversarial Networks',

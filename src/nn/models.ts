@@ -20,6 +20,7 @@ import { LSTMTask, RNNTask, buildLSTMTask, buildRNNTask } from './rnn'
 import { VAETask, buildVAETask } from './vae'
 import { DiffusionTask, buildDiffusionTask } from './diffusion'
 import { GANTask, buildGANTask } from './gan'
+import { GNNTask, buildGNNTask } from './gnn'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -88,6 +89,7 @@ export interface Models {
   ae: AETask
   diff: DiffusionTask
   gan: GANTask
+  gnn: GNNTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -424,6 +426,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       },
     },
     {
+      label: 'GNN',
+      build: () => {
+        partial.gnn = buildGNNTask()
+        return `node acc ${(partial.gnn.accuracy * 100).toFixed(0)}%`
+      },
+    },
+    {
       label: 'GAN',
       build: () => {
         partial.gan = buildGANTask(cnnSampleOfSize)
@@ -497,6 +506,9 @@ export function rebuildArch(
       break
     case 'gan':
       MODELS = { ...MODELS, gan: buildGANTask(cnnSampleOfSize, scale) }
+      break
+    case 'gnn':
+      MODELS = { ...MODELS, gnn: buildGNNTask(scale) }
       break
     case 'text':
       MODELS = { ...MODELS, text: buildTextTask(scale) }

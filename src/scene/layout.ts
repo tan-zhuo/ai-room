@@ -356,6 +356,47 @@ function computeGanSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ GNN layout
+// Four x-shifted copies of the SAME graph: input features, hidden after
+// message passing 1, logits after message passing 2, per-node prediction.
+// Node positions are irregular (community clusters), so the GNN bypasses the
+// slot system: gnnNodePos() gives world positions directly.
+
+export const GNN_STEPS = 3
+export const GNN_XS = [-8.2, -2.8, 2.8, 8.2]
+
+let gnnLocal: [number, number][] = []
+
+/** In-plane (y,z) position of each graph node — three community clusters. */
+function computeGnnPositions(): [number, number][] {
+  const m = MODELS.gnn.model
+  const per = m.perClass
+  const R = 2.5
+  const r = Math.max(1.05, per * 0.28)
+  const pts: [number, number][] = []
+  for (let c = 0; c < m.classes; c++) {
+    const base = (c / m.classes) * Math.PI * 2 + Math.PI / 2
+    const cy = Math.sin(base) * R
+    const cz = Math.cos(base) * R
+    for (let k = 0; k < per; k++) {
+      const a = (k / per) * Math.PI * 2 + c * 0.7
+      pts.push([cy + Math.sin(a) * r, cz + Math.cos(a) * r])
+    }
+  }
+  return pts
+}
+
+/** World position of graph node i in the layer-k copy (-1 = input). */
+export function gnnNodePos(layer: number, i: number): Vec3 {
+  const p = gnnLocal[i] ?? [0, 0]
+  return [GNN_XS[layer + 1] ?? GNN_XS[3], p[0], p[1]]
+}
+
+export function gnnLabelAnchor(layer: number): Vec3 {
+  const top = gnnLocal.reduce((mx, p) => Math.max(mx, p[0]), 0)
+  return [GNN_XS[layer + 1] ?? GNN_XS[3], top + 1.9, 0]
+}
+
 // ------------------------------------------------------------------ cached slot tables
 
 let cnnSlots = computeCnnSlots()
@@ -365,6 +406,7 @@ let lstmSlots = computeLstmSlots()
 let aeSlots = computeAeSlots()
 let diffSlots = computeDiffSlots()
 let ganSlots = computeGanSlots()
+gnnLocal = computeGnnPositions()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
 export function refreshLayout(): void {
@@ -375,6 +417,7 @@ export function refreshLayout(): void {
   aeSlots = computeAeSlots()
   diffSlots = computeDiffSlots()
   ganSlots = computeGanSlots()
+  gnnLocal = computeGnnPositions()
 }
 
 export function cnnSlot(layer: number): CNNSlot {
@@ -484,6 +527,9 @@ export function positionOf(arch: Arch, ref: NodeRef): Vec3 {
   if (arch === 'mlp' || arch === 'text') {
     return densePos(arch, ref.layer, ref.space === 'vector' ? ref.index : 0)
   }
+  if (arch === 'gnn') {
+    return gnnNodePos(ref.layer, ref.space === 'vector' ? ref.index : 0)
+  }
   const slot = slotFor(arch, ref.layer)
   if (ref.space === 'vector') return slotPos(slot, { index: ref.index })
   return slotPos(slot, { channel: ref.channel, row: ref.row, col: ref.col })
@@ -495,6 +541,8 @@ export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 }
   if (arch === 'mlp' || arch === 'text') {
     const n = denseSizes(arch)[layer + 1]
     for (let i = 0; i < n; i++) pts.push(densePos(arch, layer, i))
+  } else if (arch === 'gnn') {
+    for (let i = 0; i < gnnLocal.length; i++) pts.push(gnnNodePos(layer, i))
   } else {
     const slot = slotFor(arch, layer)
     if (slot.kind === 'grid') {
@@ -528,4 +576,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   ae: { position: [9, 5, 15], target: [0, 0, 0] },
   diff: { position: [12.5, 5.5, 19], target: [0, 0, 0] },
   gan: { position: [13.5, 2.2, 19], target: [0, 0.4, 0] },
+  gnn: { position: [12, 5, 18], target: [0, 0, 0] },
 }

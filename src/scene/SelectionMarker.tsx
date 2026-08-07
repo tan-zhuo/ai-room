@@ -13,6 +13,7 @@ import {
   densePos,
   diffSlot,
   ganSlot,
+  gnnNodePos,
   gridPos,
   llmLayerOf,
   llmSlot,
@@ -411,6 +412,24 @@ function ganSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function gnnSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  if (sel.space !== 'vector' || sel.layer < 0) return segs
+  const trace = useStore.getState().gnnTrace
+  const g = trace.graph
+  const i = sel.index
+  if (sel.layer === 2) {
+    segs.push({ a: v(gnnNodePos(1, i)), b: target, w: 0.8, target: 0 })
+    return segs
+  }
+  // message passing: this node aggregates its neighbours (and itself) from the previous copy
+  for (let j = 0; j < g.n; j++) {
+    if (g.ahat[i][j] > 0)
+      segs.push({ a: v(gnnNodePos(sel.layer - 1, j)), b: target, w: g.ahat[i][j] * 2.2, target: 0 })
+  }
+  return segs
+}
+
 function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
   const pos = positionOf(arch, sel)
   const ring = useRef<THREE.Mesh>(null)
@@ -433,6 +452,7 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
     if (arch === 'lstm') return lstmSegments(sel, target)
     if (arch === 'diff') return diffSegments(sel, target)
     if (arch === 'gan') return ganSegments(sel, target)
+    if (arch === 'gnn') return gnnSegments(sel, target)
     return aeSegments(sel, target)
   }, [arch, sel, pos])
 

@@ -9,6 +9,7 @@ import { LSTMScene } from './LSTMScene'
 import { AEScene } from './AEScene'
 import { DiffusionScene } from './DiffusionScene'
 import { GanScene } from './GanScene'
+import { GnnScene } from './GnnScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -43,6 +44,7 @@ export function SceneRoot() {
       {arch === 'ae' && <AEScene key={`ae${version}`} />}
       {arch === 'diff' && <DiffusionScene key={`diff${version}`} />}
       {arch === 'gan' && <GanScene key={`gan${version}`} />}
+      {arch === 'gnn' && <GnnScene key={`gnn${version}`} />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

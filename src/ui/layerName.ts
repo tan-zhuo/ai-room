@@ -67,6 +67,9 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
       ] ?? 'layer.verdict',
     )
   }
+  if (arch === 'gnn') {
+    return t(['layer.graphIn', 'layer.msgpass1', 'layer.msgpass2', 'layer.nodeCls'][layer + 1] ?? 'layer.nodeCls')
+  }
   if (arch === 'ae') {
     if (layer === -1) return t('layer.input')
     if (AE_VARIANT === 'vae') {
@@ -113,6 +116,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
     return (
       ['zLatent', 'generator', 'fakeImg', 'discriminator', 'ganVerdict', 'realSample'][layer + 1] ?? 'ganVerdict'
     )
+  }
+  if (arch === 'gnn') {
+    return ['graphIn', 'msgpass', 'msgpass', 'nodeCls'][layer + 1] ?? 'nodeCls'
   }
   if (arch === 'ae') {
     if (AE_VARIANT === 'vae') {

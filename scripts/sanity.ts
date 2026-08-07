@@ -78,6 +78,16 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (gan.modes < 2) failures.push('gan mode-collapsed to a single pattern class')
 }
 
+// --- GNN
+{
+  const gnn = MODELS.gnn
+  console.log(`GNN held-out node accuracy: ${(gnn.accuracy * 100).toFixed(1)}%`)
+  if (gnn.accuracy < 0.8) failures.push('gnn accuracy too low')
+  const gnnL = (await import('../src/nn/gnn')).buildGNNTask('l')
+  console.log(`GNN L held-out node accuracy: ${(gnnL.accuracy * 100).toFixed(1)}%`)
+  if (gnnL.accuracy < 0.8) failures.push('gnn L accuracy too low')
+}
+
 // --- large-scale variants (every arch supports s/m/l; L must still learn)
 {
   const { buildRNNTask, buildLSTMTask } = await import('../src/nn/rnn')

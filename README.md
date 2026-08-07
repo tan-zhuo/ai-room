@@ -46,6 +46,10 @@ A real denoising diffusion model (T=20, linear β schedule) trained in-browser t
 
 A vanilla GAN (Goodfellow 2014) trained adversarially in-browser: the generator maps z ~ N(0,1) to an 8×8 image, the discriminator (LeakyReLU + sigmoid) judges the generated image **and** a real sample through the same weights — both branches drawn in 3D. Alternating SGD with the non-saturating G loss reaches a believable equilibrium (D(real) ≈ 0.56, D(fake) ≈ 0.34) and the generator covers 3 of the 4 pattern classes. The verdict badge tells you each round: did G fool D, or did D catch the fake?
 
+### GNN — Graph Neural Network · 图神经网络（GCN）
+
+A 2-layer graph convolutional network (Kipf & Welling) classifying nodes into communities on random graphs **it has never seen** — a fresh graph is sampled every run. The same graph is drawn four times: input features (colored by true community) → message passing ① → message passing ② → prediction (colored by predicted community, with a node-accuracy badge). Flow particles travel along the actual graph edges weighted by Â = D^-1/2 (A+I) D^-1/2 — that IS the message passing. Click any node for its neighbour-aggregation table.
+
 ### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
@@ -95,9 +99,9 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `Space` | Play / pause |
 | `←` `→` | Previous / next step |
 | `R` | Reset |
-| `1` – `5` | Models: MLP / CNN / RNN / LSTM / Transformer |
-| `6` – `8` | Generative: Autoencoder / Diffusion / GAN |
-| `9` | AI apps: Lang ID |
+| `1` – `6` | Models: MLP / CNN / RNN / LSTM / Transformer / GNN |
+| `7` – `9` | Generative: Autoencoder / Diffusion / GAN |
+| `0` | AI apps: Lang ID |
 | `S / M / L` buttons | Network scale — **every** architecture retrains live (L is the largest that still trains in-browser in seconds) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |
@@ -114,6 +118,7 @@ Every architecture's overview panel (ⓘ) links to its canonical papers. The ful
 | RNN | [Finding Structure in Time — Elman 1990](https://onlinelibrary.wiley.com/doi/10.1207/s15516709cog1402_1) · [Long-term dependencies — Bengio et al. 1994](https://ieeexplore.ieee.org/document/279181) |
 | LSTM | [Long Short-Term Memory — Hochreiter & Schmidhuber 1997](https://www.bioinf.jku.at/publications/older/2604.pdf) · [Search Space Odyssey — Greff et al. 2015](https://arxiv.org/abs/1503.04069) |
 | Transformer | [Attention Is All You Need — Vaswani et al. 2017](https://arxiv.org/abs/1706.03762) · [Sparsely-Gated MoE — Shazeer et al. 2017](https://arxiv.org/abs/1701.06538) · [GPT-3 — Brown et al. 2020](https://arxiv.org/abs/2005.14165) |
+| GNN | [GCN — Kipf & Welling 2016](https://arxiv.org/abs/1609.02907) · [The GNN Model — Scarselli et al. 2009](https://ieeexplore.ieee.org/document/4700287) · [GAT — Veličković et al. 2017](https://arxiv.org/abs/1710.10903) |
 | Autoencoder | [Dimensionality Reduction — Hinton & Salakhutdinov 2006](https://www.science.org/doi/10.1126/science.1127647) · [VAE — Kingma & Welling 2013](https://arxiv.org/abs/1312.6114) |
 | Diffusion | [DDPM — Ho, Jain & Abbeel 2020](https://arxiv.org/abs/2006.11239) · [Nonequilibrium Thermodynamics — Sohl-Dickstein et al. 2015](https://arxiv.org/abs/1503.03585) · [Latent Diffusion — Rombach et al. 2021](https://arxiv.org/abs/2112.10752) |
 | GAN | [Generative Adversarial Networks — Goodfellow et al. 2014](https://arxiv.org/abs/1406.2661) · [StyleGAN — Karras et al. 2018](https://arxiv.org/abs/1812.04948) |
@@ -152,7 +157,7 @@ src/
 
 ## 中文说明（简要）
 
-- **真实计算**：全部九个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
+- **真实计算**：全部十个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
 - **三档规模**：所有模型都有 小/中/大 三档，切换时现场重新训练。大档是浏览器几秒内还能训完的「大模型」——而且明显更强：大档 Transformer（d=24、4 头、12 上下文）训练集 top-1 达 100%，RNN loss 从 1.2 降到 0.38，扩散模型升到 12×12 图像、30 步去噪，GAN 生成器/判别器同步加宽。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
@@ -160,6 +165,7 @@ src/
 - **自编码器**：8×8 图案压入 6 维潜向量再重建（MSE 自监督，无标签）；可手绘输入看重建效果，逐像素对比原值与重建值。
 - **扩散模型（DDPM）**：浏览器内训练的真实去噪扩散模型（T=20，线性 β 调度），网络以带噪图像 + 正弦时间步嵌入为输入预测 x̂₀。播放过程即反向扩散：每一步展示去噪网络对干净图像的当前猜测，并执行一次 DDPM 后验更新 x_{t-1} = c₀·x̂₀ + c_t·x_t + σ·z，圆环/条纹图案从纯噪声中逐步浮现；点开任意像素可看到真实的后验系数。
 - **生成对抗网络（GAN）**：标准 vanilla GAN 在浏览器内对抗训练——生成器把 z ~ N(0,1) 伪造成 8×8 图像，判别器（LeakyReLU + sigmoid）用同一套权重同时审查生成图像与真实样本（两条支路都画在 3D 里）。交替 SGD + 非饱和 G 损失收敛到接近均衡（D(真)≈0.56、D(伪)≈0.34）；每轮播放结束都会宣判：生成器骗过了判别器，还是被识破了。
-- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Transformer）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
+- **图神经网络（GCN）**：两层图卷积网络在「从未见过」的随机社区图上做节点分类——每次运行重新采样一张图。同一张图画四遍：输入特征（按真实社区着色）→ 消息传递 ① → 消息传递 ② → 预测（按预测社区着色 + 节点准确率徽章）。粒子沿真实的图边流动，权重来自 Â = D^-1/2 (A+I) D^-1/2——这就是消息传递本身。点开任意节点可看邻居聚合表。
+- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Transformer/GNN）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。可切换 **MoE** 变体：FFN 替换为训练好的路由器 + 4 个专家（top-2 门控），路由分数、每个 token 的专家分配与加权合并全部可视化。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。
