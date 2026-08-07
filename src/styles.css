@@ -1228,10 +1228,6 @@ kbd {
   color: var(--text);
 }
 
-.tok-emoji {
-  font-size: 18px;
-}
-
 .tok-layer {
   margin-left: auto;
   font-family: var(--mono);

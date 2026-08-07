@@ -247,7 +247,6 @@ function TokenJourney({ x }: { x: number }) {
         <div className="tok-card" key={`${caseIdx}:${stage}`}>
           <div className="tok-head">
             <span className="tok-word">{t(`giant.tok.case${caseIdx}.word`)}</span>
-            <span className="tok-emoji">{t(`giant.tok.case${caseIdx}.emoji`).split('|')[stage]}</span>
             <span className="tok-layer">
               Layer {stage === 4 ? N : layerNow} / {N}
             </span>
