@@ -440,6 +440,26 @@ export function gnnLabelAnchor(layer: number): Vec3 {
   return [GNN_XS[layer + 1] ?? GNN_XS[3], top + 1.9, 0]
 }
 
+// ------------------------------------------------------------------ Agent layout
+// Free-form module stations (no slot grid): -1 dialogue, 0 planner,
+// 1 retrieve-agent, 2 code-agent, 3 run-agent, 4 answer, 5 summarizer.
+
+export const AGENT_STEPS = 6
+
+const AGENT_POS: Record<number, Vec3> = {
+  [-1]: [-14, 2, 0],
+  0: [-7.5, 5.5, 0],
+  1: [-1.5, 7.6, 0],
+  2: [3, 7.6, 0],
+  3: [7.5, 7.6, 0],
+  4: [12.5, 3.5, 0],
+  5: [4, -1.6, 0],
+}
+
+export function agentModulePos(layer: number): Vec3 {
+  return AGENT_POS[layer] ?? [0, 0, 0]
+}
+
 // ------------------------------------------------------------------ cached slot tables
 
 let cnnSlots = computeCnnSlots()
@@ -590,6 +610,7 @@ export function positionOf(arch: Arch, ref: NodeRef): Vec3 {
     return gnnNodePos(ref.layer, ref.space === 'vector' ? ref.index : 0)
   }
   if (arch === 'giant') return [0, 0, 0]
+  if (arch === 'agent') return agentModulePos(ref.layer)
   const slot = slotFor(arch, ref.layer)
   if (ref.space === 'vector') return slotPos(slot, { index: ref.index })
   return slotPos(slot, { channel: ref.channel, row: ref.row, col: ref.col })
@@ -605,6 +626,9 @@ export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 }
     for (let i = 0; i < gnnLocal.length; i++) pts.push(gnnNodePos(layer, i))
   } else if (arch === 'giant') {
     pts.push([0, 0, 0])
+  } else if (arch === 'agent') {
+    const p = agentModulePos(layer)
+    pts.push([p[0] - 1.6, p[1] - 1.6, p[2]], [p[0] + 1.6, p[1] + 1.6, p[2]])
   } else {
     const slot = slotFor(arch, layer)
     if (slot.kind === 'grid') {
@@ -642,4 +666,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   vit: { position: [13, 6, 20], target: [0, 0, 0] },
   giant: { position: [34, 26, 96], target: [-2, 13, 0] },
   mamba: { position: [12, 6, 19], target: [0, 0, 0] },
+  agent: { position: [7, 5, 30], target: [-0.5, 1.8, 0] },
 }

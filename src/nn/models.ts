@@ -23,6 +23,7 @@ import { GANTask, buildGANTask } from './gan'
 import { GNNTask, buildGNNTask } from './gnn'
 import { ViTTask, buildViTTask } from './vit'
 import { MambaTask, buildMambaTask } from './mamba'
+import { AgentTask, buildAgentTask } from './agent'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -94,6 +95,7 @@ export interface Models {
   gnn: GNNTask
   vit: ViTTask
   mamba: MambaTask
+  agent: AgentTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -462,6 +464,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       build: () => {
         partial.llm = buildLLMTask()
         return `loss ${partial.llm.finalLoss.toFixed(2)}`
+      },
+    },
+    {
+      label: 'Agent Router',
+      build: () => {
+        partial.agent = buildAgentTask()
+        return `route acc ${(partial.agent.accuracy * 100).toFixed(0)}%`
       },
     },
     {

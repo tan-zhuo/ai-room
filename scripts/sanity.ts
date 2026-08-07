@@ -88,6 +88,13 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (gnnL.accuracy < 0.8) failures.push('gnn L accuracy too low')
 }
 
+// --- Agent router
+{
+  const agent = MODELS.agent
+  console.log(`Agent router accuracy: ${(agent.accuracy * 100).toFixed(1)}%`)
+  if (agent.accuracy < 0.9) failures.push('agent router accuracy too low')
+}
+
 // --- Mamba (same task as RNN/LSTM — the comparison is the point)
 {
   const mamba = MODELS.mamba

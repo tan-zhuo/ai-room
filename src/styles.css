@@ -1297,6 +1297,117 @@ kbd {
   line-height: 1.5;
 }
 
+.agent-card {
+  width: 235px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  padding: 9px 12px;
+  backdrop-filter: blur(9px);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.agent-card.slim {
+  min-width: 210px;
+}
+
+.agent-card-title {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.agent-user {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.agent-answer {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #8be28f;
+  border-top: 1px dashed var(--border);
+  padding-top: 7px;
+  animation: tokIn 0.4s ease;
+}
+
+.agent-route-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.agent-route-row > span:first-child {
+  width: 52px;
+  white-space: nowrap;
+}
+
+.agent-route-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.agent-route-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffd166, #ff8a3c);
+}
+
+.agent-term {
+  width: 270px;
+  background: rgba(4, 8, 14, 0.92);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.agent-term-head {
+  padding: 5px 10px;
+  font-size: 10.5px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.agent-term-body {
+  margin: 0;
+  padding: 9px 11px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: #9fe8a9;
+  white-space: pre-wrap;
+}
+
+.agent-hit {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--accent);
+  background: rgba(9, 15, 27, 0.8);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.agent-hit .num {
+  color: #ffd166;
+}
+
+.agent-hit.write {
+  color: #8be28f;
+  border-color: rgba(139, 226, 143, 0.5);
+}
+
 .anat-tag {
   display: flex;
   flex-direction: column;

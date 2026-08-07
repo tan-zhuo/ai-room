@@ -80,6 +80,10 @@ Toggle to **MoE**: the FFN is replaced by a trained router + 4 experts with top-
 
 ![Text language detector](docs/text.gif)
 
+## AI Agent · 完整智能体全景
+
+One page shows the complete agent loop (☰ menu → AI Apps → **AI Agent**): dialogue → planner → sub-agents (retrieve / code / run) → terminal → answer → memory summarization → write-back. True to the site's brand, everything that CAN be real computation IS: the **router is a genuinely trained MLP** (the site's 13th net, softmax bars shown), the **long-term memory is real vectors** (char n-gram embeddings, k-means clusters, PCA layout), **retrieval is real cosine top-3** with visible scores, and the **write-back really assigns** the distilled memory to its nearest cluster. Four rotating scenarios (fix code + test / recall a preference / deadline + reminder / weekly summary) in zh/en/ja.
+
 ## True Scale · 真实规模对比
 
 A display-only page (☰ menu → AI Apps → **True Scale**) that draws real production models — GPT-2 XL, GPT-3, Llama 3.1 405B, DeepSeek-V3 — against the mini transformer this site actually trains, with tower heights **linearly proportional to true parameter count** (no log scale). A million-point GPU particle cloud serves as the ruler: GPT-3 ≈ 175,000 such clouds; DeepSeek-V3 is ×328,277,886 our mini model.
@@ -173,7 +177,7 @@ src/
 
 ## 中文说明（简要）
 
-- **真实计算**：全部十二个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
+- **真实计算**：全部十三个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
 - **三档规模**：所有模型都有 小/中/大 三档，切换时现场重新训练。大档是浏览器几秒内还能训完的「大模型」——而且明显更强：大档 Transformer（d=24、4 头、12 上下文）训练集 top-1 达 100%，RNN loss 从 1.2 降到 0.38，扩散模型升到 12×12 图像、30 步去噪，GAN 生成器/判别器同步加宽。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
@@ -184,6 +188,7 @@ src/
 - **图神经网络（GCN）**：两层图卷积网络在「从未见过」的随机社区图上做节点分类——每次运行重新采样一张图。同一张图画四遍：输入特征（按真实社区着色）→ 消息传递 ① → 消息传递 ② → 预测（按预测社区着色 + 节点准确率徽章）。粒子沿真实的图边流动，权重来自 Â = D^-1/2 (A+I) D^-1/2——这就是消息传递本身。点开任意节点可看邻居聚合表。
 - **Mamba（选择性状态空间模型）**：真实训练的迷你 Mamba（手写穿过选择性扫描的 BPTT）。Δ = softplus(x·WΔ) 让状态动力学「随输入而变」——这正是 Mamba 成功的关键「选择性」；递推 h = ā⊙h′ + Δ·B·u 以 O(T) 线性时间运行，状态恒定 24×8 个数（场景横幅直接写明：上下文再长也不变，对比注意力随长度增长的 KV 缓存）。与 RNN/LSTM/Transformer 用同一份语料同一个任务，loss 1.00 胜过 RNN 1.17 和 LSTM 1.28——启动屏可直接对比。点开 Δ 格子（「记忆音量旋钮」）或状态格子看真实数值的递推。
 - **视觉 Transformer（ViT）**：忠实的微缩 ViT——图像切成 4×4 图块（输入网格上画出切线）、每块线性嵌入为 token、拼上「可学习的 [CLS] token」与位置嵌入，经过一个预归一化编码块（双向多头注意力 + FFN，均带残差），最后从 LN([CLS]) 分类，留出准确率约 98%。前向与反向传播全部手写。点击图块 token 可看到正是哪 16 个像素喂给了它。
+- **AI Agent 全景（能真算的都真算）**：一页看完智能体循环——对话 → 规划器 → 多子 agent（检索/编码/执行）→ 终端 → 回复 → 记忆汇总 → 写回。路由器是「真实训练」的 MLP（本站第 13 个网络，softmax 概率条可见）；长期记忆是真实向量（字符 n-gram 嵌入 + k-means 聚类 + PCA 布局）；检索是真实余弦 top-3（分数标在连线上）；写回真实地把压缩后的记忆分配进最近的簇。四个场景轮换（改代码+测试 / 回忆偏好 / 查询+提醒 / 每周总结），三语可用。
 - **真实规模对比（仅展示，不运算）**：把 GPT-2 XL / GPT-3 / Llama 3.1 405B / DeepSeek-V3 的真实参数量（取自公开论文）与本站真正训练的迷你 Transformer 画在同一标尺下——塔高与参数量严格线性等比，不用对数坐标。一团 100 万粒子的光作为「标尺」（GPU 实例化渲染的舒适上限），GPT-3 ≈ 17.5 万团；DeepSeek-V3 是迷你模型的 3.28 亿倍。前排还有「单层解剖」：按真实矩阵形状画出选中模型一层内部的 W_Q/K/V/O、FFN 高塔（GPT-3 的 W₁ 是 49,152×12,288，一眼看出 FFN 比注意力大 4 倍）、Llama 的 SwiGLU 三矩阵与 GQA 压缩后的细 K/V 板、DeepSeek 的 256 专家网格（点亮 top-8 + 1 共享）、薄得几乎看不见的 LayerNorm，以及铺在地面的词嵌入矩阵；配「参数对账」：96 层 × 18.1 亿 + 6.2 亿 ≈ 1,750 亿。还有「Token 之旅」动画：一个 token 沿全部真实层数逐层上升——词嵌入 → 语法 → 语义 → 上下文消歧 → 整句融合，里程碑按所选模型的层数换算（GPT-3 即 Layer 1/14/38/67/96）。上下文的吸收「看得见」：句子里的词随阶段逐个点亮并保持亮着；三个案例每轮轮换，含同词对照组——「我早上吃了一个苹果」→ 水果 vs「苹果发布了新一代手机」→ 公司，同一个起点向量走向相反的含义。附各模型层数/维度/上下文/训练数据与「按浏览器训练速度需数百万年」的换算。
 - **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Mamba/Transformer/GNN/ViT）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。可切换 **MoE** 变体：FFN 替换为训练好的路由器 + 4 个专家（top-2 门控），路由分数、每个 token 的专家分配与加权合并全部可视化。

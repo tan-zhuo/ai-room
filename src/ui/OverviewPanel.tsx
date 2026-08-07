@@ -141,6 +141,32 @@ const PAPERS: Record<Arch, Paper[]> = {
       url: 'https://arxiv.org/abs/2405.21060',
     },
   ],
+  agent: [
+    {
+      title: 'ReAct: Synergizing Reasoning and Acting in Language Models',
+      authors: 'Yao, Zhao, Yu, Du, Shafran, Narasimhan & Cao',
+      year: 2022,
+      url: 'https://arxiv.org/abs/2210.03629',
+    },
+    {
+      title: 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (RAG)',
+      authors: 'Lewis et al.',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2005.11401',
+    },
+    {
+      title: 'Generative Agents: Interactive Simulacra of Human Behavior',
+      authors: 'Park, O’Brien, Cai, Morris, Liang & Bernstein',
+      year: 2023,
+      url: 'https://arxiv.org/abs/2304.03442',
+    },
+    {
+      title: 'Toolformer: Language Models Can Teach Themselves to Use Tools',
+      authors: 'Schick et al.',
+      year: 2023,
+      url: 'https://arxiv.org/abs/2302.04761',
+    },
+  ],
   giant: [
     {
       title: 'Language Models are Few-Shot Learners (GPT-3)',

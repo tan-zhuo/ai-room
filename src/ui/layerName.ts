@@ -44,6 +44,13 @@ const VAE_LAYER_KEYS = ['layer.encoder', '', 'layer.sampleZ', 'layer.decoder', '
 /** Localized display name for a layer (-1 = input). */
 export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'giant') return t('arch.giant')
+  if (arch === 'agent') {
+    return t(
+      ['layer.agentDialog', 'layer.agentPlanner', 'layer.agentRetrieve', 'layer.agentCode', 'layer.agentRun', 'layer.agentAnswer', 'layer.agentSummarize'][
+        layer + 1
+      ] ?? 'layer.agentDialog',
+    )
+  }
   if (arch === 'llm') {
     const kind = llmStageKind(layer)
     if (kind === 'qkv') return 'Q · K · V'
@@ -116,6 +123,12 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
 /** i18n key prefix (explain.<key>) for a layer's module explanation. */
 export function explainKeyOf(arch: Arch, layer: number): string {
   if (arch === 'giant') return 'giantScale'
+  if (arch === 'agent') {
+    return (
+      ['agentDialog', 'agentPlanner', 'agentMemory', 'agentCode', 'agentRun', 'agentAnswer', 'agentWriteback'][layer + 1] ??
+      'agentDialog'
+    )
+  }
   if (arch === 'llm') {
     return LLM_KIND_EXPLAIN[llmStageKind(layer)]
   }

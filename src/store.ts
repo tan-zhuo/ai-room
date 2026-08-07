@@ -16,6 +16,7 @@ import { GANTrace, forwardGAN } from './nn/gan'
 import { GNNTrace, forwardGNN, sampleGraph } from './nn/gnn'
 import { ViTTrace, forwardViT } from './nn/vit'
 import { MambaTrace, forwardMamba } from './nn/mamba'
+import { AgentLang, AgentTrace, buildAgentTrace } from './nn/agent'
 import { LLMVariant } from './nn/transformer'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
@@ -26,7 +27,7 @@ import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
 import { refreshLayout } from './scene/layout'
 
-export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae' | 'diff' | 'gan' | 'gnn' | 'vit' | 'mamba' | 'giant'
+export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae' | 'diff' | 'gan' | 'gnn' | 'vit' | 'mamba' | 'giant' | 'agent'
 
 export type NodeRef =
   | { space: 'vector'; layer: number; index: number }
@@ -43,7 +44,7 @@ export function sameRef(a: NodeRef | null, b: NodeRef | null): boolean {
 /** Mutable per-frame playback state, read inside useFrame without re-rendering React. */
 export const flow = { phase: 0, hold: 0 }
 
-const ARCH_KEYS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'mamba', 'llm', 'gnn', 'vit', 'ae', 'diff', 'gan', 'text', 'giant']
+const ARCH_KEYS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'mamba', 'llm', 'gnn', 'vit', 'ae', 'diff', 'gan', 'text', 'agent', 'giant']
 
 function urlParam(name: string): string | null {
   if (typeof location === 'undefined') return null
@@ -67,7 +68,10 @@ const initialLang: Lang = LANGS.includes(urlParam('lang') as Lang)
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, gan: 4, gnn: 3, vit: 5, giant: 1, mamba: 5 }
+/** current UI language, readable from makeInputs before the store exists */
+let currentLang: Lang = initialLang
+
+const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, gan: 4, gnn: 3, vit: 5, giant: 1, mamba: 5, agent: 6 }
 
 export function totalSteps(arch: Arch): number {
   if (arch === 'llm') return MODELS.llm.model.moe ? 11 : 9
@@ -147,6 +151,7 @@ interface AppState {
   mambaTrace: MambaTrace
   /** which production model the True-Scale page highlights */
   giantSel: number
+  agentTrace: AgentTrace
   selected: NodeRef | null
   /** layer index whose module explanation is open (-1 = input), for the current arch */
   explain: number | null
@@ -248,12 +253,16 @@ function makeInputs(arch: Arch, cls: number) {
   if (arch === 'giant') {
     return { giantSel: cls }
   }
+  if (arch === 'agent') {
+    return { agentTrace: buildAgentTrace(MODELS.agent, currentLang as AgentLang, cls % 4) }
+  }
   const input = MODELS.ae.makeSample(cls, sampleRng)
   return { aeInput: input, aeClass: cls, aeTrace: forwardMLP(MODELS.ae.model, input[0].flat()) }
 }
 
 function classCountOf(arch: Arch): number {
   if (arch === 'giant') return 5
+  if (arch === 'agent') return 4
   if (arch === 'diff' || arch === 'gan' || arch === 'gnn') return 0
   if (arch === 'llm' || arch === 'rnn' || arch === 'lstm' || arch === 'mamba') return MODELS[arch].samples.length
   return MODELS[arch].classCount
@@ -266,7 +275,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 export const useStore = create<AppState>((set, get) => ({
   arch: initialArch,
   lang: initialLang,
-  scale: { mlp: 's', cnn: 's', rnn: 's', lstm: 's', llm: 's', gnn: 's', vit: 's', mamba: 's', ae: 's', diff: 's', gan: 's', text: 's', giant: 's' },
+  scale: { mlp: 's', cnn: 's', rnn: 's', lstm: 's', llm: 's', gnn: 's', vit: 's', mamba: 's', agent: 's', ae: 's', diff: 's', gan: 's', text: 's', giant: 's' },
   cnnKernels: 'hand',
   llmVariant: 'dense',
   modelsVersion: 0,
@@ -300,6 +309,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...(makeInputs('vit', 0) as { vitInput: Tensor3; vitClass: number; vitTrace: ViTTrace }),
   ...(makeInputs('mamba', 0) as { mambaText: string; mambaClass: number; mambaTrace: MambaTrace }),
   giantSel: 2,
+  ...(makeInputs('agent', 0) as { agentTrace: AgentTrace }),
   selected: null,
   explain: null,
   hoverInfo: null,
@@ -333,7 +343,7 @@ export const useStore = create<AppState>((set, get) => ({
   setScale: (size) => {
     const s = get()
     const archKey = s.arch
-    if (archKey === 'giant') return
+    if (archKey === 'giant' || archKey === 'agent') return
     if (s.scale[archKey] === size) return
     get().showToast('toast.training')
     // let the toast paint before the (synchronous) retraining burst
@@ -638,12 +648,20 @@ export const useStore = create<AppState>((set, get) => ({
   setHover: (h) => set({ hoverInfo: h }),
 
   setLang: (l) => {
+    currentLang = l
     set({ lang: l })
+    if (get().arch === 'agent') {
+      set({ agentTrace: buildAgentTrace(MODELS.agent, l as AgentLang, get().agentTrace.scenario) })
+    }
     syncUrl(get().arch, l)
   },
   cycleLang: () => {
     const next = LANGS[(LANGS.indexOf(get().lang) + 1) % LANGS.length]
+    currentLang = next
     set({ lang: next })
+    if (get().arch === 'agent') {
+      set({ agentTrace: buildAgentTrace(MODELS.agent, next as AgentLang, get().agentTrace.scenario) })
+    }
     syncUrl(get().arch, next)
   },
 
@@ -809,6 +827,7 @@ export function stepDuration(arch: Arch, step: number): number {
   if (arch === 'gnn') return [2.4, 2.4, 1.6][step] ?? 1.4
   if (arch === 'vit') return [1.7, 2.6, 1.6, 1.7, 1.4][step] ?? 1.4
   if (arch === 'giant') return 0.6
+  if (arch === 'agent') return [1.6, 2.0, 2.4, 1.8, 1.8, 2.0][step] ?? 1.6
   if (arch === 'mamba') return [1.4, 1.8, 3.2, 1.6, 1.5][step] ?? 1.4
   const model = MODELS.cnn.model
   const def = model.layers[step]

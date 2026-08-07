@@ -76,7 +76,7 @@ export function InspectorPanel() {
           <LSTMDetail sel={sel} />
         ) : arch === 'ae' ? (
           <AEDetail sel={sel} />
-        ) : arch === 'giant' ? null : (
+        ) : arch === 'giant' || arch === 'agent' ? null : (
           <DenseDetail arch={arch} sel={sel} />
         )}
       </div>
