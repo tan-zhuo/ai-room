@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import { AGENT_SCENARIOS, AgentLang } from '../nn/agent'
 import { useStore, useT } from '../store'
 import { agentModulePos } from './layout'
@@ -53,6 +54,81 @@ function memPos(pos: [number, number]): [number, number, number] {
   return [MEM_C[0] + pos[0] * MEM_SCALE[0], MEM_C[1] + pos[1] * MEM_SCALE[1], 0]
 }
 
+const FLOOR_Y = -7.2
+const RACK_H = 1.9
+
+/** One vector-DB shard: a little server rack with breathing status LEDs. */
+function ServerRack({ x, color, tag, count }: { x: number; color: string; tag: string; count: number }) {
+  const leds = useRef<THREE.Mesh[]>([])
+  const t = useT()
+  useFrame((state) => {
+    leds.current.forEach((m, i) => {
+      if (!m) return
+      const tt = state.clock.elapsedTime * (1.6 + i * 0.7) + i * 2.1
+      ;(m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(tt))
+    })
+  })
+  const yC = FLOOR_Y + RACK_H / 2
+  return (
+    <group>
+      {/* cabinet */}
+      <mesh position={[x, yC, 0]}>
+        <boxGeometry args={[1.5, RACK_H, 1.05]} />
+        <meshStandardMaterial color="#0c1624" emissive={color} emissiveIntensity={0.07} toneMapped={false} />
+      </mesh>
+      {/* front slats */}
+      {[0, 1, 2, 3].map((k) => (
+        <mesh key={k} position={[x, FLOOR_Y + 0.35 + k * 0.42, 0.56]}>
+          <boxGeometry args={[1.26, 0.16, 0.04]} />
+          <meshStandardMaterial color="#182c44" emissive="#182c44" emissiveIntensity={0.35} toneMapped={false} />
+        </mesh>
+      ))}
+      {/* status LEDs */}
+      {[0, 1, 2].map((k) => (
+        <mesh
+          key={`l${k}`}
+          position={[x - 0.45 + k * 0.45, FLOOR_Y + RACK_H - 0.18, 0.56]}
+          ref={(m) => {
+            if (m) leds.current[k] = m
+          }}
+        >
+          <sphereGeometry args={[0.055, 8, 6]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} toneMapped={false} />
+        </mesh>
+      ))}
+      {/* glowing top plate the cables plug into */}
+      <mesh position={[x, FLOOR_Y + RACK_H + 0.03, 0]}>
+        <boxGeometry args={[1.5, 0.06, 1.05]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.5} toneMapped={false} />
+      </mesh>
+      <Html position={[x, FLOOR_Y - 0.55, 0.6]} center zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="agent-hit" style={{ borderColor: color, color }}>
+          {t('agent.shard', { c: tag, n: count })}
+        </div>
+      </Html>
+    </group>
+  )
+}
+
+/** A thin data cable between a rack top and a memory point. */
+function Cable({ a, b, color }: { a: [number, number, number]; b: [number, number, number]; color: string }) {
+  const { pos, quat, len } = useMemo(() => {
+    const va = new THREE.Vector3(...a)
+    const vb = new THREE.Vector3(...b)
+    const dir = vb.clone().sub(va)
+    const length = dir.length()
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize())
+    const mid = va.clone().add(vb).multiplyScalar(0.5)
+    return { pos: mid, quat: q, len: length }
+  }, [a, b])
+  return (
+    <mesh position={pos} quaternion={quat}>
+      <cylinderGeometry args={[0.014, 0.014, len, 5]} />
+      <meshBasicMaterial color={color} transparent opacity={0.3} toneMapped={false} />
+    </mesh>
+  )
+}
+
 /** A complete agent loop: dialogue → planner (trained router) → sub-agents →
  *  tools/terminal → answer → memory summarization → vector memory write-back.
  *  Retrieval scores, route probabilities, clusters and the write-back target
@@ -91,6 +167,24 @@ export function AgentScene() {
 
   const showAnswer = step > 4
   const showWrite = step > 5
+
+  // one shard server per k-means cluster, standing on the floor under its points
+  const racks = useMemo(() => {
+    const list: { c: number; x: number; n: number }[] = []
+    for (let c = 0; c < 4; c++) {
+      const members = trace.positions.filter((_, i) => trace.clusters[i] === c)
+      if (!members.length) continue
+      const mx = members.reduce((sum, p) => sum + memPos(p)[0], 0) / members.length
+      list.push({ c, x: mx, n: members.length })
+    }
+    list.sort((a, b) => a.x - b.x)
+    for (let i = 1; i < list.length; i++) {
+      if (list[i].x - list[i - 1].x < 3.4) list[i].x = list[i - 1].x + 3.4
+    }
+    const xOf: Record<number, number> = {}
+    list.forEach((e) => (xOf[e.c] = e.x))
+    return { list, xOf }
+  }, [trace])
 
   return (
     <group>
@@ -139,6 +233,25 @@ export function AgentScene() {
           </mesh>
         )
       })}
+      {/* shard servers + data cables binding each cluster to its rack */}
+      {racks.list.map((r) => (
+        <ServerRack key={`rack${r.c}`} x={r.x} color={CLUSTER_COLORS[r.c]} tag={'ABCD'[r.c]} count={r.n} />
+      ))}
+      {trace.positions.map((p, i) => (
+        <Cable
+          key={`cab${i}`}
+          a={[racks.xOf[trace.clusters[i]] ?? 0, FLOOR_Y + RACK_H, 0]}
+          b={memPos(p)}
+          color={CLUSTER_COLORS[trace.clusters[i]]}
+        />
+      ))}
+      {showWrite && (
+        <Cable
+          a={[racks.xOf[trace.newCluster] ?? 0, FLOOR_Y + RACK_H, 0]}
+          b={memPos(trace.newPosition)}
+          color={CLUSTER_COLORS[trace.newCluster]}
+        />
+      )}
       {showWrite && (
         <mesh position={memPos(trace.newPosition)}>
           <sphereGeometry args={[0.34, 14, 10]} />
