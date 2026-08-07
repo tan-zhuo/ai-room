@@ -2,7 +2,14 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { GIANTS, countMiniParams, fmtParams, fmtTokens } from '../nn/giants'
+import {
+  GIANTS,
+  countMiniParams,
+  embedParams,
+  fmtParams,
+  fmtTokens,
+  perLayerParams,
+} from '../nn/giants'
 import { useStore, useT } from '../store'
 
 const TOWER_X = [-17, -9, -1, 7, 15]
@@ -112,6 +119,185 @@ function LayerStack({ x }: { x: number }) {
   )
 }
 
+/** dims per world unit inside the block-anatomy exhibit */
+const ANAT_U = 3000
+
+interface Plate {
+  name: string
+  /** matrix input dims (depth, z) and output dims (height, y) */
+  inD: number
+  outD: number
+  x: number
+  color: string
+  params: number
+  /** show even when sub-pixel thin (LayerNorm) */
+  sliver?: boolean
+}
+
+/** One transformer layer of the selected model, every weight matrix drawn at
+ *  its TRUE shape (face = out-dims × in-dims on the same ruler). */
+function BlockAnatomy({ startX }: { startX: number }) {
+  const sel = useStore((s) => s.giantSel)
+  const t = useT()
+  const lang = useStore((s) => s.lang)
+  const g = GIANTS[sel]
+
+  const { plates, moeX, endX } = useMemo(() => {
+    const kv = g.kvDims ?? g.d
+    const d = g.d
+    const list: Plate[] = []
+    let x = startX
+    const push = (name: string, inD: number, outD: number, color: string, sliver = false) => {
+      const depth = Math.max(0.25, inD / ANAT_U)
+      x += depth / 2
+      list.push({ name, inD, outD, x, color, params: sliver ? 2 * d : inD * outD, sliver })
+      x += depth / 2 + 3.6
+    }
+    push('LN', d, d, '#5f6f85', true)
+    push('W_Q', d, d, '#39b8e8')
+    push('W_K', d, kv, '#39b8e8')
+    push('W_V', d, kv, '#39b8e8')
+    push('W_O', d, d, '#39b8e8')
+    push('LN', d, d, '#5f6f85', true)
+    let mX = 0
+    if (g.ffn === 'moe' && g.moe) {
+      mX = x + 5.5
+      x = mX + 8
+    } else if (g.ffn === 'swiglu3') {
+      push('W_gate', d, g.dff, '#ffb74d')
+      push('W_up', d, g.dff, '#ffb74d')
+      push('W_down', g.dff, d, '#ffb74d')
+    } else {
+      push('W_1', d, g.dff, '#ffb74d')
+      push('W_2', g.dff, d, '#ffb74d')
+    }
+    return { plates: list, moeX: mX, endX: x }
+  }, [g, startX])
+
+  if (sel === 0) {
+    return (
+      <Html position={[startX + 6, 4, 26]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="giant-tag mini">{t('giant.anat.miniHint')}</div>
+      </Html>
+    )
+  }
+
+  const carpetZ = Math.min(46, g.vocab / ANAT_U)
+  const miniRatio = Math.round(g.d / 12)
+
+  return (
+    <group position={[0, 0, 26]}>
+      {/* title + layer-count reminder */}
+      <Html position={[(startX + endX) / 2, 21.5, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="giant-tag active">
+          <b>{t('giant.anat.title')}</b>
+          <span>{t('giant.anat.times', { n: g.layers })} · {t('giant.anat.same', { r: miniRatio.toLocaleString() })}</span>
+        </div>
+      </Html>
+
+      {plates.map((p, i) => {
+        const h = Math.max(0.25, p.outD / ANAT_U)
+        const depth = Math.max(0.25, p.inD / ANAT_U)
+        const thick = p.sliver ? 0.06 : 0.5
+        return (
+          <group key={i}>
+            <mesh position={[p.x, h / 2, 0]}>
+              <boxGeometry args={[thick, h, depth]} />
+              <meshStandardMaterial
+                color={p.color}
+                emissive={p.color}
+                emissiveIntensity={p.sliver ? 0.15 : 0.4}
+                transparent
+                opacity={p.sliver ? 0.65 : 0.92}
+                toneMapped={false}
+              />
+            </mesh>
+            <Html
+              position={[p.x, i % 2 === 0 ? -1.4 : -3.1, 0]}
+              center
+              zIndexRange={[18, 0]}
+              style={{ pointerEvents: 'none' }}
+            >
+              <div className="anat-tag">
+                <b>{p.name}</b>
+                {p.sliver ? (
+                  <span>{t('giant.anat.lnNote')}</span>
+                ) : (
+                  <span>
+                    {p.outD.toLocaleString()} × {p.inD.toLocaleString()} · {fmtParams(p.params, lang)}
+                  </span>
+                )}
+              </div>
+            </Html>
+          </group>
+        )
+      })}
+
+      {/* MoE expert grid in place of the FFN */}
+      {g.ffn === 'moe' && g.moe && (
+        <group>
+          {Array.from({ length: g.moe.experts }, (_, e) => {
+            const gr = Math.floor(e / 16)
+            const gc = e % 16
+            const lit = [3, 41, 77, 106, 133, 172, 201, 244].includes(e)
+            const side = 0.58
+            return (
+              <mesh
+                key={e}
+                position={[moeX, 0.6 + gr * (side + 0.16) + side / 2, (gc - 7.5) * (side + 0.16)]}
+              >
+                <boxGeometry args={[0.5, side, side]} />
+                <meshStandardMaterial
+                  color={lit ? '#ffb74d' : '#27405a'}
+                  emissive={lit ? '#ffb74d' : '#1b3048'}
+                  emissiveIntensity={lit ? 0.85 : 0.18}
+                  toneMapped={false}
+                />
+              </mesh>
+            )
+          })}
+          <mesh position={[moeX, 0.25, 8.9]}>
+            <boxGeometry args={[0.5, 0.58, 0.58]} />
+            <meshStandardMaterial color="#58d68d" emissive="#58d68d" emissiveIntensity={0.85} toneMapped={false} />
+          </mesh>
+          <Html position={[moeX, -1.5, 0]} center zIndexRange={[18, 0]} style={{ pointerEvents: 'none' }}>
+            <div className="anat-tag">
+              <b>MoE FFN</b>
+              <span>
+                {t('giant.anat.expertGrid', {
+                  e: g.moe.experts,
+                  k: g.moe.topK,
+                  s: g.moe.shared,
+                  d: (2 * g.d * g.moe.expertDff / 1e6).toFixed(0),
+                })}
+              </span>
+            </div>
+          </Html>
+        </group>
+      )}
+
+      {/* token-embedding matrix as a floor carpet at the same ruler */}
+      <mesh position={[(startX + endX) / 2, 0.04, -carpetZ / 2 - 3]}>
+        <boxGeometry args={[endX - startX + 2, 0.08, carpetZ]} />
+        <meshStandardMaterial color="#1d4d70" emissive="#1d4d70" emissiveIntensity={0.25} transparent opacity={0.8} toneMapped={false} />
+      </mesh>
+      <Html
+        position={[(startX + endX) / 2, 1.1, -carpetZ - 4]}
+        center
+        zIndexRange={[18, 0]}
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="anat-tag">
+          <b>{t('giant.anat.embed')}</b>
+          <span>
+            {g.vocab.toLocaleString()} × {g.d.toLocaleString()} · {fmtParams(embedParams(g), lang)}
+          </span>
+        </div>
+      </Html>
+    </group>
+  )
+}
+
 /** Production-scale comparison: NOTHING here is computed — the volumes are
  *  drawn to true parameter-count proportion against the in-browser nets. */
 export function GiantScene() {
@@ -177,8 +363,9 @@ export function GiantScene() {
         </div>
       </Html>
 
-      {/* real layer structure of the selected model */}
+      {/* real layer structure of the selected model + one dissected layer */}
       <LayerStack x={27} />
+      <BlockAnatomy startX={-33} />
 
       {/* stats card — screen-anchored so it never clips */}
       <Html fullscreen zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
@@ -226,6 +413,15 @@ export function GiantScene() {
             <span>{t('giant.ratio')}</span>
             <b>×{Math.round(cur.params / Math.max(miniParams, 1)).toLocaleString()}</b>
           </div>
+          {sel > 0 && (
+            <div className="giant-row">
+              <span>{t('giant.audit')}</span>
+              <b>
+                {cur.layers} × {fmtParams(perLayerParams(cur), lang)} + {fmtParams(embedParams(cur), lang)} ≈{' '}
+                {fmtParams(cur.params, lang)}
+              </b>
+            </div>
+          )}
           <p className="giant-note">{t(sel === 0 ? 'giant.miniNote' : 'giant.trainNote')}</p>
           <p className="giant-disclaimer">{t('giant.disclaimer')}</p>
         </div>

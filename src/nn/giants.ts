@@ -18,7 +18,14 @@ export interface GiantSpec {
   ctx: number
   /** training tokens (approx, public) */
   tokens?: number
-  moe?: { experts: number; topK: number }
+  moe?: { experts: number; topK: number; shared: number; expertDff: number }
+  /** FFN hidden width (per expert for MoE) */
+  dff: number
+  vocab: number
+  /** 'gelu2' = 2-matrix FFN, 'swiglu3' = gate/up/down, 'moe' = expert grid */
+  ffn: 'gelu2' | 'swiglu3' | 'moe'
+  /** KV projection width when grouped-query attention shrinks it */
+  kvDims?: number
   /** i18n key suffix for the one-line description */
   desc: string
 }
@@ -33,6 +40,9 @@ export const GIANTS: GiantSpec[] = [
     d: 12,
     heads: 2,
     ctx: 8,
+    dff: 24,
+    vocab: 28,
+    ffn: 'gelu2',
     desc: 'mini',
   },
   {
@@ -45,6 +55,9 @@ export const GIANTS: GiantSpec[] = [
     heads: 25,
     ctx: 1024,
     tokens: 9e9,
+    dff: 6400,
+    vocab: 50257,
+    ffn: 'gelu2',
     desc: 'gpt2',
   },
   {
@@ -57,6 +70,9 @@ export const GIANTS: GiantSpec[] = [
     heads: 96,
     ctx: 2048,
     tokens: 300e9,
+    dff: 49152,
+    vocab: 50257,
+    ffn: 'gelu2',
     desc: 'gpt3',
   },
   {
@@ -69,6 +85,10 @@ export const GIANTS: GiantSpec[] = [
     heads: 128,
     ctx: 128_000,
     tokens: 15e12,
+    dff: 53248,
+    vocab: 128_256,
+    ffn: 'swiglu3',
+    kvDims: 1024,
     desc: 'llama',
   },
   {
@@ -82,10 +102,28 @@ export const GIANTS: GiantSpec[] = [
     heads: 128,
     ctx: 128_000,
     tokens: 14.8e12,
-    moe: { experts: 256, topK: 8 },
+    moe: { experts: 256, topK: 8, shared: 1, expertDff: 2048 },
+    dff: 2048,
+    vocab: 129_280,
+    ffn: 'moe',
     desc: 'dsv3',
   },
 ]
+
+/** Attention + FFN parameters of ONE layer (approx, biases ignored). */
+export function perLayerParams(g: GiantSpec): number {
+  const kv = g.kvDims ?? g.d
+  const attn = g.d * g.d * 2 + g.d * kv * 2 // Q,O full width; K,V possibly grouped
+  if (g.ffn === 'moe' && g.moe) {
+    return attn + (g.moe.experts + g.moe.shared) * 2 * g.d * g.moe.expertDff
+  }
+  const ffn = (g.ffn === 'swiglu3' ? 3 : 2) * g.d * g.dff
+  return attn + ffn
+}
+
+export function embedParams(g: GiantSpec): number {
+  return g.vocab * g.d
+}
 
 /** Count every trainable number in the in-browser transformer. */
 export function countMiniParams(): number {
@@ -107,10 +145,9 @@ export function countMiniParams(): number {
 
 /** "1750亿" / "175B" style formatting. */
 export function fmtParams(n: number, lang: string): string {
-  if (n >= 1e9) {
-    return lang === 'zh' ? `${(n / 1e8).toLocaleString()} 亿` : `${(n / 1e9).toLocaleString()}B`
-  }
-  if (n >= 1e6) return lang === 'zh' ? `${(n / 1e4).toLocaleString()} 万` : `${(n / 1e6).toLocaleString()}M`
+  const f = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 1 })
+  if (n >= 1e9) return lang === 'zh' ? `${f(n / 1e8)} 亿` : `${f(n / 1e9)}B`
+  if (n >= 1e6) return lang === 'zh' ? `${f(n / 1e8)} 亿` : `${f(n / 1e6)}M`
   return n.toLocaleString()
 }
 

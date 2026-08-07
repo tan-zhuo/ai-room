@@ -1201,6 +1201,29 @@ kbd {
   border-color: rgba(255, 209, 102, 0.5);
 }
 
+.anat-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: rgba(9, 15, 27, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.anat-tag b {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.anat-tag span {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
 .giant-stats.floating {
   position: absolute;
   right: 18px;
