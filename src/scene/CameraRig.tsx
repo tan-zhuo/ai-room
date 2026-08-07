@@ -79,7 +79,7 @@ export function CameraRig() {
       enableDamping
       dampingFactor={0.08}
       minDistance={2}
-      maxDistance={70}
+      maxDistance={110}
       rotateSpeed={0.7}
     />
   )

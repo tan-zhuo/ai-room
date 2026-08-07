@@ -559,6 +559,7 @@ export function positionOf(arch: Arch, ref: NodeRef): Vec3 {
   if (arch === 'gnn') {
     return gnnNodePos(ref.layer, ref.space === 'vector' ? ref.index : 0)
   }
+  if (arch === 'giant') return [0, 0, 0]
   const slot = slotFor(arch, ref.layer)
   if (ref.space === 'vector') return slotPos(slot, { index: ref.index })
   return slotPos(slot, { channel: ref.channel, row: ref.row, col: ref.col })
@@ -572,6 +573,8 @@ export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 }
     for (let i = 0; i < n; i++) pts.push(densePos(arch, layer, i))
   } else if (arch === 'gnn') {
     for (let i = 0; i < gnnLocal.length; i++) pts.push(gnnNodePos(layer, i))
+  } else if (arch === 'giant') {
+    pts.push([0, 0, 0])
   } else {
     const slot = slotFor(arch, layer)
     if (slot.kind === 'grid') {
@@ -607,4 +610,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   gan: { position: [13.5, 2.2, 19], target: [0, 0.4, 0] },
   gnn: { position: [12, 5, 18], target: [0, 0, 0] },
   vit: { position: [13, 6, 20], target: [0, 0, 0] },
+  giant: { position: [34, 26, 96], target: [-2, 13, 0] },
 }

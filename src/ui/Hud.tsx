@@ -47,7 +47,10 @@ const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'gan', kbd: '9' },
 ]
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [{ arch: 'text', kbd: '0' }]
+const APP_ARCHS: { arch: Arch; kbd: string }[] = [
+  { arch: 'text', kbd: '0' },
+  { arch: 'giant', kbd: '' },
+]
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -95,7 +98,7 @@ function TopBar() {
   const toggleMenu = useStore((s) => s.toggleMenu)
   const toggleOverview = useStore((s) => s.toggleOverview)
 
-  const scalable = true // every architecture now retrains live at s/m/l
+  const scalable = arch !== 'giant' // every trained architecture retrains live at s/m/l
 
   return (
     <div className="topbar">
@@ -324,6 +327,7 @@ function BottomBar() {
     gan: -1,
     gnn: -1,
     vit: vitClass,
+    giant: useStore.getState().giantSel,
   }[arch]
   const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
   const chipArch = arch === 'ae' || arch === 'vit' ? 'cnn' : arch
@@ -331,10 +335,12 @@ function BottomBar() {
     ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
     : arch === 'diff' || arch === 'gan' || arch === 'gnn'
       ? []
-      : Array.from(
-        { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae' | 'vit'].classCount },
-        (_, i) => t(`class.${chipArch}.${i}`),
-      )
+      : arch === 'giant'
+        ? Array.from({ length: 5 }, (_, i) => t(`class.giant.${i}`))
+        : Array.from(
+          { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae' | 'vit'].classCount },
+          (_, i) => t(`class.${chipArch}.${i}`),
+        )
 
   return (
     <div className="bottombar">

@@ -11,6 +11,7 @@ import { DiffusionScene } from './DiffusionScene'
 import { GanScene } from './GanScene'
 import { GnnScene } from './GnnScene'
 import { ViTScene } from './ViTScene'
+import { GiantScene } from './GiantScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -22,7 +23,7 @@ export function SceneRoot() {
   return (
     <>
       <color attach="background" args={['#04060c']} />
-      <fog attach="fog" args={['#04060c', 26, 90]} />
+      <fog attach="fog" args={arch === 'giant' ? ['#04060c', 60, 220] : ['#04060c', 26, 90]} />
       <ambientLight intensity={0.7} />
       <directionalLight position={[6, 10, 8]} intensity={0.6} />
       <Stars radius={70} depth={30} count={2400} factor={3.2} saturation={0} fade speed={0.5} />
@@ -47,6 +48,7 @@ export function SceneRoot() {
       {arch === 'gan' && <GanScene key={`gan${version}`} />}
       {arch === 'gnn' && <GnnScene key={`gnn${version}`} />}
       {arch === 'vit' && <ViTScene key={`vit${version}`} />}
+      {arch === 'giant' && <GiantScene key="giant" />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

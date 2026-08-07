@@ -121,6 +121,32 @@ const PAPERS: Record<Arch, Paper[]> = {
       url: 'https://arxiv.org/abs/2112.10752',
     },
   ],
+  giant: [
+    {
+      title: 'Language Models are Few-Shot Learners (GPT-3)',
+      authors: 'Brown et al.',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2005.14165',
+    },
+    {
+      title: 'The Llama 3 Herd of Models',
+      authors: 'Meta AI',
+      year: 2024,
+      url: 'https://arxiv.org/abs/2407.21783',
+    },
+    {
+      title: 'DeepSeek-V3 Technical Report',
+      authors: 'DeepSeek-AI',
+      year: 2024,
+      url: 'https://arxiv.org/abs/2412.19437',
+    },
+    {
+      title: 'Scaling Laws for Neural Language Models',
+      authors: 'Kaplan, McCandlish et al.',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2001.08361',
+    },
+  ],
   vit: [
     {
       title: 'An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale (ViT)',
