@@ -88,6 +88,18 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (gnnL.accuracy < 0.8) failures.push('gnn L accuracy too low')
 }
 
+// --- Mamba (same task as RNN/LSTM — the comparison is the point)
+{
+  const mamba = MODELS.mamba
+  console.log(
+    `Mamba final loss: ${mamba.finalLoss.toFixed(3)} (vs RNN ${MODELS.rnn.finalLoss.toFixed(3)}, LSTM ${MODELS.lstm.finalLoss.toFixed(3)})`,
+  )
+  if (mamba.finalLoss > 2.0) failures.push('mamba did not learn')
+  const mambaL = (await import('../src/nn/mamba')).buildMambaTask('l')
+  console.log(`Mamba L final loss: ${mambaL.finalLoss.toFixed(3)}`)
+  if (mambaL.finalLoss > 1.5) failures.push('mamba L did not learn')
+}
+
 // --- ViT
 {
   const vit = MODELS.vit

@@ -439,6 +439,39 @@ const en: Dict = {
   'giant.tok.case2.s2': 'Semantics: you can get LOST in it — a region, not a website.',
   'giant.tok.case2.s3': 'Context: “rainforest” lands — the jungle, not the company.',
   'giant.tok.case2.s4': 'One word, two sentences, two opposite meanings — this is what the layers are for.',
+  'arch.mamba': 'Mamba',
+  'arch.mambaFull': 'Mamba — selective state space model (SSM)',
+  'layer.selectivity': 'Selectivity Δ',
+  'layer.ssmState': 'Selective scan (state)',
+  'layer.gatedOut': 'Gated output',
+  'mamba.badge': 'O(T) linear time · constant state ({s} numbers, no matter how long the context)',
+  'mamba.tokNote': 'Same corpus and task as the RNN, LSTM and Transformer pages — compare their losses on the boot screen.',
+  'mamba.deltaNote': 'THE Mamba idea: Δ depends on the input. Large Δ = overwrite the state with this token (remember it); small Δ = barely touch the state (let it flow past). Earlier SSMs had fixed dynamics — selectivity is what made Mamba work.',
+  'mamba.scanNote': 'The recurrence: each of the N state numbers decays by ā = exp(−A·Δ) (Δ = {d} here) and takes in Δ·B·u of the current input. One pass, left to right — O(T), and the state never grows.',
+  'mamba.gateNote': 'A SiLU gate (like GLU) decides how much of the SSM output passes through — the other half of the Mamba block.',
+  'explain.selectivity.what':
+    'A sheet of input-dependent step sizes Δ = softplus(x·WΔ + b), one per channel per token. Bright cells = “this token matters, write it into the state”; dark cells = “ignore, keep the old state”.',
+  'explain.selectivity.why':
+    'This is the “selective” in selective SSM and the reason Mamba beats earlier linear models: the dynamics themselves depend on content, so the fixed-size state can choose what to remember across arbitrary distances.',
+  'explain.selectivity.simple': 'A volume knob for memory, turned per word.',
+  'explain.ssmScan.what':
+    'The state-space recurrence h = ā⊙h′ + Δ·B·u, run once left-to-right. Each channel keeps N little numbers; the readout is y = h·C + D·u with B and C also input-dependent.',
+  'explain.ssmScan.why':
+    'This single O(T) pass replaces attention’s O(T²) all-pairs comparison, and at inference the state is CONSTANT-size — no KV cache growing with context. That trade is Mamba’s whole pitch.',
+  'explain.ssmScan.simple': 'One reader moving along the line with a fixed-size notebook, deciding per word what to jot down.',
+  'explain.gatedOut.what':
+    'The SSM output is multiplied by a SiLU gate computed from the same input: o = y ⊙ silu(z). What the state remembered still has to be let through.',
+  'explain.gatedOut.why':
+    'Gating gives the block its nonlinearity and lets it suppress channels wholesale — the same trick GLU variants play inside transformer FFNs.',
+  'explain.gatedOut.simple': 'The notebook is read back through a filter.',
+  'overview.mamba.intro':
+    'Mamba (2023) is the strongest challenger to the transformer’s throne: a selective state space model that processes sequences in LINEAR time with a fixed-size recurrent state, instead of attention’s quadratic all-pairs comparison. Its trick is selectivity — the state dynamics (Δ, B, C) depend on the input, so it chooses what to remember. This demo trains a real minimal Mamba on the SAME task as the RNN, LSTM and Transformer pages; check the boot screen — it beats both recurrent nets.',
+  'overview.mamba.problems':
+    'It attacks the transformer’s two pain points: O(T²) attention cost and the KV cache that grows with context length. Mamba is O(T) with O(1) state — long documents, audio streams and DNA sequences stop being quadratic nightmares.',
+  'overview.mamba.domains':
+    'Long-context language modeling\nAudio & speech (raw waveforms)\nGenomics (million-token DNA)\nHybrid LLMs (Jamba: attention + Mamba layers)\nEdge / streaming inference (constant memory)',
+  'overview.mamba.industries':
+    'AI infrastructure — cheaper long-context serving\nBioinformatics — genome-scale models\nSpeech tech — streaming recognition\nOn-device AI — fixed memory footprint',
   'overview.title': 'Model overview',
   'overview.secIntro': 'What it is',
   'overview.secProblems': 'Problems it solves',
@@ -1085,6 +1118,39 @@ const zh: Dict = {
   'giant.tok.case2.s2': '语义：能「喝」的小米——谷物的概率大增。',
   'giant.tok.case2.s3': '上下文：「粥」字落地——是小米粥，跟手机没有关系。',
   'giant.tok.case2.s4': '融合完成——预测下一个 token：「，」「很」……',
+  'arch.mamba': 'Mamba',
+  'arch.mambaFull': 'Mamba——选择性状态空间模型（SSM）',
+  'layer.selectivity': '选择性 Δ',
+  'layer.ssmState': '选择性扫描（状态）',
+  'layer.gatedOut': '门控输出',
+  'mamba.badge': 'O(T) 线性时间 · 状态恒定（{s} 个数，上下文再长也不变）',
+  'mamba.tokNote': '与 RNN、LSTM、Transformer 页同一份语料同一个任务——启动屏上可以直接对比它们的 loss。',
+  'mamba.deltaNote': 'Mamba 的核心思想：Δ 由输入决定。Δ 大 = 把这个 token 写进状态（记住它）；Δ 小 = 几乎不动状态（让它流过）。早期 SSM 的动力学是固定的——「选择性」正是 Mamba 成功的关键。',
+  'mamba.scanNote': '递推公式：N 个状态数各自按 ā = exp(−A·Δ) 衰减（此处 Δ = {d}），并吸收 Δ·B·u 的当前输入。从左到右一趟扫完——O(T)，状态永不增长。',
+  'mamba.gateNote': 'SiLU 门（类似 GLU）决定 SSM 输出能通过多少——这是 Mamba 块的另一半。',
+  'explain.selectivity.what':
+    '一片「输入相关的步长」Δ = softplus(x·WΔ + b)，每个 token 每个通道一个。亮格 =「这个 token 重要，写进状态」；暗格 =「忽略，保持旧状态」。',
+  'explain.selectivity.why':
+    '这就是「选择性」SSM 里的选择性，也是 Mamba 胜过早期线性模型的原因：动力学本身随内容变化，固定大小的状态才能跨任意距离挑选要记住的东西。',
+  'explain.selectivity.simple': '一个逐词旋动的「记忆音量旋钮」。',
+  'explain.ssmScan.what':
+    '状态空间递推 h = ā⊙h′ + Δ·B·u，从左到右扫一遍。每个通道维护 N 个小数字；读出为 y = h·C + D·u，B 和 C 同样由输入决定。',
+  'explain.ssmScan.why':
+    '这一趟 O(T) 扫描取代了注意力 O(T²) 的两两比较；推理时状态「恒定大小」——没有随上下文增长的 KV 缓存。这笔交换正是 Mamba 的全部卖点。',
+  'explain.ssmScan.simple': '一位读者带着固定大小的笔记本沿行前进，逐词决定记什么。',
+  'explain.gatedOut.what':
+    'SSM 的输出乘上由同一输入算出的 SiLU 门：o = y ⊙ silu(z)。状态记住的东西还要过一道闸。',
+  'explain.gatedOut.why':
+    '门控提供非线性，也能整通道地抑制信息——与 Transformer FFN 里 GLU 变体的把戏如出一辙。',
+  'explain.gatedOut.simple': '笔记本里的内容要透过滤镜读出来。',
+  'overview.mamba.intro':
+    'Mamba（2023）是 Transformer 王座最有力的挑战者：一个「选择性状态空间模型」，用固定大小的循环状态以「线性」时间处理序列，而不是注意力的平方级两两比较。诀窍在于「选择性」——状态动力学（Δ、B、C）由输入决定，因此它能自己挑选记什么。本演示在与 RNN、LSTM、Transformer 完全相同的任务上真实训练了一个迷你 Mamba；看启动屏——它胜过两个循环网络。',
+  'overview.mamba.problems':
+    '它直击 Transformer 的两大痛点：O(T²) 的注意力开销和随上下文增长的 KV 缓存。Mamba 是 O(T) + O(1) 状态——长文档、音频流、DNA 序列不再是平方级噩梦。',
+  'overview.mamba.domains':
+    '长上下文语言建模\n音频与语音（原始波形）\n基因组学（百万 token 的 DNA）\n混合大模型（Jamba：注意力 + Mamba 层）\n端侧 / 流式推理（内存恒定）',
+  'overview.mamba.industries':
+    'AI 基础设施——更便宜的长上下文推理\n生物信息——基因组级模型\n语音技术——流式识别\n端侧 AI——固定内存占用',
   'overview.title': '模型简介',
   'overview.secIntro': '这是什么',
   'overview.secProblems': '解决了什么问题',
@@ -1724,6 +1790,39 @@ const ja: Dict = {
   'giant.tok.case2.s2': '意味：道に迷える場所——地域らしい。',
   'giant.tok.case2.s3': '文脈：「熱帯雨林」が着地——ジャングルのほう。',
   'giant.tok.case2.s4': '同じ単語、違う文、正反対の意味——何十もの層はこのためにある。',
+  'arch.mamba': 'Mamba',
+  'arch.mambaFull': 'Mamba——選択的状態空間モデル（SSM）',
+  'layer.selectivity': '選択性 Δ',
+  'layer.ssmState': '選択的スキャン（状態）',
+  'layer.gatedOut': 'ゲート付き出力',
+  'mamba.badge': 'O(T) 線形時間 · 状態は一定（{s} 個の数、コンテキストがどれだけ長くても）',
+  'mamba.tokNote': 'RNN・LSTM・Transformer ページと同じコーパス・同じタスク——起動画面で loss を直接比較できる。',
+  'mamba.deltaNote': 'Mamba の核心：Δ は入力で決まる。Δ 大 = このトークンを状態に書き込む（覚える）；Δ 小 = 状態をほぼ動かさない（流す）。初期の SSM は固定ダイナミクスだった——「選択性」こそ Mamba 成功の鍵。',
+  'mamba.scanNote': '再帰式：N 個の状態はそれぞれ ā = exp(−A·Δ) で減衰し（ここでは Δ = {d}）、Δ·B·u だけ現在の入力を取り込む。左から右へ一回のスキャン——O(T)、状態は決して増えない。',
+  'mamba.gateNote': 'SiLU ゲート（GLU 系）が SSM 出力の通過量を決める——Mamba ブロックのもう半分。',
+  'explain.selectivity.what':
+    '「入力依存のステップ幅」Δ = softplus(x·WΔ + b) のシート。トークン×チャネルごとに 1 つ。明るいセル =「重要、状態へ書き込む」；暗いセル =「無視、旧状態を保つ」。',
+  'explain.selectivity.why':
+    'これが選択的 SSM の「選択性」であり、Mamba が従来の線形モデルに勝った理由。ダイナミクス自体が内容に依存するから、固定サイズの状態でも任意の距離を越えて覚えるものを選べる。',
+  'explain.selectivity.simple': '単語ごとに回す「記憶のボリュームつまみ」。',
+  'explain.ssmScan.what':
+    '状態空間の再帰 h = ā⊙h′ + Δ·B·u を左から右へ一回。各チャネルは N 個の小さな数を保持し、読み出しは y = h·C + D·u。B と C も入力依存。',
+  'explain.ssmScan.why':
+    'この O(T) の一回のスキャンが、アテンションの O(T²) 総当たり比較を置き換える。推論時の状態は「一定サイズ」——コンテキストとともに膨らむ KV キャッシュがない。この交換こそ Mamba の売り。',
+  'explain.ssmScan.simple': '固定サイズのノートを持った読み手が行に沿って進み、単語ごとに何をメモするか決める。',
+  'explain.gatedOut.what':
+    'SSM の出力に、同じ入力から計算した SiLU ゲートを掛ける：o = y ⊙ silu(z)。状態が覚えたものも関門を通る。',
+  'explain.gatedOut.why':
+    'ゲートは非線形性を与え、チャネル丸ごと情報を抑制できる——Transformer FFN の GLU 系と同じ仕掛け。',
+  'explain.gatedOut.simple': 'ノートの中身はフィルター越しに読み出される。',
+  'overview.mamba.intro':
+    'Mamba（2023）は Transformer の王座への最有力挑戦者。選択的状態空間モデルとして、固定サイズの再帰状態で系列を「線形」時間で処理する——アテンションの二乗総当たりではなく。鍵は「選択性」：状態のダイナミクス（Δ・B・C）が入力に依存し、何を覚えるかを自分で選ぶ。本デモは RNN・LSTM・Transformer と全く同じタスクで本物のミニ Mamba を学習させた。起動画面を見てほしい——両再帰ネットに勝っている。',
+  'overview.mamba.problems':
+    'Transformer の二大弱点——O(T²) のアテンションコストとコンテキストとともに増える KV キャッシュ——を直撃。Mamba は O(T) + O(1) 状態で、長文書・音声ストリーム・DNA 系列が二乗の悪夢でなくなる。',
+  'overview.mamba.domains':
+    '長コンテキスト言語モデリング\n音声（生波形）\nゲノミクス（百万トークンの DNA）\nハイブリッド LLM（Jamba：アテンション + Mamba 層）\nエッジ / ストリーミング推論（メモリ一定）',
+  'overview.mamba.industries':
+    'AI インフラ——安価な長コンテキスト推論\nバイオインフォマティクス——ゲノム規模モデル\n音声技術——ストリーミング認識\nオンデバイス AI——固定メモリ',
   'overview.title': 'モデル概要',
   'overview.secIntro': 'これは何か',
   'overview.secProblems': '解決する課題',

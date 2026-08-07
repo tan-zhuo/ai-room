@@ -121,6 +121,26 @@ const PAPERS: Record<Arch, Paper[]> = {
       url: 'https://arxiv.org/abs/2112.10752',
     },
   ],
+  mamba: [
+    {
+      title: 'Mamba: Linear-Time Sequence Modeling with Selective State Spaces',
+      authors: 'Gu & Dao',
+      year: 2023,
+      url: 'https://arxiv.org/abs/2312.00752',
+    },
+    {
+      title: 'Efficiently Modeling Long Sequences with Structured State Spaces (S4)',
+      authors: 'Gu, Goel & Ré',
+      year: 2021,
+      url: 'https://arxiv.org/abs/2111.00396',
+    },
+    {
+      title: 'Transformers are SSMs: Generalized Models and Efficient Algorithms (Mamba-2)',
+      authors: 'Dao & Gu',
+      year: 2024,
+      url: 'https://arxiv.org/abs/2405.21060',
+    },
+  ],
   giant: [
     {
       title: 'Language Models are Few-Shot Learners (GPT-3)',

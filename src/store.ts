@@ -15,6 +15,7 @@ import { DiffusionTrace, sampleDiffusion } from './nn/diffusion'
 import { GANTrace, forwardGAN } from './nn/gan'
 import { GNNTrace, forwardGNN, sampleGraph } from './nn/gnn'
 import { ViTTrace, forwardViT } from './nn/vit'
+import { MambaTrace, forwardMamba } from './nn/mamba'
 import { LLMVariant } from './nn/transformer'
 import { DenseTrace, forwardMLP } from './nn/mlp'
 import { CNNStep, Tensor3, forwardCNN } from './nn/cnn'
@@ -25,7 +26,7 @@ import { mulberry32 } from './nn/rng'
 import { Lang, LANGS, detectLang, translate } from './i18n'
 import { refreshLayout } from './scene/layout'
 
-export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae' | 'diff' | 'gan' | 'gnn' | 'vit' | 'giant'
+export type Arch = 'mlp' | 'cnn' | 'text' | 'llm' | 'rnn' | 'lstm' | 'ae' | 'diff' | 'gan' | 'gnn' | 'vit' | 'mamba' | 'giant'
 
 export type NodeRef =
   | { space: 'vector'; layer: number; index: number }
@@ -42,7 +43,7 @@ export function sameRef(a: NodeRef | null, b: NodeRef | null): boolean {
 /** Mutable per-frame playback state, read inside useFrame without re-rendering React. */
 export const flow = { phase: 0, hold: 0 }
 
-const ARCH_KEYS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'llm', 'gnn', 'vit', 'ae', 'diff', 'gan', 'text', 'giant']
+const ARCH_KEYS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'mamba', 'llm', 'gnn', 'vit', 'ae', 'diff', 'gan', 'text', 'giant']
 
 function urlParam(name: string): string | null {
   if (typeof location === 'undefined') return null
@@ -66,7 +67,7 @@ const initialLang: Lang = LANGS.includes(urlParam('lang') as Lang)
 
 const sampleRng = mulberry32(0xc0ffee)
 
-const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, gan: 4, gnn: 3, vit: 5, giant: 1 }
+const FIXED_STEPS: Partial<Record<Arch, number>> = { rnn: 3, lstm: 5, ae: 4, gan: 4, gnn: 3, vit: 5, giant: 1, mamba: 5 }
 
 export function totalSteps(arch: Arch): number {
   if (arch === 'llm') return MODELS.llm.model.moe ? 11 : 9
@@ -141,6 +142,9 @@ interface AppState {
   vitInput: Tensor3
   vitClass: number
   vitTrace: ViTTrace
+  mambaText: string
+  mambaClass: number
+  mambaTrace: MambaTrace
   /** which production model the True-Scale page highlights */
   giantSel: number
   selected: NodeRef | null
@@ -182,6 +186,7 @@ interface AppState {
   setLLMInput: (raw: string) => void
   setRNNInput: (raw: string) => void
   setLSTMInput: (raw: string) => void
+  setMambaInput: (raw: string) => void
   toggleGenerate: () => void
   commitGeneratedChar: () => void
   requestFocus: (pos: [number, number, number] | null, distance?: number) => void
@@ -235,6 +240,11 @@ function makeInputs(arch: Arch, cls: number) {
     const input = MODELS.vit.makeSample(cls, sampleRng)
     return { vitInput: input, vitClass: cls, vitTrace: forwardViT(MODELS.vit.model, input[0]) }
   }
+  if (arch === 'mamba') {
+    const raw = MODELS.mamba.samples[cls % MODELS.mamba.samples.length]
+    const m = MODELS.mamba.model
+    return { mambaText: raw, mambaClass: cls, mambaTrace: forwardMamba(m, encodeSeq(m.vocab, m.T, raw)) }
+  }
   if (arch === 'giant') {
     return { giantSel: cls }
   }
@@ -245,7 +255,7 @@ function makeInputs(arch: Arch, cls: number) {
 function classCountOf(arch: Arch): number {
   if (arch === 'giant') return 5
   if (arch === 'diff' || arch === 'gan' || arch === 'gnn') return 0
-  if (arch === 'llm' || arch === 'rnn' || arch === 'lstm') return MODELS[arch].samples.length
+  if (arch === 'llm' || arch === 'rnn' || arch === 'lstm' || arch === 'mamba') return MODELS[arch].samples.length
   return MODELS[arch].classCount
 }
 
@@ -256,7 +266,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 export const useStore = create<AppState>((set, get) => ({
   arch: initialArch,
   lang: initialLang,
-  scale: { mlp: 's', cnn: 's', rnn: 's', lstm: 's', llm: 's', gnn: 's', vit: 's', ae: 's', diff: 's', gan: 's', text: 's', giant: 's' },
+  scale: { mlp: 's', cnn: 's', rnn: 's', lstm: 's', llm: 's', gnn: 's', vit: 's', mamba: 's', ae: 's', diff: 's', gan: 's', text: 's', giant: 's' },
   cnnKernels: 'hand',
   llmVariant: 'dense',
   modelsVersion: 0,
@@ -288,6 +298,7 @@ export const useStore = create<AppState>((set, get) => ({
   ...(makeInputs('gan', 0) as { ganTrace: GANTrace }),
   ...(makeInputs('gnn', 0) as { gnnTrace: GNNTrace }),
   ...(makeInputs('vit', 0) as { vitInput: Tensor3; vitClass: number; vitTrace: ViTTrace }),
+  ...(makeInputs('mamba', 0) as { mambaText: string; mambaClass: number; mambaTrace: MambaTrace }),
   giantSel: 2,
   selected: null,
   explain: null,
@@ -352,6 +363,9 @@ export const useStore = create<AppState>((set, get) => ({
       } else if (archKey === 'lstm') {
         const m = MODELS.lstm.model
         inputs = { lstmTrace: forwardLSTM(m, encodeSeq(m.vocab, m.T, get().lstmText)) }
+      } else if (archKey === 'mamba') {
+        const m = MODELS.mamba.model
+        inputs = { mambaTrace: forwardMamba(m, encodeSeq(m.vocab, m.T, get().mambaText)) }
       } else if (archKey === 'ae') {
         // the input grid size may have changed — draw a fresh sample
         const cls = Math.max(0, get().aeClass)
@@ -699,6 +713,19 @@ export const useStore = create<AppState>((set, get) => ({
     })
   },
 
+  setMambaInput: (raw) => {
+    const m = MODELS.mamba.model
+    flow.phase = 0
+    flow.hold = 0
+    set({
+      mambaText: raw,
+      mambaClass: -1,
+      mambaTrace: forwardMamba(m, encodeSeq(m.vocab, m.T, raw)),
+      ...restart,
+      selected: null,
+    })
+  },
+
   toggleGenerate: () => {
     const s = get()
     if (s.llmGenerating) {
@@ -782,6 +809,7 @@ export function stepDuration(arch: Arch, step: number): number {
   if (arch === 'gnn') return [2.4, 2.4, 1.6][step] ?? 1.4
   if (arch === 'vit') return [1.7, 2.6, 1.6, 1.7, 1.4][step] ?? 1.4
   if (arch === 'giant') return 0.6
+  if (arch === 'mamba') return [1.4, 1.8, 3.2, 1.6, 1.5][step] ?? 1.4
   const model = MODELS.cnn.model
   const def = model.layers[step]
   if (!def) return 1.2

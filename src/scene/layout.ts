@@ -274,6 +274,28 @@ function computeLstmSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ Mamba slots
+// -1 tokens, 0 embeddings, 1 Δ selectivity, 2 selective-scan state readout
+// (row = timestep, recurrence arcs), 3 gated output, 4 next-char logits.
+
+export const MAMBA_STEPS = 5
+
+function computeMambaSlots(): CNNSlot[] {
+  const m = MODELS.mamba.model
+  const { T, d, dI } = m
+  const V = m.vocab.length
+  const xs = [-12.5, -8.6, -4.4, 0, 4.4, 8.8]
+  const ci = Math.min(0.34, 3.8 / dI)
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: 1, cols: T, cell: Math.min(0.7, 6.4 / T), x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: Math.min(0.38, 3.6 / d), x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: 1, rows: T, cols: dI, cell: ci, x: xs[2], chGap: 0 },
+    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: dI, cell: ci, x: xs[3], chGap: 0 },
+    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: dI, cell: ci, x: xs[4], chGap: 0 },
+    { kind: 'vector', layer: 4, size: V, x: xs[5], gapY: Math.min(0.72, 12.5 / V) },
+  ]
+}
+
 // ------------------------------------------------------------------ Autoencoder slots
 // -1 input image, 0 encoder, 1 latent bottleneck, 2 decoder, 3 reconstruction.
 
@@ -428,6 +450,7 @@ let aeSlots = computeAeSlots()
 let diffSlots = computeDiffSlots()
 let ganSlots = computeGanSlots()
 let vitSlots = computeVitSlots()
+let mambaSlots = computeMambaSlots()
 gnnLocal = computeGnnPositions()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
@@ -440,6 +463,7 @@ export function refreshLayout(): void {
   diffSlots = computeDiffSlots()
   ganSlots = computeGanSlots()
   vitSlots = computeVitSlots()
+  mambaSlots = computeMambaSlots()
   gnnLocal = computeGnnPositions()
 }
 
@@ -475,6 +499,10 @@ export function vitSlot(layer: number): CNNSlot {
   return vitSlots[layer + 1]
 }
 
+export function mambaSlot(layer: number): CNNSlot {
+  return mambaSlots[layer + 1]
+}
+
 /** Slot lookup for every grid-based architecture. */
 export function slotFor(arch: Arch, layer: number): CNNSlot {
   switch (arch) {
@@ -492,6 +520,8 @@ export function slotFor(arch: Arch, layer: number): CNNSlot {
       return ganSlot(layer)
     case 'vit':
       return vitSlot(layer)
+    case 'mamba':
+      return mambaSlot(layer)
     default:
       return aeSlot(layer)
   }
@@ -611,4 +641,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   gnn: { position: [12, 5, 18], target: [0, 0, 0] },
   vit: { position: [13, 6, 20], target: [0, 0, 0] },
   giant: { position: [34, 26, 96], target: [-2, 13, 0] },
+  mamba: { position: [12, 6, 19], target: [0, 0, 0] },
 }

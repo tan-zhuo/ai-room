@@ -22,6 +22,7 @@ import { DiffusionTask, buildDiffusionTask } from './diffusion'
 import { GANTask, buildGANTask } from './gan'
 import { GNNTask, buildGNNTask } from './gnn'
 import { ViTTask, buildViTTask } from './vit'
+import { MambaTask, buildMambaTask } from './mamba'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -92,6 +93,7 @@ export interface Models {
   gan: GANTask
   gnn: GNNTask
   vit: ViTTask
+  mamba: MambaTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -449,6 +451,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       },
     },
     {
+      label: 'Mamba',
+      build: () => {
+        partial.mamba = buildMambaTask()
+        return `loss ${partial.mamba.finalLoss.toFixed(2)}`
+      },
+    },
+    {
       label: 'Transformer',
       build: () => {
         partial.llm = buildLLMTask()
@@ -521,6 +530,9 @@ export function rebuildArch(
       break
     case 'vit':
       MODELS = { ...MODELS, vit: buildViTTask(cnnSampleOfSize, scale) }
+      break
+    case 'mamba':
+      MODELS = { ...MODELS, mamba: buildMambaTask(scale) }
       break
     case 'text':
       MODELS = { ...MODELS, text: buildTextTask(scale) }

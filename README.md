@@ -54,6 +54,10 @@ A 2-layer graph convolutional network (Kipf & Welling) classifying nodes into co
 
 A faithful miniature ViT (Dosovitskiy 2020) with hand-written forward AND backward passes: the image is cut into 4×4 patches (grid lines drawn on the input), each patch linearly embedded as a token, a **learned [CLS] token** prepended, learned positional embeddings added, then one pre-LN encoder block (bidirectional multi-head attention + FFN, both residual) and classification read from LN([CLS]). Reaches ~98% held-out accuracy on the patterns. Click a patch-token cell and the selection fan shows exactly which 16 pixels feed it.
 
+### Mamba — Selective State Space Model · 选择性状态空间模型
+
+A real minimal Mamba (Gu & Dao 2023) with hand-written BPTT through the selective scan: Δ = softplus(x·WΔ) makes the state dynamics **input-dependent** (the selectivity that made Mamba work), h = ā⊙h′ + Δ·B·u runs in **O(T) with a constant-size state** — the banner in the scene says it: 24×8 numbers no matter how long the context. Trained on the SAME corpus/task as the RNN, LSTM and Transformer pages, and it beats both recurrent nets (loss 1.00 vs RNN 1.17 / LSTM 1.28 — compare on the boot screen). Inspect any Δ cell (the "memory volume knob") or state cell (the full recurrence with real numbers).
+
 ### Transformer — Tiny char-level LLM · 迷你 Transformer（字符级）
 
 A structurally faithful character-level transformer block with **hand-written forward AND backward passes** (including LayerNorm and residual gradients), trained in-browser on a small corpus (~2.5s):
@@ -129,6 +133,7 @@ Every architecture's overview panel (ⓘ) links to its canonical papers. The ful
 | LSTM | [Long Short-Term Memory — Hochreiter & Schmidhuber 1997](https://www.bioinf.jku.at/publications/older/2604.pdf) · [Search Space Odyssey — Greff et al. 2015](https://arxiv.org/abs/1503.04069) |
 | Transformer | [Attention Is All You Need — Vaswani et al. 2017](https://arxiv.org/abs/1706.03762) · [Sparsely-Gated MoE — Shazeer et al. 2017](https://arxiv.org/abs/1701.06538) · [GPT-3 — Brown et al. 2020](https://arxiv.org/abs/2005.14165) |
 | ViT | [An Image is Worth 16x16 Words — Dosovitskiy et al. 2020](https://arxiv.org/abs/2010.11929) · [Attention Is All You Need — Vaswani et al. 2017](https://arxiv.org/abs/1706.03762) · [CLIP — Radford et al. 2021](https://arxiv.org/abs/2103.00020) |
+| Mamba | [Mamba — Gu & Dao 2023](https://arxiv.org/abs/2312.00752) · [S4 — Gu, Goel & Ré 2021](https://arxiv.org/abs/2111.00396) · [Mamba-2 — Dao & Gu 2024](https://arxiv.org/abs/2405.21060) |
 | GNN | [GCN — Kipf & Welling 2016](https://arxiv.org/abs/1609.02907) · [The GNN Model — Scarselli et al. 2009](https://ieeexplore.ieee.org/document/4700287) · [GAT — Veličković et al. 2017](https://arxiv.org/abs/1710.10903) |
 | Autoencoder | [Dimensionality Reduction — Hinton & Salakhutdinov 2006](https://www.science.org/doi/10.1126/science.1127647) · [VAE — Kingma & Welling 2013](https://arxiv.org/abs/1312.6114) |
 | Diffusion | [DDPM — Ho, Jain & Abbeel 2020](https://arxiv.org/abs/2006.11239) · [Nonequilibrium Thermodynamics — Sohl-Dickstein et al. 2015](https://arxiv.org/abs/1503.03585) · [Latent Diffusion — Rombach et al. 2021](https://arxiv.org/abs/2112.10752) |
@@ -168,7 +173,7 @@ src/
 
 ## 中文说明（简要）
 
-- **真实计算**：全部十一个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
+- **真实计算**：全部十二个网络都在页面加载时用固定随机种子真实训练（`npm run sanity` 可验证准确率）；面板里的每个中间值都是前向传播的真实结果，可以手动对账。
 - **三档规模**：所有模型都有 小/中/大 三档，切换时现场重新训练。大档是浏览器几秒内还能训完的「大模型」——而且明显更强：大档 Transformer（d=24、4 头、12 上下文）训练集 top-1 达 100%，RNN loss 从 1.2 降到 0.38，扩散模型升到 12×12 图像、30 步去噪，GAN 生成器/判别器同步加宽。
 - **MLP**：三类高斯簇分类，逐层粒子流动画对应真实计算顺序。
 - **CNN**：Sobel 边缘卷积核 + 训练的全连接头识别图案；感受野滑窗动画与计算顺序一致；S/M/L 三档规模，切换时现场重新训练。
@@ -177,8 +182,9 @@ src/
 - **扩散模型（DDPM）**：浏览器内训练的真实去噪扩散模型（T=20，线性 β 调度），网络以带噪图像 + 正弦时间步嵌入为输入预测 x̂₀。播放过程即反向扩散：每一步展示去噪网络对干净图像的当前猜测，并执行一次 DDPM 后验更新 x_{t-1} = c₀·x̂₀ + c_t·x_t + σ·z，圆环/条纹图案从纯噪声中逐步浮现；点开任意像素可看到真实的后验系数。
 - **生成对抗网络（GAN）**：标准 vanilla GAN 在浏览器内对抗训练——生成器把 z ~ N(0,1) 伪造成 8×8 图像，判别器（LeakyReLU + sigmoid）用同一套权重同时审查生成图像与真实样本（两条支路都画在 3D 里）。交替 SGD + 非饱和 G 损失收敛到接近均衡（D(真)≈0.56、D(伪)≈0.34）；每轮播放结束都会宣判：生成器骗过了判别器，还是被识破了。
 - **图神经网络（GCN）**：两层图卷积网络在「从未见过」的随机社区图上做节点分类——每次运行重新采样一张图。同一张图画四遍：输入特征（按真实社区着色）→ 消息传递 ① → 消息传递 ② → 预测（按预测社区着色 + 节点准确率徽章）。粒子沿真实的图边流动，权重来自 Â = D^-1/2 (A+I) D^-1/2——这就是消息传递本身。点开任意节点可看邻居聚合表。
+- **Mamba（选择性状态空间模型）**：真实训练的迷你 Mamba（手写穿过选择性扫描的 BPTT）。Δ = softplus(x·WΔ) 让状态动力学「随输入而变」——这正是 Mamba 成功的关键「选择性」；递推 h = ā⊙h′ + Δ·B·u 以 O(T) 线性时间运行，状态恒定 24×8 个数（场景横幅直接写明：上下文再长也不变，对比注意力随长度增长的 KV 缓存）。与 RNN/LSTM/Transformer 用同一份语料同一个任务，loss 1.00 胜过 RNN 1.17 和 LSTM 1.28——启动屏可直接对比。点开 Δ 格子（「记忆音量旋钮」）或状态格子看真实数值的递推。
 - **视觉 Transformer（ViT）**：忠实的微缩 ViT——图像切成 4×4 图块（输入网格上画出切线）、每块线性嵌入为 token、拼上「可学习的 [CLS] token」与位置嵌入，经过一个预归一化编码块（双向多头注意力 + FFN，均带残差），最后从 LN([CLS]) 分类，留出准确率约 98%。前向与反向传播全部手写。点击图块 token 可看到正是哪 16 个像素喂给了它。
 - **真实规模对比（仅展示，不运算）**：把 GPT-2 XL / GPT-3 / Llama 3.1 405B / DeepSeek-V3 的真实参数量（取自公开论文）与本站真正训练的迷你 Transformer 画在同一标尺下——塔高与参数量严格线性等比，不用对数坐标。一团 100 万粒子的光作为「标尺」（GPU 实例化渲染的舒适上限），GPT-3 ≈ 17.5 万团；DeepSeek-V3 是迷你模型的 3.28 亿倍。前排还有「单层解剖」：按真实矩阵形状画出选中模型一层内部的 W_Q/K/V/O、FFN 高塔（GPT-3 的 W₁ 是 49,152×12,288，一眼看出 FFN 比注意力大 4 倍）、Llama 的 SwiGLU 三矩阵与 GQA 压缩后的细 K/V 板、DeepSeek 的 256 专家网格（点亮 top-8 + 1 共享）、薄得几乎看不见的 LayerNorm，以及铺在地面的词嵌入矩阵；配「参数对账」：96 层 × 18.1 亿 + 6.2 亿 ≈ 1,750 亿。还有「Token 之旅」动画：一个 token 沿全部真实层数逐层上升——词嵌入 → 语法 → 语义 → 上下文消歧 → 整句融合，里程碑按所选模型的层数换算（GPT-3 即 Layer 1/14/38/67/96）。上下文的吸收「看得见」：句子里的词随阶段逐个点亮并保持亮着；三个案例每轮轮换，含同词对照组——「我早上吃了一个苹果」→ 水果 vs「苹果发布了新一代手机」→ 公司，同一个起点向量走向相反的含义。附各模型层数/维度/上下文/训练数据与「按浏览器训练速度需数百万年」的换算。
-- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Transformer/GNN/ViT）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
+- **语言识别（AI 应用）**：输入任意文字 → 8 个可解释统计特征 → 训练好的 MLP 判断语言。导航分为三组：模型（MLP/CNN/RNN/LSTM/Mamba/Transformer/GNN/ViT）、生成模型（自编码器/扩散模型/GAN）与 AI 应用。
 - **LLM**：结构完整的字符级 Transformer 块——分词器 → 嵌入 → 正弦位置编码 → 多头因果注意力（2 头）→ 残差 + LayerNorm → 前馈 → 残差 + LayerNorm → 输出 softmax。前向与反向传播（含 LayerNorm/残差梯度）均为手写实现，浏览器内训练；两个头的注意力矩阵逐行点亮，点开 Add & Norm 格子可看到 μ、σ、γ、β 的完整算式，残差跳线直接画在 3D 里。点击「连续生成」进入自回归解码：采样的字符沿反馈回路飞回输入端、窗口滑动、流水线重跑——文字一个字一个字流出来。可切换 **MoE** 变体：FFN 替换为训练好的路由器 + 4 个专家（top-2 门控），路由分数、每个 token 的专家分配与加权合并全部可视化。
 - **三语界面**：所有 UI 与模块讲解均有中文 / English / 日本語。

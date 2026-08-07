@@ -68,6 +68,8 @@ export function InspectorPanel() {
           <GnnDetail sel={sel} />
         ) : arch === 'vit' ? (
           <VitDetail sel={sel} />
+        ) : arch === 'mamba' ? (
+          <MambaDetail sel={sel} />
         ) : arch === 'rnn' ? (
           <RNNDetail sel={sel} />
         ) : arch === 'lstm' ? (
@@ -924,6 +926,117 @@ function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
           <p className="explain-text">{t('diff.stepNote')}</p>
         </section>
       </>
+    )
+  }
+  return null
+}
+
+// ---------------------------------------------------------------- Mamba
+
+function MambaDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const trace = useStore((s) => s.mambaTrace)
+  const t = useT()
+  const model = MODELS.mamba.model
+  const showChar = (c: string) => (c === ' ' ? '␣' : c)
+
+  if (sel.space === 'vector') {
+    // output logits from the last gated output
+    const last = trace.O[trace.O.length - 1]
+    return (
+      <DenseComputation
+        prev={last}
+        prevLabel={(m) => `o[${m}]`}
+        weights={last.map((_, m) => model.Wout[m][sel.index])}
+        bias={model.bout[sel.index]}
+        z={0}
+        a={trace.probs[sel.index]}
+        activation="softmax"
+      />
+    )
+  }
+  if (sel.layer === -1) {
+    return (
+      <section>
+        <h4>
+          t = {sel.col} · “{showChar(trace.chars[sel.col])}”
+        </h4>
+        <p className="explain-text">{t('mamba.tokNote')}</p>
+      </section>
+    )
+  }
+  const ts = sel.row
+  const i = sel.col
+  if (sel.layer === 0) {
+    return (
+      <section>
+        <h4>
+          E[“{showChar(trace.chars[ts])}”][{i}]
+        </h4>
+        <div className="big-value num">{fmt(trace.X[ts][i])}</div>
+      </section>
+    )
+  }
+  if (sel.layer === 1) {
+    return (
+      <section>
+        <h4>Δ[{ts}][{i}] = softplus(x·WΔ + b)</h4>
+        <div className="big-value num">{fmt(trace.Delta[ts][i])}</div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('mamba.deltaNote')}
+        </p>
+      </section>
+    )
+  }
+  if (sel.layer === 2) {
+    const hRow = trace.H[ts][i]
+    const hPrev = ts > 0 ? trace.H[ts - 1][i] : hRow.map(() => 0)
+    const delta = trace.Delta[ts][i]
+    return (
+      <>
+        <section>
+          <h4>h[{i}][·] = ā ⊙ h′ + Δ·B·u</h4>
+          <p className="explain-text">{t('mamba.scanNote', { d: fmt(delta) })}</p>
+          <div style={{ height: 6 }} />
+          <NumGrid values={[hPrev]} scale={Math.max(...hPrev.map(Math.abs), 1)} />
+          <div style={{ height: 4 }} />
+          <NumGrid values={[hRow]} scale={Math.max(...hRow.map(Math.abs), 1)} />
+        </section>
+        <section>
+          <h4>y = h·C + D·u</h4>
+          <div className="calc-chain">
+            <span>
+              Σ h·C = <b className="num">{fmt(trace.Y[ts][i] - model.Dskip[i] * trace.U[ts][i])}</b>
+            </span>
+            <span>
+              + D·u = <b className="num">{fmt(model.Dskip[i] * trace.U[ts][i])}</b>
+            </span>
+            <span>
+              → <b className="num accent">{fmt(trace.Y[ts][i])}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.layer === 3) {
+    return (
+      <section>
+        <h4>o = y ⊙ silu(z)</h4>
+        <div className="calc-chain">
+          <span>
+            y = <b className="num">{fmt(trace.Y[ts][i])}</b>
+          </span>
+          <span>
+            × silu(z) = <b className="num">{fmt(trace.G[ts][i])}</b>
+          </span>
+          <span>
+            → <b className="num accent">{fmt(trace.O[ts][i])}</b>
+          </span>
+        </div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('mamba.gateNote')}
+        </p>
+      </section>
     )
   }
   return null

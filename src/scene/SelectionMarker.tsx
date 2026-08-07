@@ -19,6 +19,7 @@ import {
   llmSlot,
   llmStageKind,
   lstmSlot,
+  mambaSlot,
   positionOf,
   rnnSlot,
   slotFor,
@@ -413,6 +414,37 @@ function ganSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function mambaSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  const model = MODELS.mamba.model
+  if (sel.space === 'vector') {
+    // logit <- last gated-output row
+    const gS = mambaSlot(3) as GridSlot
+    for (let j = 0; j < model.dI; j++)
+      segs.push({ a: v(gridPos(gS, 0, model.T - 1, j)), b: target, w: model.Wout[j][sel.index], target: 0 })
+    return segs
+  }
+  if (sel.layer === 1) {
+    // Δ cell <- its embedding row
+    const eS = mambaSlot(0) as GridSlot
+    for (let k = 0; k < model.d; k++)
+      segs.push({ a: v(gridPos(eS, 0, sel.row, k)), b: target, w: model.Wd[k][sel.col], target: 0 })
+    return segs
+  }
+  if (sel.layer === 2) {
+    // the selective scan: previous state + this timestep's Δ cell
+    if (sel.row > 0)
+      segs.push({ a: v(gridPos(mambaSlot(2) as GridSlot, 0, sel.row - 1, sel.col)), b: target, w: 0.9, target: 0 })
+    segs.push({ a: v(gridPos(mambaSlot(1) as GridSlot, 0, sel.row, sel.col)), b: target, w: 0.6, target: 0 })
+    return segs
+  }
+  if (sel.layer === 3) {
+    segs.push({ a: v(gridPos(mambaSlot(2) as GridSlot, 0, sel.row, sel.col)), b: target, w: 0.8, target: 0 })
+    return segs
+  }
+  return segs
+}
+
 function vitSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   const segs: Segment[] = []
   const model = MODELS.vit.model
@@ -501,6 +533,7 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
     if (arch === 'gan') return ganSegments(sel, target)
     if (arch === 'gnn') return gnnSegments(sel, target)
     if (arch === 'vit') return vitSegments(sel, target)
+    if (arch === 'mamba') return mambaSegments(sel, target)
     return aeSegments(sel, target)
   }, [arch, sel, pos])
 

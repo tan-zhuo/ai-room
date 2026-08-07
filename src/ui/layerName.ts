@@ -53,6 +53,13 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
     }
     return t(LLM_KIND_NAMES[kind])
   }
+  if (arch === 'mamba') {
+    if (layer === -1) return t('layer.tokens')
+    return t(
+      ['layer.embed', 'layer.selectivity', 'layer.ssmState', 'layer.gatedOut', 'layer.output'][layer] ??
+        'layer.output',
+    )
+  }
   if (arch === 'rnn' || arch === 'lstm') {
     if (layer === -1) return t('layer.tokens')
     const keys = arch === 'rnn' ? RNN_LAYER_KEYS : LSTM_LAYER_KEYS
@@ -114,6 +121,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
   }
   if (arch === 'rnn') {
     return ['tokens', 'embed', 'rnnHidden', 'llmOutput'][layer + 1] ?? 'llmOutput'
+  }
+  if (arch === 'mamba') {
+    return ['tokens', 'embed', 'selectivity', 'ssmScan', 'gatedOut', 'llmOutput'][layer + 1] ?? 'llmOutput'
   }
   if (arch === 'lstm') {
     return ['tokens', 'embed', 'gates', 'cellstate', 'lstmHidden', 'llmOutput'][layer + 1] ?? 'llmOutput'

@@ -36,6 +36,7 @@ const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'cnn', kbd: '2' },
   { arch: 'rnn', kbd: '3' },
   { arch: 'lstm', kbd: '4' },
+  { arch: 'mamba', kbd: '' },
   { arch: 'llm', kbd: '5' },
   { arch: 'gnn', kbd: '6' },
   { arch: 'vit', kbd: '' },
@@ -223,9 +224,10 @@ function TextEntry() {
   const llmText = useStore((s) => s.llmText)
   const rnnText = useStore((s) => s.rnnText)
   const lstmText = useStore((s) => s.lstmText)
-  const { setTextInput, setLLMInput, setRNNInput, setLSTMInput } = useStore.getState()
-  const stored = { text: textRaw, llm: llmText, rnn: rnnText, lstm: lstmText }[
-    arch as 'text' | 'llm' | 'rnn' | 'lstm'
+  const mambaText = useStore((s) => s.mambaText)
+  const { setTextInput, setLLMInput, setRNNInput, setLSTMInput, setMambaInput } = useStore.getState()
+  const stored = { text: textRaw, llm: llmText, rnn: rnnText, lstm: lstmText, mamba: mambaText }[
+    arch as 'text' | 'llm' | 'rnn' | 'lstm' | 'mamba'
   ]
   const [val, setVal] = useState(stored)
 
@@ -237,6 +239,7 @@ function TextEntry() {
     if (arch === 'text') setTextInput(trimmed)
     else if (arch === 'llm') setLLMInput(trimmed)
     else if (arch === 'rnn') setRNNInput(trimmed)
+    else if (arch === 'mamba') setMambaInput(trimmed)
     else setLSTMInput(trimmed)
   }
 
@@ -327,12 +330,13 @@ function BottomBar() {
     gan: -1,
     gnn: -1,
     vit: vitClass,
+    mamba: useStore.getState().mambaClass,
     giant: useStore.getState().giantSel,
   }[arch]
-  const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
+  const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm' || arch === 'mamba'
   const chipArch = arch === 'ae' || arch === 'vit' ? 'cnn' : arch
   const chips: string[] = seq
-    ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
+    ? MODELS[arch as 'llm' | 'rnn' | 'lstm' | 'mamba'].samples.map((s) => `“${s}”`)
     : arch === 'diff' || arch === 'gan' || arch === 'gnn'
       ? []
       : arch === 'giant'

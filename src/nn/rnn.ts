@@ -20,7 +20,7 @@ function softmaxRow(row: number[]): number[] {
   return e.map((v) => v / s)
 }
 
-function corpusWindows(vocab: string[], T: number): { ids: number[]; targets: number[] }[] {
+export function corpusWindows(vocab: string[], T: number): { ids: number[]; targets: number[] }[] {
   const chars = [...LLM_CORPUS.toLowerCase()]
   const idOf = new Map(vocab.map((c, i) => [c, i]))
   const windows: { ids: number[]; targets: number[] }[] = []

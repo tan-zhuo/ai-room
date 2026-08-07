@@ -12,6 +12,7 @@ import { GanScene } from './GanScene'
 import { GnnScene } from './GnnScene'
 import { ViTScene } from './ViTScene'
 import { GiantScene } from './GiantScene'
+import { MambaScene } from './MambaScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -49,6 +50,7 @@ export function SceneRoot() {
       {arch === 'gnn' && <GnnScene key={`gnn${version}`} />}
       {arch === 'vit' && <ViTScene key={`vit${version}`} />}
       {arch === 'giant' && <GiantScene key="giant" />}
+      {arch === 'mamba' && <MambaScene key={`mamba${version}`} />}
       <LayerHighlight />
       <Driver />
       <CameraRig />
