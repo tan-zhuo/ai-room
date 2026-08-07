@@ -31,28 +31,11 @@ export function Hud() {
 
 // ---------------------------------------------------------------- top bar
 
-const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
-  { arch: 'mlp', kbd: '1' },
-  { arch: 'cnn', kbd: '2' },
-  { arch: 'rnn', kbd: '3' },
-  { arch: 'lstm', kbd: '4' },
-  { arch: 'mamba', kbd: '' },
-  { arch: 'llm', kbd: '5' },
-  { arch: 'gnn', kbd: '6' },
-  { arch: 'vit', kbd: '' },
-]
+const MODEL_ARCHS: Arch[] = ['mlp', 'cnn', 'rnn', 'lstm', 'mamba', 'llm', 'gnn', 'vit']
 
-const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
-  { arch: 'ae', kbd: '7' },
-  { arch: 'diff', kbd: '8' },
-  { arch: 'gan', kbd: '9' },
-]
+const GEN_ARCHS: Arch[] = ['ae', 'diff', 'gan']
 
-const APP_ARCHS: { arch: Arch; kbd: string }[] = [
-  { arch: 'text', kbd: '0' },
-  { arch: 'agent', kbd: '' },
-  { arch: 'giant', kbd: '' },
-]
+const APP_ARCHS: Arch[] = ['text', 'agent', 'giant']
 
 const SCALES: Scale[] = ['s', 'm', 'l']
 
@@ -161,7 +144,7 @@ function Drawer() {
   const setLang = useStore((s) => s.setLang)
   const toggleMenu = useStore((s) => s.toggleMenu)
 
-  const item = ({ arch: a, kbd }: { arch: Arch; kbd: string }) => (
+  const item = (a: Arch) => (
     <button
       key={a}
       className={`drawer-item${arch === a ? ' active' : ''}`}
@@ -176,7 +159,6 @@ function Drawer() {
         <span className="drawer-name">{t(`arch.${a}`)}</span>
         <span className="drawer-sub">{t(`arch.${a}Full`)}</span>
       </span>
-      <kbd>{kbd}</kbd>
     </button>
   )
 
@@ -682,7 +664,6 @@ function HelpOverlay() {
     ['Space', t('help.space')],
     ['← →', t('help.arrows')],
     ['R', t('help.r')],
-    ['1 – 0', t('help.digits')],
     ['L', t('help.l')],
     ['F', t('help.f')],
     ['Esc', t('help.esc')],

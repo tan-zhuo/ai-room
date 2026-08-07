@@ -117,9 +117,7 @@ Click any layer title: what it does / why the network needs it / a plain-words a
 | `Space` | Play / pause |
 | `←` `→` | Previous / next step |
 | `R` | Reset |
-| `1` – `6` | Models: MLP / CNN / RNN / LSTM / Transformer / GNN (+ ViT via ☰ menu) |
-| `7` – `9` | Generative: Autoencoder / Diffusion / GAN |
-| `0` | AI apps: Lang ID |
+| ☰ menu | All models, generative models & AI apps |
 | `S / M / L` buttons | Network scale — **every** architecture retrains live (L is the largest that still trains in-browser in seconds) |
 | `L` | Cycle language 中文 / EN / 日本語 |
 | `F` | Focus selected node / layer |

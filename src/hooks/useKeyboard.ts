@@ -27,36 +27,6 @@ export function useKeyboard() {
         case 'KeyR':
           s.reset()
           break
-        case 'Digit1':
-          s.setArch('mlp')
-          break
-        case 'Digit2':
-          s.setArch('cnn')
-          break
-        case 'Digit3':
-          s.setArch('rnn')
-          break
-        case 'Digit4':
-          s.setArch('lstm')
-          break
-        case 'Digit5':
-          s.setArch('llm')
-          break
-        case 'Digit6':
-          s.setArch('gnn')
-          break
-        case 'Digit7':
-          s.setArch('ae')
-          break
-        case 'Digit8':
-          s.setArch('diff')
-          break
-        case 'Digit9':
-          s.setArch('gan')
-          break
-        case 'Digit0':
-          s.setArch('text')
-          break
         case 'KeyL':
           s.cycleLang()
           break
