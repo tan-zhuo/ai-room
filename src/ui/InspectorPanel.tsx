@@ -66,6 +66,8 @@ export function InspectorPanel() {
           <GanDetail sel={sel} />
         ) : arch === 'gnn' ? (
           <GnnDetail sel={sel} />
+        ) : arch === 'vit' ? (
+          <VitDetail sel={sel} />
         ) : arch === 'rnn' ? (
           <RNNDetail sel={sel} />
         ) : arch === 'lstm' ? (
@@ -922,6 +924,173 @@ function DiffDetail({ sel }: { sel: NodeRef }): ReactNode {
           <p className="explain-text">{t('diff.stepNote')}</p>
         </section>
       </>
+    )
+  }
+  return null
+}
+
+// ---------------------------------------------------------------- ViT
+
+function VitDetail({ sel }: { sel: NodeRef }): ReactNode {
+  const input = useStore((s) => s.vitInput)
+  const trace = useStore((s) => s.vitTrace)
+  const t = useT()
+  const model = MODELS.vit.model
+
+  if (sel.space === 'vector') {
+    // classification head
+    const c = sel.index
+    return (
+      <DenseComputation
+        prev={trace.clsLn}
+        prevLabel={(k) => `LN(CLS)[${k}]`}
+        weights={trace.clsLn.map((_, k) => model.Wh[k][c])}
+        bias={model.bh[c]}
+        z={trace.logits[c]}
+        a={trace.probs[c]}
+        activation="softmax"
+        probs={trace.probs}
+        probLabels={[0, 1, 2, 3].map((i) => t(`class.cnn.${i}`))}
+      />
+    )
+  }
+
+  if (sel.layer === -1) {
+    const pr = Math.floor(sel.row / model.p)
+    const pc = Math.floor(sel.col / model.p)
+    return (
+      <section>
+        <h4>
+          px({sel.row}, {sel.col})
+        </h4>
+        <div className="big-value num">{fmt(input[0][sel.row][sel.col])}</div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('vit.pixelNote', { p: pr * model.grid + pc + 1 })}
+        </p>
+      </section>
+    )
+  }
+  if (sel.layer === 0) {
+    const tk = sel.row
+    const j = sel.col
+    if (tk === 0) {
+      return (
+        <section>
+          <h4>[CLS] · dim {j}</h4>
+          <div className="calc-chain">
+            <span>
+              cls[{j}] = <b className="num">{fmt(model.cls[j])}</b>
+            </span>
+            <span>
+              + pos[0][{j}] = <b className="num">{fmt(model.pos[0][j])}</b>
+            </span>
+            <span>
+              → <b className="num accent">{fmt(trace.X[0][j])}</b>
+            </span>
+          </div>
+          <p className="explain-text" style={{ marginTop: 8 }}>
+            {t('vit.clsNote')}
+          </p>
+        </section>
+      )
+    }
+    const patch = trace.patches[tk - 1]
+    return (
+      <>
+        <section>
+          <h4>
+            {t('vit.patchTitle', { n: tk })} · dim {j}
+          </h4>
+          <ProductRows prev={patch} prevLabel={(k) => `px${k}`} weights={patch.map((_, k) => model.Wp[k][j])} />
+        </section>
+        <section>
+          <h4>{t('panel.sum')}</h4>
+          <div className="calc-chain">
+            <span>
+              Σ + b = <b className="num">{fmt(trace.X[tk][j] - model.pos[tk][j])}</b>
+            </span>
+            <span>
+              + pos[{tk}][{j}] {fmt(model.pos[tk][j])}
+            </span>
+            <span>
+              → X = <b className="num accent">{fmt(trace.X[tk][j])}</b>
+            </span>
+          </div>
+        </section>
+      </>
+    )
+  }
+  if (sel.layer === 1) {
+    const h = sel.channel
+    const i = sel.row
+    const j = sel.col
+    const dh = model.d / model.heads
+    const o = h * dh
+    let dot = 0
+    for (let k = 0; k < dh; k++) dot += trace.Q[i][o + k] * trace.K[j][o + k]
+    return (
+      <section>
+        <h4>
+          A[{i}][{j}] · {t('llm.head', { n: h + 1 })}
+        </h4>
+        <div className="calc-chain">
+          <span>
+            q{i}·k{j} = <b className="num">{fmt(dot)}</b>
+          </span>
+          <span>/ √{dh} → softmax →</span>
+          <span>
+            <b className="num accent">{fmt(trace.att[h][i][j])}</b>
+          </span>
+        </div>
+        <p className="explain-text" style={{ marginTop: 8 }}>
+          {t('vit.attnNote')}
+        </p>
+      </section>
+    )
+  }
+  if (sel.layer === 2) {
+    const i = sel.row
+    const j = sel.col
+    return (
+      <section>
+        <h4>X₁ = X + MHA(LN(X))</h4>
+        <div className="calc-chain">
+          <span>
+            X[{i}][{j}] = <b className="num">{fmt(trace.X[i][j])}</b>
+          </span>
+          <span>
+            + Z[{i}][{j}] = <b className="num">{fmt(trace.Z[i][j])}</b>
+          </span>
+          <span>
+            → <b className="num accent">{fmt(trace.X1[i][j])}</b>
+          </span>
+        </div>
+      </section>
+    )
+  }
+  if (sel.layer === 3) {
+    const i = sel.row
+    const j = sel.col
+    return (
+      <section>
+        <h4>X₂ = X₁ + FFN(LN(X₁))</h4>
+        <div className="calc-chain">
+          <span>
+            X₁[{i}][{j}] = <b className="num">{fmt(trace.X1[i][j])}</b>
+          </span>
+          <span>
+            + F[{i}][{j}] = <b className="num">{fmt(trace.F[i][j])}</b>
+          </span>
+          <span>
+            → <b className="num accent">{fmt(trace.X2[i][j])}</b>
+          </span>
+        </div>
+        {i === 0 && (
+          <p className="explain-text" style={{ marginTop: 8 }}>
+            {t('vit.clsRowNote')}
+          </p>
+        )}
+      </section>
     )
   }
   return null

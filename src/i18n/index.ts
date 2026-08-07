@@ -321,6 +321,55 @@ const en: Dict = {
     'Molecular property prediction & drug discovery\nRecommendation systems (social / e-commerce)\nFraud & anomaly detection in transaction graphs\nTraffic & logistics networks\nKnowledge graphs & question answering\nAlphaFold-style structure reasoning',
   'overview.gnn.industries':
     'Pharma — drug screening (GNNs read molecules)\nSocial platforms — feeds & friend suggestions\nFinance — anti-fraud on transaction networks\nMaps & ride-hailing — ETA prediction\nChip design — placement & routing',
+  'arch.vit': 'ViT',
+  'arch.vitFull': 'Vision Transformer',
+  'layer.patchEmbed': 'Patch embedding',
+  'layer.vitResid': 'Residual (attention)',
+  'layer.vitFfn': 'Residual + FFN',
+  'layer.clsHead': 'Class head [CLS]',
+  'vit.pixelNote': 'This pixel belongs to patch #{p}. The image is not convolved — it is cut into patches, and each patch becomes one token.',
+  'vit.clsNote': 'The [CLS] token is a LEARNED vector with no pixels behind it. It rides through attention collecting information from every patch, and the classifier reads only it.',
+  'vit.patchTitle': 'Patch token #{n}',
+  'vit.attnNote': 'Bidirectional attention: every patch attends to every other patch (no causal mask) — row = query token, column = key token.',
+  'vit.clsRowNote': 'Row 0 is the [CLS] token — the classification head reads exactly this vector after the final LayerNorm.',
+  'explain.vitInput.what':
+    'The input image, cut by the grid lines into p×p patches. No convolution anywhere — the patch grid is the only image-specific structure the model gets.',
+  'explain.vitInput.why':
+    'ViT’s bet: if attention is powerful enough, you don’t need convolutional inductive biases — just treat image patches like words in a sentence.',
+  'explain.vitInput.simple': 'Tearing a photo into squares and reading them like a sentence.',
+  'explain.patchEmbed.what':
+    'Each patch is flattened to p² numbers and linearly projected to a d-dim token; a learned [CLS] token is prepended and learned positional embeddings are added.',
+  'explain.patchEmbed.why':
+    'This is the whole “image → sequence” trick — after this line the model IS a standard transformer. The positions must be learned since patches carry no order.',
+  'explain.patchEmbed.simple': 'Each square gets a caption and a seat number.',
+  'explain.vitAttn.what':
+    'Full bidirectional multi-head self-attention over all tokens — unlike the causal LLM, every patch sees every other patch, and [CLS] sees them all.',
+  'explain.vitAttn.why':
+    'One layer of attention already gives every patch a global view — a conv net needs many stacked layers for that receptive field. Watch the [CLS] row: that is where the image summary forms.',
+  'explain.vitAttn.simple': 'Every square looks at every other square at once.',
+  'explain.vitResid.what':
+    'Pre-LN residual: X₁ = X + MHA(LN(X)). The attention output is ADDED to the original tokens, not replacing them.',
+  'explain.vitResid.why':
+    'Residuals keep the original patch information flowing and make deep stacks trainable; pre-LN (ViT’s choice) keeps gradients stable.',
+  'explain.vitResid.simple': 'Adding notes to the page instead of rewriting it.',
+  'explain.vitFfn.what':
+    'The second half of the encoder block: X₂ = X₁ + FFN(LN(X₁)) with a ReLU MLP applied to every token independently.',
+  'explain.vitFfn.why':
+    'Attention mixes information BETWEEN tokens; the FFN transforms each token on its own. Both, with residuals, form the canonical transformer block.',
+  'explain.vitFfn.simple': 'After the group discussion, everyone digests their own conclusions.',
+  'explain.clsHead.what':
+    'The final LayerNorm of the [CLS] token feeds one linear layer + softmax: four class probabilities for the whole image.',
+  'explain.clsHead.why':
+    'Only the [CLS] vector is read — everything the model learned about the image must have been routed into it through attention. That is the ViT classification recipe.',
+  'explain.clsHead.simple': 'One delegate reports the verdict for the whole committee.',
+  'overview.vit.intro':
+    'The Vision Transformer (2020) applies a standard transformer encoder directly to images: cut the image into 16×16 patches, embed each patch as a token, add a learned [CLS] token, and let bidirectional attention do the rest. Given enough data it beats CNNs at their own game, and it now backs CLIP, DINO and most multimodal models. This demo is a faithful miniature: real patches, learned [CLS] and positions, one pre-LN encoder block, classification from [CLS].',
+  'overview.vit.problems':
+    'It unified vision and language under one architecture — no more hand-designed conv hierarchies. Transfer learning, multimodal models (image+text), and scaling laws all got simpler because everything speaks “tokens”.',
+  'overview.vit.domains':
+    'Image classification & recognition\nCLIP-style image–text alignment\nSelf-supervised pretraining (DINO / MAE)\nMedical & satellite imaging\nBackbone for detection & segmentation (DETR-style)\nMultimodal LLMs (vision encoders)',
+  'overview.vit.industries':
+    'Internet — content search & moderation\nMedicine — radiology screening\nAutonomous driving — perception backbones\nAgriculture & earth observation — satellite analysis\nRetail — visual search',
   'overview.title': 'Model overview',
   'overview.secIntro': 'What it is',
   'overview.secProblems': 'Problems it solves',
@@ -850,6 +899,55 @@ const zh: Dict = {
     '分子性质预测与药物发现\n推荐系统（社交 / 电商）\n交易图上的欺诈与异常检测\n交通与物流网络\n知识图谱与问答\nAlphaFold 式结构推理',
   'overview.gnn.industries':
     '医药——药物筛选（GNN 读分子）\n社交平台——信息流与好友推荐\n金融——交易网络反欺诈\n地图与出行——到达时间预测\n芯片设计——布局布线',
+  'arch.vit': 'ViT',
+  'arch.vitFull': '视觉 Transformer（ViT）',
+  'layer.patchEmbed': '切块嵌入',
+  'layer.vitResid': '残差（注意力）',
+  'layer.vitFfn': '残差 + 前馈',
+  'layer.clsHead': '分类头 [CLS]',
+  'vit.pixelNote': '这个像素属于第 {p} 号图块。图像不做卷积——而是切成小块，每块变成一个 token。',
+  'vit.clsNote': '[CLS] 是一个「可学习」的向量，背后没有任何像素。它随注意力穿行、从每个图块收集信息，最后分类器只读它。',
+  'vit.patchTitle': '图块 token #{n}',
+  'vit.attnNote': '双向注意力：每个图块都能看到所有其他图块（没有因果掩码）——行 = 查询 token，列 = 键 token。',
+  'vit.clsRowNote': '第 0 行是 [CLS] token——分类头读的正是它经过最终 LayerNorm 后的向量。',
+  'explain.vitInput.what':
+    '输入图像被网格线切成 p×p 的图块。全程没有卷积——图块网格是模型得到的唯一图像结构信息。',
+  'explain.vitInput.why':
+    'ViT 的赌注：只要注意力足够强，就不需要卷积的归纳偏置——把图块当成句子里的单词处理即可。',
+  'explain.vitInput.simple': '把照片撕成方块，像读句子一样读它们。',
+  'explain.patchEmbed.what':
+    '每个图块展平成 p² 个数字后线性投影为 d 维 token；前面拼上可学习的 [CLS] token，再加上可学习的位置嵌入。',
+  'explain.patchEmbed.why':
+    '这就是「图像 → 序列」的全部魔法——过了这一步，模型就是一个标准 Transformer。图块本身没有顺序，所以位置必须学出来。',
+  'explain.patchEmbed.simple': '每个方块领到一句说明文字和一个座位号。',
+  'explain.vitAttn.what':
+    '对所有 token 做完整的双向多头自注意力——与因果的 LLM 不同，每个图块都能看到所有图块，[CLS] 能看到一切。',
+  'explain.vitAttn.why':
+    '一层注意力就让每个图块拥有全局视野——卷积网络需要叠很多层才能有这样的感受野。盯住 [CLS] 那一行：整张图的摘要就在那里成形。',
+  'explain.vitAttn.simple': '每个方块同时看向所有其他方块。',
+  'explain.vitResid.what':
+    '预归一化残差：X₁ = X + MHA(LN(X))。注意力的输出是「加」到原 token 上，而不是替换它。',
+  'explain.vitResid.why':
+    '残差让原始图块信息一路畅通、深层网络可训练；预归一化（ViT 的选择）让梯度更稳定。',
+  'explain.vitResid.simple': '在原稿上加批注，而不是重写整页。',
+  'explain.vitFfn.what':
+    '编码块的后半部分：X₂ = X₁ + FFN(LN(X₁))，一个 ReLU 两层感知机独立作用于每个 token。',
+  'explain.vitFfn.why':
+    '注意力负责 token「之间」的信息交换，FFN 负责每个 token 自己的变换。两者加上残差，就是标准 Transformer 块。',
+  'explain.vitFfn.simple': '小组讨论之后，每个人独自消化自己的结论。',
+  'explain.clsHead.what':
+    '[CLS] token 经最终 LayerNorm 后送入一个线性层 + softmax：得到整张图的四类概率。',
+  'explain.clsHead.why':
+    '只读 [CLS] 一个向量——模型学到的关于图像的一切都必须经注意力汇入其中。这正是 ViT 的分类配方。',
+  'explain.clsHead.simple': '委员会派一名代表宣读全体结论。',
+  'overview.vit.intro':
+    '视觉 Transformer（2020）把标准 Transformer 编码器直接用于图像：把图切成 16×16 图块、每块嵌入为一个 token、拼上可学习的 [CLS]，剩下交给双向注意力。数据够多时它在 CNN 的主场击败了 CNN，如今是 CLIP、DINO 和多数多模态模型的视觉骨干。本演示是忠实的微缩版：真实切块、可学习的 [CLS] 与位置、一个预归一化编码块、从 [CLS] 分类。',
+  'overview.vit.problems':
+    '它把视觉和语言统一到同一种架构下——不再需要手工设计的卷积层级。迁移学习、多模态（图+文）、规模定律都因为「一切皆 token」而变得简单。',
+  'overview.vit.domains':
+    '图像分类与识别\nCLIP 式图文对齐\n自监督预训练（DINO / MAE）\n医学与卫星影像\n检测与分割骨干（DETR 系）\n多模态大模型的视觉编码器',
+  'overview.vit.industries':
+    '互联网——内容搜索与审核\n医疗——影像筛查\n自动驾驶——感知骨干\n农业与遥感——卫星影像分析\n零售——以图搜图',
   'overview.title': '模型简介',
   'overview.secIntro': '这是什么',
   'overview.secProblems': '解决了什么问题',
@@ -1372,6 +1470,55 @@ const ja: Dict = {
     '分子の性質予測・創薬\n推薦システム（SNS / EC）\n取引グラフの不正・異常検出\n交通・物流ネットワーク\n知識グラフと質問応答\nAlphaFold 型の構造推論',
   'overview.gnn.industries':
     '製薬——薬剤スクリーニング（GNN が分子を読む）\nSNS——フィードと友達推薦\n金融——取引ネットワークの不正対策\n地図・配車——到着時間予測\n半導体設計——配置配線',
+  'arch.vit': 'ViT',
+  'arch.vitFull': 'ビジョントランスフォーマー（ViT）',
+  'layer.patchEmbed': 'パッチ埋め込み',
+  'layer.vitResid': '残差（アテンション）',
+  'layer.vitFfn': '残差 + FFN',
+  'layer.clsHead': '分類ヘッド [CLS]',
+  'vit.pixelNote': 'このピクセルはパッチ #{p} に属する。畳み込みはしない——画像を小片に切り、各パッチが 1 トークンになる。',
+  'vit.clsNote': '[CLS] は「学習される」ベクトルで、背後にピクセルはない。アテンションを通じて全パッチから情報を集め、分類器はこれだけを読む。',
+  'vit.patchTitle': 'パッチトークン #{n}',
+  'vit.attnNote': '双方向アテンション：因果マスクがなく、どのパッチも他のすべてのパッチを見られる——行 = クエリ、列 = キー。',
+  'vit.clsRowNote': '第 0 行が [CLS] トークン——分類ヘッドは最終 LayerNorm 後のこのベクトルだけを読む。',
+  'explain.vitInput.what':
+    '入力画像はグリッド線で p×p のパッチに切り分けられる。畳み込みは一切ない——パッチ分割が、モデルに与えられる唯一の画像的構造だ。',
+  'explain.vitInput.why':
+    'ViT の賭け：アテンションが十分強ければ、畳み込みの帰納バイアスは不要——パッチを文中の単語のように扱えばよい。',
+  'explain.vitInput.simple': '写真を正方形に破いて、文章のように読む。',
+  'explain.patchEmbed.what':
+    '各パッチを p² 個の数に平坦化して d 次元トークンへ線形射影。先頭に学習可能な [CLS] トークンを付け、学習可能な位置埋め込みを加える。',
+  'explain.patchEmbed.why':
+    'これが「画像 → 系列」の全トリック——この先のモデルは標準のトランスフォーマーそのもの。パッチに順序はないので、位置は学習するしかない。',
+  'explain.patchEmbed.simple': '各方块に説明文と座席番号が配られる。',
+  'explain.vitAttn.what':
+    '全トークンに対する完全な双方向マルチヘッド自己アテンション。因果的な LLM と違い、どのパッチも互いを見られ、[CLS] はすべてを見る。',
+  'explain.vitAttn.why':
+    'アテンション 1 層で各パッチが全体を見渡せる——CNN が何層も重ねて得る受容野を一撃で。[CLS] の行に注目：画像の要約はそこで形づくられる。',
+  'explain.vitAttn.simple': 'すべての方块が同時に互いを見つめ合う。',
+  'explain.vitResid.what':
+    'Pre-LN 残差：X₁ = X + MHA(LN(X))。アテンションの出力は元のトークンに「加算」され、置き換えではない。',
+  'explain.vitResid.why':
+    '残差は元のパッチ情報を素通しにし、深い積層を訓練可能にする。Pre-LN（ViT の選択）は勾配を安定させる。',
+  'explain.vitResid.simple': 'ページを書き直さず、余白に注記を足していく。',
+  'explain.vitFfn.what':
+    'エンコーダブロックの後半：X₂ = X₁ + FFN(LN(X₁))。ReLU の 2 層 MLP が各トークンに独立に適用される。',
+  'explain.vitFfn.why':
+    'アテンションはトークン「間」の情報交換、FFN は各トークン自身の変換。残差と合わせて標準トランスフォーマーブロックになる。',
+  'explain.vitFfn.simple': 'グループ討論のあと、各自が自分の結論を消化する。',
+  'explain.clsHead.what':
+    '[CLS] トークンの最終 LayerNorm を線形層 + softmax に通し、画像全体の 4 クラス確率を得る。',
+  'explain.clsHead.why':
+    '読むのは [CLS] ベクトルただ 1 つ——モデルが画像について学んだすべては、アテンション経由でそこへ流れ込んでいなければならない。これが ViT の分類レシピ。',
+  'explain.clsHead.simple': '委員会を代表して 1 人が結論を読み上げる。',
+  'overview.vit.intro':
+    'ビジョントランスフォーマー（2020）は標準のトランスフォーマーエンコーダを画像へ直接適用する：画像を 16×16 のパッチに切り、各パッチをトークンとして埋め込み、学習可能な [CLS] を付けて、あとは双方向アテンションに任せる。データが十分なら CNN をその土俵で打ち破り、いまや CLIP・DINO や多くのマルチモーダルモデルの視覚バックボーンだ。本デモは忠実なミニチュア：本物のパッチ分割、学習される [CLS] と位置、Pre-LN エンコーダブロック 1 つ、[CLS] からの分類。',
+  'overview.vit.problems':
+    '視覚と言語を同一アーキテクチャに統一した——手設計の畳み込み階層はもう不要。すべてが「トークン」を話すため、転移学習・マルチモーダル・スケーリング則が単純になった。',
+  'overview.vit.domains':
+    '画像分類・認識\nCLIP 型の画像テキスト整合\n自己教師あり事前学習（DINO / MAE）\n医用・衛星画像\n検出・セグメンテーションのバックボーン（DETR 系）\nマルチモーダル LLM の視覚エンコーダ',
+  'overview.vit.industries':
+    'インターネット——コンテンツ検索と審査\n医療——読影スクリーニング\n自動運転——知覚バックボーン\n農業・リモートセンシング——衛星画像解析\n小売——画像検索',
   'overview.title': 'モデル概要',
   'overview.secIntro': 'これは何か',
   'overview.secProblems': '解決する課題',

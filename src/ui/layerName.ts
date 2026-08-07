@@ -70,6 +70,13 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'gnn') {
     return t(['layer.graphIn', 'layer.msgpass1', 'layer.msgpass2', 'layer.nodeCls'][layer + 1] ?? 'layer.nodeCls')
   }
+  if (arch === 'vit') {
+    return t(
+      ['layer.input', 'layer.patchEmbed', 'layer.attn', 'layer.vitResid', 'layer.vitFfn', 'layer.clsHead'][
+        layer + 1
+      ] ?? 'layer.clsHead',
+    )
+  }
   if (arch === 'ae') {
     if (layer === -1) return t('layer.input')
     if (AE_VARIANT === 'vae') {
@@ -119,6 +126,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
   }
   if (arch === 'gnn') {
     return ['graphIn', 'msgpass', 'msgpass', 'nodeCls'][layer + 1] ?? 'nodeCls'
+  }
+  if (arch === 'vit') {
+    return ['vitInput', 'patchEmbed', 'vitAttn', 'vitResid', 'vitFfn', 'clsHead'][layer + 1] ?? 'clsHead'
   }
   if (arch === 'ae') {
     if (AE_VARIANT === 'vae') {

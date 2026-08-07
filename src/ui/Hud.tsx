@@ -38,6 +38,7 @@ const MODEL_ARCHS: { arch: Arch; kbd: string }[] = [
   { arch: 'lstm', kbd: '4' },
   { arch: 'llm', kbd: '5' },
   { arch: 'gnn', kbd: '6' },
+  { arch: 'vit', kbd: '' },
 ]
 
 const GEN_ARCHS: { arch: Arch; kbd: string }[] = [
@@ -300,6 +301,7 @@ function BottomBar() {
   const rnnClass = useStore((s) => s.rnnClass)
   const lstmClass = useStore((s) => s.lstmClass)
   const aeClass = useStore((s) => s.aeClass)
+  const vitClass = useStore((s) => s.vitClass)
   const { togglePlay, nextStep, prevStep, reset, cycleSpeed, newSample } = useStore.getState()
 
   const total = totalSteps(arch)
@@ -321,15 +323,16 @@ function BottomBar() {
     diff: -1,
     gan: -1,
     gnn: -1,
+    vit: vitClass,
   }[arch]
   const seq = arch === 'llm' || arch === 'rnn' || arch === 'lstm'
-  const chipArch = arch === 'ae' ? 'cnn' : arch
+  const chipArch = arch === 'ae' || arch === 'vit' ? 'cnn' : arch
   const chips: string[] = seq
     ? MODELS[arch as 'llm' | 'rnn' | 'lstm'].samples.map((s) => `“${s}”`)
     : arch === 'diff' || arch === 'gan' || arch === 'gnn'
       ? []
       : Array.from(
-        { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae'].classCount },
+        { length: MODELS[arch as 'mlp' | 'cnn' | 'text' | 'ae' | 'vit'].classCount },
         (_, i) => t(`class.${chipArch}.${i}`),
       )
 

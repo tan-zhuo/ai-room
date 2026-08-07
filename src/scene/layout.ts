@@ -356,6 +356,27 @@ function computeGanSlots(): CNNSlot[] {
   ]
 }
 
+// ------------------------------------------------------------------ ViT slots
+// -1 input image, 0 patch tokens + CLS [T][d], 1 attention [heads][T][T],
+// 2 after attention residual [T][d], 3 after FFN residual [T][d], 4 classes.
+
+export const VIT_STEPS = 5
+
+function computeVitSlots(): CNNSlot[] {
+  const m = MODELS.vit.model
+  const { T, d, heads, n } = m
+  const cd = Math.min(0.34, 4 / d)
+  const xs = [-11.4, -6.4, -1.4, 3.2, 6.9, 10.4]
+  return [
+    { kind: 'grid', layer: -1, channels: 1, rows: n, cols: n, cell: Math.min(0.42, 5 / n), x: xs[0], chGap: 0 },
+    { kind: 'grid', layer: 0, channels: 1, rows: T, cols: d, cell: cd, x: xs[1], chGap: 0 },
+    { kind: 'grid', layer: 1, channels: heads, rows: T, cols: T, cell: Math.min(0.4, 4.4 / T), x: xs[2], chGap: Math.min(0.8, 2.8 / heads) },
+    { kind: 'grid', layer: 2, channels: 1, rows: T, cols: d, cell: cd, x: xs[3], chGap: 0 },
+    { kind: 'grid', layer: 3, channels: 1, rows: T, cols: d, cell: cd, x: xs[4], chGap: 0 },
+    { kind: 'vector', layer: 4, size: m.classes, x: xs[5], gapY: 1.6 },
+  ]
+}
+
 // ------------------------------------------------------------------ GNN layout
 // Four x-shifted copies of the SAME graph: input features, hidden after
 // message passing 1, logits after message passing 2, per-node prediction.
@@ -406,6 +427,7 @@ let lstmSlots = computeLstmSlots()
 let aeSlots = computeAeSlots()
 let diffSlots = computeDiffSlots()
 let ganSlots = computeGanSlots()
+let vitSlots = computeVitSlots()
 gnnLocal = computeGnnPositions()
 
 /** Re-derive slot tables after a model was rebuilt at a new scale. */
@@ -417,6 +439,7 @@ export function refreshLayout(): void {
   aeSlots = computeAeSlots()
   diffSlots = computeDiffSlots()
   ganSlots = computeGanSlots()
+  vitSlots = computeVitSlots()
   gnnLocal = computeGnnPositions()
 }
 
@@ -448,6 +471,10 @@ export function ganSlot(layer: number): CNNSlot {
   return ganSlots[layer + 1]
 }
 
+export function vitSlot(layer: number): CNNSlot {
+  return vitSlots[layer + 1]
+}
+
 /** Slot lookup for every grid-based architecture. */
 export function slotFor(arch: Arch, layer: number): CNNSlot {
   switch (arch) {
@@ -463,6 +490,8 @@ export function slotFor(arch: Arch, layer: number): CNNSlot {
       return diffSlot(layer)
     case 'gan':
       return ganSlot(layer)
+    case 'vit':
+      return vitSlot(layer)
     default:
       return aeSlot(layer)
   }
@@ -577,4 +606,5 @@ export const DEFAULT_VIEW: Record<Arch, { position: Vec3; target: Vec3 }> = {
   diff: { position: [12.5, 5.5, 19], target: [0, 0, 0] },
   gan: { position: [13.5, 2.2, 19], target: [0, 0.4, 0] },
   gnn: { position: [12, 5, 18], target: [0, 0, 0] },
+  vit: { position: [13, 6, 20], target: [0, 0, 0] },
 }

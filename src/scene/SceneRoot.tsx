@@ -10,6 +10,7 @@ import { AEScene } from './AEScene'
 import { DiffusionScene } from './DiffusionScene'
 import { GanScene } from './GanScene'
 import { GnnScene } from './GnnScene'
+import { ViTScene } from './ViTScene'
 import { Driver } from './Driver'
 import { CameraRig } from './CameraRig'
 import { LayerHighlight } from './LayerHighlight'
@@ -45,6 +46,7 @@ export function SceneRoot() {
       {arch === 'diff' && <DiffusionScene key={`diff${version}`} />}
       {arch === 'gan' && <GanScene key={`gan${version}`} />}
       {arch === 'gnn' && <GnnScene key={`gnn${version}`} />}
+      {arch === 'vit' && <ViTScene key={`vit${version}`} />}
       <LayerHighlight />
       <Driver />
       <CameraRig />

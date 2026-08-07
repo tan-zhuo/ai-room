@@ -24,6 +24,7 @@ import {
   slotFor,
   vecPos,
   VecSlot,
+  vitSlot,
 } from './layout'
 import { Segment } from './common'
 import { Connections } from './Connections'
@@ -412,6 +413,52 @@ function ganSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   return segs
 }
 
+function vitSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
+  const segs: Segment[] = []
+  const model = MODELS.vit.model
+  if (sel.space === 'vector') {
+    // class logit <- final CLS row
+    const xS = vitSlot(3) as GridSlot
+    model.Wh.forEach((row, k) => segs.push({ a: v(gridPos(xS, 0, 0, k)), b: target, w: row[sel.index], target: 0 }))
+    return segs
+  }
+  if (sel.layer === 0 && sel.row > 0) {
+    // patch token cell <- its p×p pixels in the input image
+    const imgS = vitSlot(-1) as GridSlot
+    const pi = sel.row - 1
+    const gr = Math.floor(pi / model.grid)
+    const gc = pi % model.grid
+    for (let r = 0; r < model.p; r++)
+      for (let c = 0; c < model.p; c++) {
+        const w = model.Wp[r * model.p + c][sel.col]
+        segs.push({ a: v(gridPos(imgS, 0, gr * model.p + r, gc * model.p + c)), b: target, w, target: 0 })
+      }
+    return segs
+  }
+  if (sel.layer === 1) {
+    // attention cell <- token rows i and j of the embedding sheet
+    const eS = vitSlot(0) as GridSlot
+    for (let k = 0; k < model.d; k++) {
+      segs.push({ a: v(gridPos(eS, 0, sel.row, k)), b: target, w: 0.6, target: 0 })
+      segs.push({ a: v(gridPos(eS, 0, sel.col, k)), b: target, w: -0.6, target: 0 })
+    }
+    return segs
+  }
+  if (sel.layer === 2) {
+    // residual cell <- same cell in embed sheet + attention row
+    segs.push({ a: v(gridPos(vitSlot(0) as GridSlot, 0, sel.row, sel.col)), b: target, w: 0.8, target: 0 })
+    const aS = vitSlot(1) as GridSlot
+    for (let j = 0; j < model.T; j++)
+      segs.push({ a: v(gridPos(aS, 0, sel.row, j)), b: target, w: 0.35, target: 0 })
+    return segs
+  }
+  if (sel.layer === 3) {
+    segs.push({ a: v(gridPos(vitSlot(2) as GridSlot, 0, sel.row, sel.col)), b: target, w: 0.8, target: 0 })
+    return segs
+  }
+  return segs
+}
+
 function gnnSegments(sel: NodeRef, target: THREE.Vector3): Segment[] {
   const segs: Segment[] = []
   if (sel.space !== 'vector' || sel.layer < 0) return segs
@@ -453,6 +500,7 @@ function Marker({ arch, sel }: { arch: Arch; sel: NodeRef }) {
     if (arch === 'diff') return diffSegments(sel, target)
     if (arch === 'gan') return ganSegments(sel, target)
     if (arch === 'gnn') return gnnSegments(sel, target)
+    if (arch === 'vit') return vitSegments(sel, target)
     return aeSegments(sel, target)
   }, [arch, sel, pos])
 

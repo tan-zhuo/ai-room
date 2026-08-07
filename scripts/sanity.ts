@@ -88,6 +88,13 @@ if (MODELS.ae.finalMSE > 0.03) failures.push('autoencoder reconstruction too poo
   if (gnnL.accuracy < 0.8) failures.push('gnn L accuracy too low')
 }
 
+// --- ViT
+{
+  const vit = MODELS.vit
+  console.log(`ViT held-out accuracy: ${(vit.accuracy * 100).toFixed(1)}% (loss ${vit.finalLoss.toFixed(3)})`)
+  if (vit.accuracy < 0.85) failures.push('vit accuracy too low')
+}
+
 // --- large-scale variants (every arch supports s/m/l; L must still learn)
 {
   const { buildRNNTask, buildLSTMTask } = await import('../src/nn/rnn')

@@ -121,6 +121,26 @@ const PAPERS: Record<Arch, Paper[]> = {
       url: 'https://arxiv.org/abs/2112.10752',
     },
   ],
+  vit: [
+    {
+      title: 'An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale (ViT)',
+      authors: 'Dosovitskiy et al.',
+      year: 2020,
+      url: 'https://arxiv.org/abs/2010.11929',
+    },
+    {
+      title: 'Attention Is All You Need',
+      authors: 'Vaswani et al.',
+      year: 2017,
+      url: 'https://arxiv.org/abs/1706.03762',
+    },
+    {
+      title: 'Learning Transferable Visual Models From Natural Language Supervision (CLIP)',
+      authors: 'Radford et al.',
+      year: 2021,
+      url: 'https://arxiv.org/abs/2103.00020',
+    },
+  ],
   gnn: [
     {
       title: 'Semi-Supervised Classification with Graph Convolutional Networks (GCN)',

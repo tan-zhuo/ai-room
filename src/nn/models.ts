@@ -21,6 +21,7 @@ import { VAETask, buildVAETask } from './vae'
 import { DiffusionTask, buildDiffusionTask } from './diffusion'
 import { GANTask, buildGANTask } from './gan'
 import { GNNTask, buildGNNTask } from './gnn'
+import { ViTTask, buildViTTask } from './vit'
 import { trainMLPMSE } from './mlp'
 
 export type AEVariant = 'ae' | 'vae'
@@ -90,6 +91,7 @@ export interface Models {
   diff: DiffusionTask
   gan: GANTask
   gnn: GNNTask
+  vit: ViTTask
 }
 
 function oneHot(n: number, i: number): number[] {
@@ -426,6 +428,13 @@ export async function initModels(onUpdate: (lines: BootLine[]) => void): Promise
       },
     },
     {
+      label: 'ViT',
+      build: () => {
+        partial.vit = buildViTTask(cnnSampleOfSize)
+        return `patch acc ${(partial.vit.accuracy * 100).toFixed(0)}%`
+      },
+    },
+    {
       label: 'GNN',
       build: () => {
         partial.gnn = buildGNNTask()
@@ -509,6 +518,9 @@ export function rebuildArch(
       break
     case 'gnn':
       MODELS = { ...MODELS, gnn: buildGNNTask(scale) }
+      break
+    case 'vit':
+      MODELS = { ...MODELS, vit: buildViTTask(cnnSampleOfSize, scale) }
       break
     case 'text':
       MODELS = { ...MODELS, text: buildTextTask(scale) }
