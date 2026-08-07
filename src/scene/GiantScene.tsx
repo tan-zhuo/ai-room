@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
@@ -12,7 +12,7 @@ import {
 } from '../nn/giants'
 import { useStore, useT } from '../store'
 
-const TOWER_X = [-17, -9, -1, 7, 15]
+const TOWER_X = [-21, -13, -5, 3, 11]
 const FOOT = 3.6
 /** world units per parameter (height): DeepSeek-V3 ends up ~33 units tall */
 const H_PER_PARAM = 1 / 2e10
@@ -113,6 +113,131 @@ function LayerStack({ x }: { x: number }) {
       <Html position={[x, totalH + 1.6, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
         <div className="next-char-banner">
           {g.name} · {t('giant.layersLabel', { n: g.layers, d: g.d.toLocaleString() })}
+        </div>
+      </Html>
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------- token journey
+// A single token rides up through ALL the real layers, its representation
+// "growing" — the classic deep-transformer story (word → syntax → meaning →
+// context → whole-sentence fusion), with milestones scaled to the model.
+
+const STACK_H = 13
+const JOURNEY_STAGES = [0, 0.15, 0.4, 0.7, 1] as const
+const STAGE_EMOJI = ['🙂', '📐', '🍎', '🧭', '✨']
+const LOOP_RISE = 16 // seconds to climb the stack
+const LOOP_HOLD = 3.5 // pause at the top before restarting
+
+function TokenJourney({ x }: { x: number }) {
+  const sel = useStore((s) => s.giantSel)
+  const t = useT()
+  const g = GIANTS[sel]
+  const N = g.layers
+  const orb = useRef<THREE.Mesh>(null)
+  const halo = useRef<THREE.Mesh>(null)
+  const sats = useRef<THREE.InstancedMesh>(null)
+  const glowSlab = useRef<THREE.Mesh>(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const [stage, setStage] = useState(0)
+  const [layerNow, setLayerNow] = useState(1)
+  const SAT_MAX = 22
+
+  useFrame((state) => {
+    const tt = state.clock.elapsedTime % (LOOP_RISE + LOOP_HOLD)
+    const p = Math.min(1, tt / LOOP_RISE)
+    const y = 0.4 + p * (STACK_H - 0.4)
+    const o = orb.current
+    if (o) {
+      o.position.set(x, y, 0)
+      const s = 0.4 + p * 0.5
+      o.scale.setScalar(s)
+    }
+    if (halo.current) {
+      halo.current.position.set(x, y, 0)
+      halo.current.scale.setScalar(0.7 + p * 1.1 + 0.08 * Math.sin(state.clock.elapsedTime * 3))
+    }
+    // information satellites accumulate with depth
+    const m = sats.current
+    if (m) {
+      const count = Math.max(1, Math.round(p * SAT_MAX))
+      for (let i = 0; i < count; i++) {
+        const a = state.clock.elapsedTime * (0.8 + (i % 5) * 0.22) + i * 2.4
+        const r = 0.75 + (i % 4) * 0.22 + p * 0.5
+        dummy.position.set(x + Math.cos(a) * r, y + Math.sin(a * 0.7 + i) * 0.55, Math.sin(a) * r)
+        dummy.scale.setScalar(0.07 + 0.03 * (i % 3))
+        dummy.updateMatrix()
+        m.setMatrixAt(i, dummy.matrix)
+      }
+      m.count = count
+      m.instanceMatrix.needsUpdate = true
+    }
+    // light up the slab being crossed
+    const li = Math.min(N - 1, Math.floor(p * N))
+    if (glowSlab.current) {
+      const slabH = (STACK_H / N) * 0.72
+      const gap = (STACK_H / N) * 0.28
+      const w = Math.max(0.5, Math.min(8, g.d / 2300)) + 0.25
+      glowSlab.current.position.set(x, li * (slabH + gap) + slabH / 2, 0)
+      glowSlab.current.scale.set(w, slabH + 0.06, w)
+    }
+    const st =
+      p >= 1
+        ? 4
+        : JOURNEY_STAGES.findIndex((f, i) => i < 4 && p >= f && p < JOURNEY_STAGES[i + 1])
+    const stClamped = st === -1 ? 4 : st
+    if (stClamped !== stage) setStage(stClamped)
+    const ln = Math.min(N, li + 1)
+    if (ln !== layerNow) setLayerNow(ln)
+  })
+
+  if (sel === 0) {
+    return (
+      <Html position={[x, STACK_H + 2.6, 0]} center zIndexRange={[22, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="giant-tag mini">{t('giant.tok.mini')}</div>
+      </Html>
+    )
+  }
+
+  const milestoneLayer = (f: number) => Math.max(1, Math.round(f * N))
+
+  return (
+    <group>
+      <mesh ref={orb}>
+        <sphereGeometry args={[1, 24, 18]} />
+        <meshStandardMaterial color="#ffd166" emissive="#ffd166" emissiveIntensity={0.9} toneMapped={false} />
+      </mesh>
+      <mesh ref={halo}>
+        <sphereGeometry args={[1, 18, 14]} />
+        <meshBasicMaterial color="#ffd166" transparent opacity={0.12} toneMapped={false} />
+      </mesh>
+      <instancedMesh ref={sats} args={[undefined, undefined, SAT_MAX]}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshBasicMaterial color="#8fe3ff" toneMapped={false} />
+      </instancedMesh>
+      <mesh ref={glowSlab}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshBasicMaterial color="#ffd166" transparent opacity={0.35} toneMapped={false} />
+      </mesh>
+
+      {/* journey caption card */}
+      <Html position={[x + 1.5, STACK_H + 3.4, 0]} center zIndexRange={[22, 0]} style={{ pointerEvents: 'none' }}>
+        <div className="tok-card" key={stage}>
+          <div className="tok-head">
+            <span className="tok-word">{t('giant.tok.word')}</span>
+            <span className="tok-emoji">{STAGE_EMOJI[stage]}</span>
+            <span className="tok-layer">
+              Layer {stage === 4 ? N : layerNow} / {N}
+            </span>
+          </div>
+          <p className="tok-text">{t(`giant.tok.stage${stage}`)}</p>
+          <div className="tok-milestones">
+            {JOURNEY_STAGES.map((f, i) => (
+              <span key={i} className={`tok-dot${i <= stage ? ' on' : ''}`} title={`L${milestoneLayer(f)}`} />
+            ))}
+          </div>
+          <p className="tok-sentence">{t('giant.tok.sentence')}</p>
         </div>
       </Html>
     </group>
@@ -363,8 +488,11 @@ export function GiantScene() {
         </div>
       </Html>
 
-      {/* real layer structure of the selected model + one dissected layer */}
-      <LayerStack x={27} />
+      {/* front row: dissected layer (left) + layer stack with token journey (right) */}
+      <group position={[0, 0, 26]}>
+        <LayerStack x={25} />
+        <TokenJourney x={25} />
+      </group>
       <BlockAnatomy startX={-33} />
 
       {/* stats card — screen-anchored so it never clips */}

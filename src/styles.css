@@ -1201,6 +1201,77 @@ kbd {
   border-color: rgba(255, 209, 102, 0.5);
 }
 
+.tok-card {
+  width: 252px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  border-radius: 12px;
+  padding: 11px 13px;
+  backdrop-filter: blur(10px);
+  animation: tokIn 0.45s ease;
+}
+
+@keyframes tokIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.tok-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tok-word {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tok-emoji {
+  font-size: 18px;
+}
+
+.tok-layer {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #ffd166;
+}
+
+.tok-text {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.tok-milestones {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.tok-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border-strong);
+}
+
+.tok-dot.on {
+  background: #ffd166;
+  border-color: #ffd166;
+}
+
+.tok-sentence {
+  margin-top: 7px;
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .anat-tag {
   display: flex;
   flex-direction: column;
