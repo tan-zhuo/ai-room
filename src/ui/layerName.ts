@@ -46,7 +46,7 @@ export function layerNameOf(arch: Arch, layer: number, t: T): string {
   if (arch === 'giant') return t('arch.giant')
   if (arch === 'agent') {
     return t(
-      ['layer.agentDialog', 'layer.agentPlanner', 'layer.agentRetrieve', 'layer.agentCode', 'layer.agentRun', 'layer.agentAnswer', 'layer.agentSummarize'][
+      ['layer.agentDialog', 'layer.agentPlanner', 'layer.agentRetrieve', 'layer.agentCode', 'layer.agentRun', 'layer.agentAnswer', 'layer.agentSummarize', 'layer.agentMemory'][
         layer + 1
       ] ?? 'layer.agentDialog',
     )
@@ -125,8 +125,9 @@ export function explainKeyOf(arch: Arch, layer: number): string {
   if (arch === 'giant') return 'giantScale'
   if (arch === 'agent') {
     return (
-      ['agentDialog', 'agentPlanner', 'agentMemory', 'agentCode', 'agentRun', 'agentAnswer', 'agentWriteback'][layer + 1] ??
-      'agentDialog'
+      ['agentDialog', 'agentPlanner', 'agentMemory', 'agentCode', 'agentRun', 'agentAnswer', 'agentWriteback', 'agentMemory'][
+        layer + 1
+      ] ?? 'agentDialog'
     )
   }
   if (arch === 'llm') {

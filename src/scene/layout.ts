@@ -454,6 +454,8 @@ const AGENT_POS: Record<number, Vec3> = {
   3: [7.5, 7.6, 0],
   4: [12.5, 3.5, 0],
   5: [4, -1.6, 0],
+  /** the vector-memory cluster (label/explain anchor) */
+  6: [-4.5, -5, 0],
 }
 
 export function agentModulePos(layer: number): Vec3 {
@@ -628,7 +630,8 @@ export function layerBounds(arch: Arch, layer: number): { min: Vec3; max: Vec3 }
     pts.push([0, 0, 0])
   } else if (arch === 'agent') {
     const p = agentModulePos(layer)
-    pts.push([p[0] - 1.6, p[1] - 1.6, p[2]], [p[0] + 1.6, p[1] + 1.6, p[2]])
+    const r: [number, number] = layer === 6 ? [9, 3.6] : [1.6, 1.6]
+    pts.push([p[0] - r[0], p[1] - r[1], p[2]], [p[0] + r[0], p[1] + r[1], p[2]])
   } else {
     const slot = slotFor(arch, layer)
     if (slot.kind === 'grid') {

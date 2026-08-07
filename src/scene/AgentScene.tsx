@@ -263,17 +263,12 @@ export function AgentScene() {
           />
         </mesh>
       )}
-      <Html
-        position={[MEM_C[0] - 7.5, MEM_C[1] - 1.4, 0]}
-        center
-        zIndexRange={[18, 0]}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div className="anat-tag">
-          <b>{t('layer.agentMemory')}</b>
-          <span>{t('agent.memorySub')}</span>
-        </div>
-      </Html>
+      <LayerLabel
+        position={[MEM_C[0] - 8.5, MEM_C[1] - 1.2, 0]}
+        title={t('layer.agentMemory')}
+        sub={t('agent.memorySub')}
+        layer={6}
+      />
 
       {/* retrieval hits: real cosine scores + memory text */}
       {step > 1 &&
